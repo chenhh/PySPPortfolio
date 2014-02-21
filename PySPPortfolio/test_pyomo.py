@@ -7,33 +7,41 @@ Created on 2014/2/21
 from __future__ import division
 from coopr.pyomo import *
 
-def simple():
+def Pharmacy():
     model = AbstractModel()
     
-    model.m = Param(within=NonNegativeIntegers)
-    model.n = Param(within=NonNegativeIntegers)
+    #set
+    model.drug = Set()
+    model.material = Set()
     
-    model.I = RangeSet(1, model.m)
-    model.J = RangeSet(1, model.n)
+    #parameter
+    model.sellPrice = Param(model.drug)
+    model.grams = Param(model.drug)
+    model.HRhours = Param(model.drug)
+    model.EQhours = Param(model.drug)
+    model.EQCost = Param(model.drug)
     
-    model.a = Param(model.I, model.J)
-    model.b = Param(model.I)
-    model.c = Param(model.J)
+    model.materialCost = Param(model.material)
+    model.materialContent = Param(model.material)
     
-    # the next line declares a variable indexed by the set J
-    model.x = Var(model.J, domain=NonNegativeReals)
+    #decision variables
+    model.D = Var(model.drug, domain=NonNegativeReals)
+    model.R = Var(model.material, domain=NonNegativeReals)
+     
     
-    def obj_expression(model):
-        return summation(model.c, model.x)
+    #objective
+    def objective_rule(model):
+        summation(model.sellPrice, model.D) -summation(model.EQCost, model.D) - summation(model.materialCost, model.R) 
     
-    model.OBJ = Objective(rule=obj_expression)
+    model.OBJ = Objective(rule=objective_rule)
     
-    def ax_constraint_rule(model, i):
-        # return the expression for the constraint for i
-        return sum(model.a[i,j] * model.x[j] for j in model.J) >= model.b[i]
+    #constraint
+    def balance_constraint_rule(model):
+        summation(model.materialContent, model.R) - (model.grams, model.D) >=0
+        
+    model.balanceConstraint = Constraint(rule=balance_constraint_rule)
     
-    # the next line creates one constraint for each member of the set model.I
-    model.AxbConstraint = Constraint(model.I, rule=ax_constraint_rule)
+    
     
 
 if __name__ == '__main__':
