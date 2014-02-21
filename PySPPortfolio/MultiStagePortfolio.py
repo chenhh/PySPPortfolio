@@ -19,6 +19,7 @@ def OptimalMultiStagePortfolio(riskyRetMtx, riskFreeRetMtx,
     assert riskyRetMtx.shape == buyTransFeeMtx.shape == sellTransFeeMtx.shape
     assert riskyRetMtx.shape[1] == riskFreeRetMtx.size
      
+     
 
 if __name__ == '__main__':
     pass
