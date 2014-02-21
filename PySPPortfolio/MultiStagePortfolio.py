@@ -4,7 +4,7 @@
 @mail: chenhh@par.cse.nsysu.edu.tw
 '''
 
-def OptimalMultiStagePortfolio(riskyRetMtx, riskFreeRetMtx, 
+def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetMtx, 
                                buyTransFeeMtx, sellTransFeeMtx):
     '''
     -假設資料共T期, 投資在M個risky assets, 以及1個riskfree asset
