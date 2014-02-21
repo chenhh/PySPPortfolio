@@ -4,7 +4,7 @@
 @mail: chenhh@par.cse.nsysu.edu.tw
 '''
 
-def HeuristicMomentMatching(momentArr, corrMtx, n_samples):
+def heuristicMomentMatching(momentArr, corrMtx, n_scenarios):
     '''
     given target 4 moments (mean, stdev, skewness, kurtosis)
     and correlation matrix
