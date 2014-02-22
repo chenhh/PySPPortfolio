@@ -1,0 +1,40 @@
+set drug := 1 2 ;
+set material := 1 2;
+set budget := "money" "HR" "hour" "storage" ;
+
+param sellPrice := 
+1 6200 
+2 6900 ;
+
+param grams := 
+1 0.5 
+2 0.6 ;
+
+param HRhours := 
+1 90 
+2 100 ;
+
+param EQhours := 
+1 40 
+2 50 ;
+
+param EQCost := 
+1 700 
+2 800 ;
+                                         
+param materialCost := 
+1 100 
+2 199.9 ;
+
+param materialContent := 
+1 0.01 
+2 0.02 ;
+
+param budgeValue := 
+"money" 1e5 
+"HR" 2000 
+"hour" 800 
+"storage" 1000 ;
+
+
+
