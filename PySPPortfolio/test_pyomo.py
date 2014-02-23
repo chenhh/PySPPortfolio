@@ -157,11 +157,18 @@ def concretePharmacy():
     model.moneyConstraint = Constraint(rule=money_constraint_rule)
     
     # Create a solver
-    opt = SolverFactory('cplex')
-    opt.options["threads"] = 4
+    opt = SolverFactory('glpk')
+    print "opt options:", opt.options
+#     opt.options["threads"] = 4
     instance = model.create()
     results = opt.solve(instance)
+    print type(instance)
+    print dir(instance)
     print results
+    print 
+    print results.Solution.Objective.x1.Value
+    print results.Solver.Status
+    print results.Solution.Status
 #     print type(results)
 #     print dir(results)
     
@@ -175,12 +182,12 @@ def concretePharmacy():
 #     print instance.Obj.value
     
     #print variable method 2
-    for var in instance.active_components(Var):
-        varobj = getattr(instance, var)
-        for idx in varobj:
-            print varobj[idx], varobj[idx].value
+#     for var in instance.active_components(Var):
+#         varobj = getattr(instance, var)
+#         for idx in varobj:
+#             print varobj[idx], varobj[idx].value
     
-  
+    display(instance)
     #output file to yaml format
 #     results.write()
     print "original elapsed %.3f secs"%(time.time()-t1)

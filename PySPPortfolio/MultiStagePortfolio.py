@@ -9,7 +9,7 @@ from datetime import date
 import numpy as np
 import pandas as pd
 from coopr.pyomo import (Set, RangeSet, Param, Var, Objective, Constraint,
-                         ConcreteModel, Reals, NonNegativeReals, maximize)
+                         ConcreteModel, Reals, NonNegativeReals, maximize, display)
 from coopr.opt import  SolverFactory
 
 PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
@@ -94,13 +94,14 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
                                           rule=riskyFreeWealth_constraint_rule)
     
     #optimizer
-    opt = SolverFactory('cplex')
-    opt.options["threads"] = 4
+    opt = SolverFactory('glpk')
+#     opt.options["threads"] = 4
     
     instance = model.create()
     results = opt.solve(instance)
     print results
-    
+    instance.load(results)
+    display(instance)
 #     instance.load(results)
 #     for var in instance.active_components(Var):
 #         varobj = getattr(instance, var)
