@@ -5,73 +5,111 @@
 '''
 import time
 from coopr.pyomo import (Set, RangeSet, Param, Var, Objective, Constraint,
-                         ConcreteModel, Reals, NonNegativeReals)
-fromt coopr.opt import  SolverFactory
+                         ConcreteModel, Reals, NonNegativeReals, maximize)
+from coopr.opt import  SolverFactory
 
-def optimalMultiStagePortfolio(symbols, riskyRetMtx, riskFreeRetMtx, 
-                               buyTransFeeMtx, sellTransFeeMtx):
+
+def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec, 
+                               buyTransFeeMtx, sellTransFeeMtx,
+                               allocatedWealthVec=None):
     '''
     -假設資料共T期, 投資在M個risky assets, 以及1個riskfree asset
     -求出每個risky asset每一期應該要買進以及賣出的金額
-    @param symbols, list of string, 
-    @param riskyRetMtx, numpy.array, size: M * T
-    @param riskFreeRetMtx, numpy.array, size: T
+    T=0的時候為各資產的初始值
+    @param riskyRetMtx, numpy.array, size: M * T+1
+    @param riskFreeRetVec, numpy.array, size: T+1
     @param buyTransFeeMtx, numpy.array, size: M * T
     @param sellTransFeeMtx, numpy.array, size: M * T
+    @param allocatedWealthVec, numpy.array, size: (M+1) (最後一個為cash)
     
     @return (buyMtx, sellMtx), numpy.array, each size: M*T
     '''
-    assert riskyRetMtx.shape == buyTransFeeMtx.shape == sellTransFeeMtx.shape
-    assert riskyRetMtx.shape[1] == riskFreeRetMtx.size
+    assert buyTransFeeMtx.shape == sellTransFeeMtx.shape
+    assert riskyRetMtx.shape[1] == riskFreeRetVec.size
+   
+    
+    M, T =  buyTransFeeMtx.shape
 
     t1 = time.time()
     #create model
     model = ConcreteModel()
     
     #number of asset and number of periods
-    model.M = Set(symbols)
-    model.T = RangeSet(riskyRetMtx.shape[1])
-    model.Tp1 = RangeSet(riskyRetMtx.shape[1]+1)
+    model.M = Set(initialize=range(M))
+    model.T = Set(initialize=range(T))
+    model.Tp1 = Set(initialize=range(T+1))
+    model.Mp1 = Set(initialize=range(M+1))
     
     #parameter
     def riskyRet_init(model, m, t):
-        pass
+        return riskyRetMtx[m, t]
     
-    def riskfreeRet_init(model, t):
-        pass
+    def riskFreeRet_init(model, t):
+        return riskFreeRetVec[t]
     
     def buyTransFee_init(model, m, t):
-        pass
+        return buyTransFeeMtx[m, t]
     
     def sellTransFee_init(model, m, t):
-        pass
+        return sellTransFeeMtx[m, t]
     
-    model.riskyRet = Param(model.M, model.Tp1, within=Reals, initialize=riskyRet_init)
-    model.riskfreeRet = Param(model.Tp1, within=Reals, initilize=riskfreeRet_init)
-    model.buyTransFee = Param(model.M, model.T, within=NonNegativeReals, initialize=buyTransFee_init)
-    model.sellTransFee = Param(model.M, model.T, within=NonNegativeReals, initialize=sellTransFee_init)
+    def allocatedWealth_init(model, m):
+        return allocatedWealthVec[m]
     
+    model.riskyRet = Param(model.M, model.Tp1, initialize=riskyRet_init)
+    model.riskFreeRet = Param(model.Tp1,  initialize=riskFreeRet_init)
+    model.buyTransFee = Param(model.M, model.T, initialize=buyTransFee_init)
+    model.sellTransFee = Param(model.M, model.T, initialize=sellTransFee_init)
+    
+    if allocatedWealthVec is not None:
+        model.allocatedWealth = Param(model.Mp1, initialize=allocatedWealth_init)
     
     #decision variables
     model.buys = Var(model.M, model.T, within=NonNegativeReals)
     model.sells = Var(model.M, model.T, within=NonNegativeReals)
-    model.wealth = Var(model.T, within=NonNegativeReals)
-     
-    #objective
-    def objective_rule(model, t):
-        pass
+    model.riskyWealth = Var(model.M, model.T, within=NonNegativeReals)
+    model.riskfreeWealth = Var(model.T, within=NonNegativeReals)
     
+    #objective
+    def objective_rule(model):
+        cash = model.riskFreeRet[T] * model.riskfreeWealth[T-1] 
+        for m in xrange(M):
+            cash += model.riskyRet[m, T] * model.riskyWealth[m, T-1]
+        return cash
+        
     model.objective = Objective(rule=objective_rule, sense=maximize)
     
     #constraint
     def riskyWealth_constraint_rule(model, m, t):
-        pass
+        if t>=1:
+            preWealth = model.riskyWealth[m, t-1]
+        elif allocatedWealthVec is not None:
+            preWealth = model.allocatedWealth[m]
+        else:
+            preWealth = 0
+       
+        return model.riskyWealth[m, t] == \
+        (1. + model.riskyRet[m,t])*preWealth + model.buys[m,t] - model.sells[m,t]
     
-    def riskyfreeWealth_constraint_rule(model, m, t):
-        pass
+    def riskyfreeWealth_constraint_rule(model, t):
+        totalSell = sum((1-model.sellTransFee[mdx, t])*model.sells[mdx, t] 
+                        for mdx in xrange(M))
+        totalBuy = sum((1+model.buyTransFee[mdx, t])*model.buys[mdx, t] 
+                       for mdx in xrange(M))
+        
+        if t >=1:
+            preWealth = model.riskfreeWealth[t-1]  
+        elif allocatedWealthVec is not None:
+            preWealth = model.allocatedWealth[M]
+        else:
+            preWealth = 0
+        
+        return model.riskfreeWealth[t] == \
+            (1. + model.riskFreeRet[t])*preWealth + totalSell - totalBuy
+        
     
-    model.riskyWeathConstraint = Constraint(rule=riskyWealth_constraint_rule)
-    model.riskfreeConstraint = Constraint(rule=riskyfreeWealth_constraint_rule)
+    model.riskyWeathConstraint = Constraint(model.M, model.T, rule=riskyWealth_constraint_rule)
+    model.riskfreeConstraint = Constraint(model.T, rule=riskyfreeWealth_constraint_rule)
     
     #optimizer
     opt = SolverFactory('cplex')
@@ -90,5 +128,21 @@ def optimalMultiStagePortfolio(symbols, riskyRetMtx, riskFreeRetMtx,
     print "elapsed %.3f secs"%(time.time()-t1)
     
 
+def testMSPortfolio():
+    import numpy as np
+    M, T = 10, 1
+    Tp1 = T+1
+    
+    riskyRetMtx = np.random.rand(M, Tp1)/100.0
+#     print "risky ret:", riskyRetMtx
+    riskFreeRetMtx = np.random.rand(Tp1)/100.0
+#     print "riskfree ret:", riskFreeRetMtx 
+    buyTransFeeMtx = np.ones((M,T))* 0.003
+    sellTransFeeMtx = np.ones((M,T))* 0.004425
+    allocated = np.zeros(M)
+    allocated[-1] = 1e5
+    optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetMtx, 
+                               buyTransFeeMtx, sellTransFeeMtx, allocated)
+    
 if __name__ == '__main__':
-    pass
+    testMSPortfolio()
