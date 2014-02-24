@@ -94,7 +94,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
                                           rule=riskyFreeWealth_constraint_rule)
     
     #optimizer
-    opt = SolverFactory('glpk')
+    opt = SolverFactory('cplex')
 #     opt.options["threads"] = 4
     
     instance = model.create()
