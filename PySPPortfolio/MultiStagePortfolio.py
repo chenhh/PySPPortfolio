@@ -94,7 +94,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
                                           rule=riskyFreeWealth_constraint_rule)
     
     #optimizer
-    opt = SolverFactory('cplex')
+    opt = SolverFactory('glpk')
 #     opt.options["threads"] = 4
     
     instance = model.create()
@@ -112,8 +112,9 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
 
 
 def constructModelData():
-    symbols = ('1101', '1102', '1103')
-    startDate, endDate  = date(2012,1,1), date(2012, 12, 31)
+#     symbols = ('1101', '1102', '1103')
+    symbols = ('1101', '1102', )
+    startDate, endDate  = date(2012,1,1), date(2012, 1, 5)
     
     dfs = []
     for symbol in symbols:
@@ -133,9 +134,24 @@ def constructModelData():
     sellTransFeeMtx = np.ones((M,T))* 0.004425  #賣出0.3%手續費+0.1425%交易稅
     allocated = np.zeros(M+1)
     allocated[-1] = money
-
+    
     optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec, 
                                buyTransFeeMtx, sellTransFeeMtx, allocated)
+    print riskyRetMtx
+    
+    
+def generatingScenarioStructure():
+    '''產生ScenarioStructure.dat檔案
+    '''
+    pass
+
+    
+def generatingScenarios(transDate, scenario_num):
+    '''產生transDate_Scenarios_scenario_num.dat檔案
+    '''
+    pass
+
+
 if __name__ == '__main__':
 #     testMSPortfolio()
     constructModelData()
