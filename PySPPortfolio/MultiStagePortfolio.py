@@ -141,13 +141,14 @@ def constructModelData():
     
     
 def generatingScenarioStructure():
-    '''產生ScenarioStructure.dat檔案
+    '''產生ScenarioStructure.dat檔案 (nodebased)
     '''
     pass
 
     
 def generatingScenarios(transDate, scenario_num):
-    '''產生transDate_Scenarios_scenario_num.dat檔案
+    '''產生transDate_Scenarios_scenario_num.dat檔案(node based)
+    所以要產生rootNode.dat和scenario.dat
     '''
     pass
 
