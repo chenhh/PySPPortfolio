@@ -75,7 +75,7 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
     for row in xrange(n_rv):
         EY = MOM[row, :]
         EX = XMoments[row, :]
-        param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX))
+        param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=1000)
         print "opt:", cubicTransform(param, EY, EX)
         Y[row, :] = (param[0] + param[1] * X[row, :] + param[2] * X[row, :]**2 +
                      param[3] * X[row, :]**3)
@@ -85,12 +85,11 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
     Yp = np.dot(L, Y)
     
    
-    for run in xrange(20):
+    for run in xrange(200):
         
         Rp = np.corrcoef(Yp)
-#         print "Yp:", Yp
-#         print "Rp:", Rp
-#         print "Rp dist:", RMSE(Rp, corrMtx)
+
+        print "Rp dist:", RMSE(Rp, corrMtx)
         if(RMSE(Rp, corrMtx) <= EPSILON_Y):
             break
         Lp = la.cholesky(Rp)
@@ -102,7 +101,9 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
         Yf = np.dot(L, Yb)      #correct correlation, incorrect moments
 #         print "Yf:", Yf
         #cubic transform
+        
         Moments = Moment12(Yf)
+        Z = np.empty((n_rv, n_scenario))
         for row in xrange(n_rv):
             EY = MOM[row, :]
             EX = Moments[row, :]
@@ -111,13 +112,23 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
                          param[2] * Yf[row, :]**2 +
                          param[3] * Yf[row, :]**3)
             print "opt:", cubicTransform(param, EY, EX)
+            Z[row, :] = Yp[row, :] * targetMoments[row, 1] + targetMoments[row, 0]
+        
+        rMOM = np.zeros((n_rv, 4))
+        rMOM[:, 0] = Z.mean(axis=1)
+        rMOM[:, 1] = Z.std(axis=1)
+        rMOM[:, 2] = spstats.skew(Z, axis=1)
+        rMOM[:, 3] = spstats.kurtosis(Z, axis=1)
+        print "moment dist:", RMSE(rMOM, targetMoments)
     
-    #restore moments
-    Z = np.empty((n_rv, n_scenario))
-    for row in xrange(n_rv):
-        Z[row, :] = Y[row, :] * targetMoments[row, 1] + targetMoments[row, 0]
+#     #restore moments
+#     Z = np.empty((n_rv, n_scenario))
+#     for row in xrange(n_rv):
+#         Z[row, :] = Yp[row, :] * targetMoments[row, 1] + targetMoments[row, 0]
     
-    return Z 
+    
+    
+#     return Z 
     
 if __name__ == '__main__':
     n_rv = 3
