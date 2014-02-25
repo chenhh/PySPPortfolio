@@ -8,6 +8,7 @@ import numpy as np
 import numpy.linalg as la
 import scipy.optimize as spopt
 import scipy.stats as spstats
+from openopt import NLP
 
 def RMSE(predictions, targets):
     return np.sqrt(((predictions - targets) ** 2).mean())
@@ -21,6 +22,7 @@ def Moment12(samples):
     return Moments
 
 def cubicTransform(param, EY, EX):
+    print "param;", param
     a, b, c, d = param
     v1 = a + b*EX[0] + c*EX[1] + d*EX[2] - EY[0]
     
@@ -42,7 +44,7 @@ def cubicTransform(param, EY, EX):
         (4*a*a*a*d + 12*a*a*b*c+4*a*b*b*b)*EX[2] + \
         (4*a*a*a*c+6*a*a*b*b)*EX[1] + \
         (4*a*a*a*b)*EX[0] + a*a*a*a - EY[3]
-    return [v1, v2, v3, v4]  
+    return v1+v2+v3+v4
 
 def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
     '''
@@ -75,7 +77,9 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
     for row in xrange(n_rv):
         EY = MOM[row, :]
         EX = XMoments[row, :]
-        param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=10000)
+#         param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=10000)
+        p = NLP(cubicTransform,  np.random.rand(4), args=(EY, EX))
+        param = p.solve('scipy_cobyla')
         print "opt:", cubicTransform(param, EY, EX)
         Y[row, :] = (param[0] + param[1] * X[row, :] + param[2] * X[row, :]**2 +
                      param[3] * X[row, :]**3)
@@ -107,7 +111,10 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
         for row in xrange(n_rv):
             EY = MOM[row, :]
             EX = Moments[row, :]
-            param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX))
+#             param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX))
+            p = NLP(cubicTransform,  np.random.rand(4), args=(EY, EX))
+            param = p.solve('scipy_slsqp')
+
             Yp[row, :] = (param[0] + param[1] * Yf[row, :] + 
                          param[2] * Yf[row, :]**2 +
                          param[3] * Yf[row, :]**3)
