@@ -75,7 +75,7 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
     for row in xrange(n_rv):
         EY = MOM[row, :]
         EX = XMoments[row, :]
-        param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=1000)
+        param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=10000)
         print "opt:", cubicTransform(param, EY, EX)
         Y[row, :] = (param[0] + param[1] * X[row, :] + param[2] * X[row, :]**2 +
                      param[3] * X[row, :]**3)
