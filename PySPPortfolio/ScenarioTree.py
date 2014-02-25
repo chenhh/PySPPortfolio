@@ -6,12 +6,12 @@
 
 import numpy as np
 import numpy.linalg as la
-import scipy as sp
 import scipy.optimize as spopt
 import scipy.stats as spstats
 
 def RMSE(predictions, targets):
     return np.sqrt(((predictions - targets) ** 2).mean())
+
 
 def Moment12(samples):
     n_rv = samples.shape[0]
@@ -21,9 +21,6 @@ def Moment12(samples):
     return Moments
 
 def cubicTransform(param, EY, EX):
-#     print "param:", param
-#     print "EY:", EY
-#     print "EX:", EX
     a, b, c, d = param
     v1 = a + b*EX[0] + c*EX[1] + d*EX[2] - EY[0]
     
@@ -78,33 +75,52 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
     for row in xrange(n_rv):
         EY = MOM[row, :]
         EX = XMoments[row, :]
-        param = spopt.fsolve(cubicTransform, [0,0,0,0], args=(EY, EX))
+        param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX))
+        print "opt:", cubicTransform(param, EY, EX)
         Y[row, :] = (param[0] + param[1] * X[row, :] + param[2] * X[row, :]**2 +
                      param[3] * X[row, :]**3)
-     
+    
     #Cholesky decomposition
     L = la.cholesky(corrMtx)  
     Yp = np.dot(L, Y)
-    Rp = np.corrcoef(Yp)
-     
-    while(RMSE(Rp, corrMtx) > EPSILON_Y):
+    
+   
+    for run in xrange(20):
+        
+        Rp = np.corrcoef(Yp)
+#         print "Yp:", Yp
+#         print "Rp:", Rp
+#         print "Rp dist:", RMSE(Rp, corrMtx)
+        if(RMSE(Rp, corrMtx) <= EPSILON_Y):
+            break
         Lp = la.cholesky(Rp)
         LpInv = la.inv(Lp)
-        YpInv = np.dot(LpInv, Yp)
-        Ypp = np.dot(L, YpInv)
-        Moments = Moment12(Ypp)
+        
+#         print "Lp:", Lp
+#         print "LpInv:", LpInv
+        Yb = np.dot(LpInv, Yp)  #zero correlations, incorrect moments
+        Yf = np.dot(L, Yb)      #correct correlation, incorrect moments
+#         print "Yf:", Yf
+        #cubic transform
+        Moments = Moment12(Yf)
         for row in xrange(n_rv):
             EY = MOM[row, :]
             EX = Moments[row, :]
-            param = spopt.fsolve(cubicTransform, [0,0,0,0], args=(EY, EX))
-            Yp[row, :] = (param[0] + param[1] * Ypp[row, :] + 
-                         param[2] * Ypp[row, :]**2 +
-                         param[3] * Ypp[row, :]**3)
-        #update
-        Rp = np.corrcoef(Yp)
+            param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX))
+            Yp[row, :] = (param[0] + param[1] * Yf[row, :] + 
+                         param[2] * Yf[row, :]**2 +
+                         param[3] * Yf[row, :]**3)
+            print "opt:", cubicTransform(param, EY, EX)
+    
+    #restore moments
+    Z = np.empty((n_rv, n_scenario))
+    for row in xrange(n_rv):
+        Z[row, :] = Y[row, :] * targetMoments[row, 1] + targetMoments[row, 0]
+    
+    return Z 
     
 if __name__ == '__main__':
-    n_rv = 10
+    n_rv = 3
     data = np.random.randn(n_rv, 20)
     targetMoments = np.empty((n_rv, 4))
     targetMoments[:, 0] = data.mean(axis=1)
