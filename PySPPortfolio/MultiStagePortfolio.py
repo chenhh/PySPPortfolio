@@ -101,7 +101,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
     results = opt.solve(instance)
     print results
     instance.load(results)
-    display(instance)
+#     display(instance)
 #     instance.load(results)
 #     for var in instance.active_components(Var):
 #         varobj = getattr(instance, var)
@@ -114,7 +114,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
 def constructModelData():
 #     symbols = ('1101', '1102', '1103')
     symbols = ('1101', '1102', )
-    startDate, endDate  = date(2012,1,1), date(2012, 1, 5)
+    startDate, endDate  = date(2012,12,30), date(2012, 12, 31)
     
     dfs = []
     for symbol in symbols:
