@@ -7,7 +7,8 @@ import os
 import platform
 import subprocess
 import time
-import numpy as np
+from cStringIO import StringIO
+import numpy as np  
 import pandas as pd
 import scipy as sp
 import scipy.stats as spstats
@@ -56,11 +57,52 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
             "transDates": transDates
             }
 
-def constructScenarioStructure():
+def constructScenarioStructure(n_scenario):
     '''產生ScenarioStructure.dat檔案 (nodebased)
     '''
-    pass
+    data = StringIO()
+    #declare node base
+    data.write('param ScenarioBasedData := False ;\n')
+    
+    #stage
+    data.write('set Stages := FirstStage SecondStage ;\n')
+    
+    #tree level
+    data.write('param NodeStage := RootNode FirstStage \n')
+    for scen in xrange(n_scenario):
+        data.write(" " * 19 + "Node%s SecondStage\n"%(scen))
+    data.write(';\n')
+    
+    #tree arc
+    data.write('set Children[RootNode] := \n')
+    for scen in  xrange(n_scenario):
+        data.write('" " * 19 + Node%s\n'%(scen))
+    data.write(' ;\n')
 
+    #mapping scenario to leaf
+    data.write('param ScenarioLeafNode := \n')
+    for scen in  xrange(n_scenario):
+        data.write('" " * 19 + Scenario%s Node%s\n'%(scen, scen))
+    data.write(' ;\n')
+    
+    #stage variable
+    data.write('set StageVariables[FirstStage] :=  buys[*]\n')
+    data.write(' ' * 19 + 'sells[*];\n')
+    data.write('set StageVariables[SecondStage] := riskyWealth[*]\n')
+    data.write(' ' * 19 + 'riskFreeWealth;\n')
+    
+    #stage wealth
+    data.write('StageCostVariable := FirstStage  FirstStageWealth\n')
+    data.write(' '* 10 + 'SecondStage SecondStageWealth ;')
+    
+    fileName = os.path.join('models', 'ScenarioStructure.dat')
+    with open(fileName, 'w') as fout:
+        fout.write(data.getvalue())
+        
+    data.close()
+    
+    return 0
+    
     
 def constructScenarios(transDate, scenario_num):
     '''產生transDate_Scenarios_scenario_num.dat檔案(node based)
