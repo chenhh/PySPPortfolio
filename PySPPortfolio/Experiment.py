@@ -97,6 +97,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     if not os.path.exists(resultDir):
         os.mkdir(resultDir)
     
+    #因為每一期的ScenarioStructure都一樣，建一次即可
+    
     for tdx in xrange(T):
         transDate = param['transDates'][tdx]
         transDateDir = os.path.join(resultDir, transDate)
