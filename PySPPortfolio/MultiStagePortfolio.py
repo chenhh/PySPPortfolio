@@ -17,7 +17,7 @@ PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
 
 def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec, 
                                buyTransFeeMtx, sellTransFeeMtx,
-                               allocatedWealthVec):
+                               allocatedWealth):
     '''
     -假設資料共T期, 投資在M個risky assets, 以及1個riskfree asset
     -求出每個risky asset每一期應該要買進以及賣出的金額
@@ -27,7 +27,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
     @param riskFreeRetVec, numpy.array, size: T+1
     @param buyTransFeeMtx, numpy.array, size: M * T
     @param sellTransFeeMtx, numpy.array, size: M * T
-    @param allocatedWealthVec, numpy.array, size: (M+1) (最後一個為cash)
+    @param allocatedWealth, numpy.array, size: (M+1) (最後一個為cash)
     
     @return (buyMtx, sellMtx), numpy.array, each size: M*T
     '''
@@ -41,15 +41,15 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
     model = ConcreteModel()
     
     #number of asset and number of periods
-    model.M = range(M)
+    model.symbols = range(M)
     model.T = range(T)
     model.Tp1 = range(T+1)
     model.Mp1 = range(M+1)
     
     #decision variables
-    model.buys = Var(model.M, model.T, within=NonNegativeReals)
-    model.sells = Var(model.M, model.T, within=NonNegativeReals)
-    model.riskyWealth = Var(model.M, model.T, within=NonNegativeReals)
+    model.buys = Var(model.symbols, model.T, within=NonNegativeReals)
+    model.sells = Var(model.symbols, model.T, within=NonNegativeReals)
+    model.riskyWealth = Var(model.symbols, model.T, within=NonNegativeReals)
     model.riskFreeWealth = Var(model.T, within=NonNegativeReals)
     
     #objective
@@ -66,7 +66,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
         if t>=1:
             preWealth = model.riskyWealth[m, t-1]
         else:
-            preWealth = allocatedWealthVec[m]
+            preWealth = allocatedWealth[m]
        
         return (model.riskyWealth[m, t] == 
                 (1. + riskyRetMtx[m,t])*preWealth + 
@@ -81,14 +81,14 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
         if t >=1:
             preWealth = model.riskFreeWealth[t-1]  
         else:
-            preWealth = allocatedWealthVec[-1]
+            preWealth = allocatedWealth[-1]
     
         return( model.riskFreeWealth[t] == 
                 (1. + riskFreeRetVec[t])*preWealth + 
                 totalSell - totalBuy)
         
     
-    model.riskyWeathConstraint = Constraint(model.M, model.T, 
+    model.riskyWeathConstraint = Constraint(model.symbols, model.T, 
                                             rule=riskyWealth_constraint_rule)
     model.riskFreeWealthConstraint = Constraint(model.T, 
                                           rule=riskyFreeWealth_constraint_rule)

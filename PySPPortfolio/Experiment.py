@@ -4,6 +4,7 @@
 @mail: chenhh@par.cse.nsysu.edu.tw
 '''
 import os
+import platform
 import subprocess
 import time
 import numpy as np
@@ -13,7 +14,13 @@ import scipy.stats as spstats
 from datetime import (date, timedelta)
 
 PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
-
+if platform.uname()[0] == 'Linux':
+    ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
+                                  'financial_experiment', 'PySPPortfolio')
+elif platform.uname()[0] =='Windows':
+    ExpResultsDir= os.path.join('C:\\', 'Dropbox', 'financial_experiment', 
+                                'MOGEP', 'PySPPortfolio')    
+    
 
 def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     '''
@@ -89,10 +96,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     n_rv, T = len(param), param['buyTransFeeMtx'].shape[1]
     
     #setup result directory
-    resultDir = os.path.join('exp_results', "%s_%s"%(
+    resultDir = os.path.join(ExpResultsDir, "%s_%s"%(
                         fixedSymbolSPPortfolio.__name__, 
-                        time.strftime("%y%m%d_%H%M%S")
-                ))
+                        time.strftime("%y%m%d_%H%M%S")))
     
     if not os.path.exists(resultDir):
         os.mkdir(resultDir)
