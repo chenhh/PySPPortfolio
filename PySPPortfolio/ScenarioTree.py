@@ -138,17 +138,19 @@ def heuristicMomentMatching(targetMoments, corrMtx, n_scenario):
 #     return Z 
     
 if __name__ == '__main__':
-    n_rv = 3
+    n_rv = 5
     data = np.random.randn(n_rv, 20)
     targetMoments = np.empty((n_rv, 4))
     targetMoments[:, 0] = data.mean(axis=1)
     targetMoments[:, 1] = data.std(axis=1)
     targetMoments[:, 2] = spstats.skew(data, axis=1)
     targetMoments[:, 3] = spstats.kurtosis(data, axis=1)
-#     print "targetMonents:", targetMoments
+    print "targetMonents:"
+    print targetMoments.T
     
+    print "corr"
     corrMtx = np.corrcoef(data)
-    
-    heuristicMomentMatching(targetMoments, corrMtx, 10)
+    print corrMtx
+#     heuristicMomentMatching(targetMoments, corrMtx, 10)
     
     
