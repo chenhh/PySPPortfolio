@@ -94,13 +94,13 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
                                           rule=riskyFreeWealth_constraint_rule)
     
     #optimizer
-    opt = SolverFactory('glpk')
+    opt = SolverFactory('cplex')
 #     opt.options["threads"] = 4
     
     instance = model.create()
     results = opt.solve(instance)
     print results
-    instance.load(results)
+#     instance.load(results)
 #     display(instance)
 #     instance.load(results)
 #     for var in instance.active_components(Var):
@@ -113,8 +113,8 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
 
 def constructModelData():
 #     symbols = ('1101', '1102', '1103')
-    symbols = ('1101', '1102', )
-    startDate, endDate  = date(2012,12,30), date(2012, 12, 31)
+    symbols = ('1101', '1102', '1103', '1104' )
+    startDate, endDate  = date(2000,1,1), date(2012, 12, 31)
     
     dfs = []
     for symbol in symbols:
