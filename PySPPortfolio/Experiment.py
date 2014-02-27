@@ -138,8 +138,53 @@ def constructScenarios(transDate, n_scenario, symbols, samplingRetMtx):
     
     return sys.exit(0)
         
-def constructTargetMomentCorrMtx(moments, correlationMtx):
-    pass
+def constructTargetMomentFile(moments):
+    '''file format:
+    first row: 4, n_rv
+    then the matrix size: 4 * n_rv
+    -可在matrix之後加入任何註解
+    '''
+    assert moments.shape[1] == 4
+    n_rv = moments.shape[0]
+    data = StringIO()
+    data.write('4 %s\n'%(n_rv))
+    
+    #write moment
+    for rdx in xrange(4):
+        data.write()
+    
+    #write comment
+    
+    fileName = os.path.join('.', 'tg_moms.txt')
+    with open (fileName, 'w') as fout:
+        fout.write(data.getvalue())
+    data.close()
+    
+    return sys.exit(0)
+    
+    
+def constructTargetcorrMtxFile(corrMtx):
+    '''file format:
+    first row: n_rv, n_rv
+    then the matrix size: n_rv * n_rv
+    -可在matrix之後加入任何註解
+    '''
+    n_rv, n_rv2 = corrMtx.shape
+    assert n_rv == n_rv2
+    
+    data = StringIO()
+    data.write('%s %s\n'%(n_rv, n_rv))
+    
+    for rdx in xrange(n_rv):
+        data.write()
+    
+    fileName = os.path.join('.', 'tg_corrs.txt')
+    with open (fileName, 'w') as fout:
+        fout.write(data.getvalue())
+    data.close()
+    
+    return sys.exit(0)
+    
 
 def parseSamplingMtx():
     pass
