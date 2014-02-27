@@ -4,6 +4,7 @@
 @mail: chenhh@par.cse.nsysu.edu.tw
 '''
 import os
+import sys
 import platform
 import subprocess
 import time
@@ -101,17 +102,47 @@ def constructScenarioStructure(n_scenario):
         
     data.close()
     
-    return 0
+    return sys.exit(0)
     
     
-def constructScenarios(transDate, scenario_num):
+def constructScenarios(transDate, n_scenario, symbols, samplingRetMtx):
     '''產生transDate_Scenarios_scenario_num.dat檔案(node based)
     所以要產生rootNode.dat和scenario.dat
     '''
+    assert samplingRetMtx.shape[0] == len(symbols)
+    assert samplingRetMtx.shape[1] == n_scenario
+    
+    
+    #deterministic parameters
+    rootData = StringIO()
+    rootData.write('set symbols := %s ;'%(" ".join(str(s) for s in xrange(len(symbols)))))
+    rootData.write('param allocatedWealth : = %s ;'%())
+    rootData.write('param depositWealth : = %s ;'%())
+    rootData.write('param riskFreeRet : = %s ;'%())
+    rootData.write('param buyTransFee : = %s ;'%())
+    rootData.write('param sellTransFee : = %s ;'%())
+ 
+    rootFileName = os.path.join('models', 'RootNode.dat')
+    with open (rootFileName, 'w') as fout:
+        fout.write(rootData.getvalue())
+    rootData.close()
+        
+    for sdx in xrange(n_scenario):
+        scenData = StringIO()
+        scenData.write('param riskyRet : = %s ;'%())
+        #檔名必須與ScenarioStrucutre.dat中一致
+        scenFileName = os.path.join('models', 'Node%s.dat'%(sdx))
+        with open (scenFileName, 'w') as fout:
+            fout.write(scenData.getvalue())
+        scenData.close()
+    
+    return sys.exit(0)
+        
+def constructTargetMomentCorrMtx(moments, correlationMtx):
     pass
 
-
-    
+def parseSamplingMtx():
+    pass
         
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_day=20, n_scenario=1000):
