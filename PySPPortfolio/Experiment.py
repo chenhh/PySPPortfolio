@@ -27,40 +27,63 @@ elif platform.uname()[0] =='Windows':
 def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     '''
     -注意因為最後一期只結算不買賣
-    @return riskyRetMtx, numpy.array, size: (n_rv * T+1)
+    -DataFrame以Date取資料時，有包含last day, 即df[startDate: endDate]
+    -包含了endDate的資料，但是使用index取資料時，如df[2:10]，則不包含df.iloc[10]的資料
+    
+    dataFrame取單一row用df.ix[idx]
+    df.index.get_loc(startDate)找index所在位置
+    @return riskyRetMtx, numpy.array, size: (n_rv * hist_day+T+1)
     '''
     buyTransFee, sellTransFee = 0.003, 0.004425
     
+    #read data
     dfs = []
+    transDates = None
     for symbol in symbols:
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, 
                                     'BasicFeatures_%s_00-12.pkl'%symbol))
-        dfs.append(df[startDate: endDate])
+        tmp = df[startDate: endDate]
+        startIdx, endIdx = df.index.get_loc(tmp.index[0]), df.index.get_loc(tmp.index[-1])
+        if startIdx < hist_day:
+            raise ValueError('%s do not have enough data'%(symbol))
+        data = df[startIdx-hist_day: endIdx+1]
+        print data['adjROI']
+        #check all data have the same transDate
+        if transDates is None:
+            transDates = data.index.values
+        if not np.all(transDates == data.index.values):
+            raise ValueError('symbol %s do not have the same trans. dates'%(symbol))
+        dfs.append(data)
     
-    n_rv, T = len(symbols), dfs[0].index.size - 1
-    riskyRetMtx = np.empty((n_rv, T+1))
+    n_rv, T = len(symbols), dfs[0].index.size - hist_day - 1 
+    riskyRetMtx = np.empty((n_rv, hist_day+T+1))
     for idx, df in enumerate(dfs):
-        riskyRetMtx[idx, :] = df['adjROI'].values/100
+        riskyRetMtx[idx, :] = df['adjROI'].values/100.
+    
     
     riskFreeRetVec = np.zeros(T+1)
     buyTransFeeMtx = np.ones((n_rv, T)) * buyTransFee
-    sellTransFeeMtx = np.ones((n_rv,T))* sellTransFee
+    sellTransFeeMtx = np.ones((n_rv, T))* sellTransFee
     
     #allocated [0, n_rv-1]為已配置在risky asset的金額，第n_rv為cash
     allocatedVec = np.zeros(n_rv+1)
     allocatedVec[-1] = money
     
-    return {"riskyRetMtx": riskyRetMtx,
-            "riskFreeRetVec": riskFreeRetVec,
-            "buyTransFeeMtx": buyTransFeeMtx,
-            "sellTransFeeMtx": sellTransFeeMtx,
-            "allocatedVec": allocatedVec,
-            "transDates": transDates
-            }
+    return {
+        "riskyRetMtx": riskyRetMtx,         #size: n_rv * (hist_day+T+1)
+        "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
+        "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
+        "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
+        "allocatedVec": allocatedVec,       #size: n_rv
+        "transDates": transDates            #size: (hist_day+T+1)
+        }
 
-def constructScenarioStructure(n_scenario):
+def constructScenarioStructure(n_scenario, probs):
     '''產生ScenarioStructure.dat檔案 (nodebased)
     '''
+    assert len(probs) == n_scenario
+    assert np.all(probs >= 0)
+    
     data = StringIO()
     #declare node base
     data.write('param ScenarioBasedData := False ;\n')
@@ -68,33 +91,53 @@ def constructScenarioStructure(n_scenario):
     #stage
     data.write('set Stages := FirstStage SecondStage ;\n')
     
-    #tree level
-    data.write('param NodeStage := RootNode FirstStage \n')
+    #set nodes
+    data.write('set Nodes : = \n')
+    data.write(' ' *4 + 'RootNode\n')
     for scen in xrange(n_scenario):
-        data.write(" " * 19 + "Node%s SecondStage\n"%(scen))
-    data.write(';\n')
+        data.write(' ' *4 + 'Node%s\n'%(scen))
+    data.write(';\n\n')
+    
+    #tree level
+    data.write('param NodeStage := \n')
+    data.write(" " * 4 + 'RootNode FirstStage \n')
+    for scen in xrange(n_scenario):
+        data.write(" " * 4 + "Node%s SecondStage\n"%(scen))
+    data.write(';\n\n')
     
     #tree arc
     data.write('set Children[RootNode] := \n')
     for scen in  xrange(n_scenario):
-        data.write('" " * 19 + Node%s\n'%(scen))
-    data.write(' ;\n')
+        data.write(" " * 4 + 'Node%s\n'%(scen))
+    data.write(';\n\n')
 
+    #probability
+    data.write('param ConditionalProbability := \n')
+    data.write(' ' *4 + 'RootNode 1.0\n')
+    for scen in  xrange(n_scenario):
+        data.write(" " * 4 + 'Node%s %s\n'%(scen, probs[scen]))
+    data.write(';\n\n')
+
+    #scenario
+    data.write('set Scenarios := \n')
+    for scen in xrange(n_scenario):
+        data.write(" " * 4 + "Scenario%s\n"%(scen))
+    data.write(';\n\n')
+    
     #mapping scenario to leaf
     data.write('param ScenarioLeafNode := \n')
     for scen in  xrange(n_scenario):
-        data.write('" " * 19 + Scenario%s Node%s\n'%(scen, scen))
-    data.write(' ;\n')
+        data.write(" " * 4 + 'Scenario%s Node%s\n'%(scen, scen))
+    data.write(';\n\n')
     
     #stage variable
-    data.write('set StageVariables[FirstStage] :=  buys[*]\n')
-    data.write(' ' * 19 + 'sells[*];\n')
-    data.write('set StageVariables[SecondStage] := riskyWealth[*]\n')
-    data.write(' ' * 19 + 'riskFreeWealth;\n')
+    data.write('set StageVariables[FirstStage] :=  buys[*] sells[*];\n')
+    data.write('set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth;\n')
+   
     
     #stage wealth
-    data.write('StageCostVariable := FirstStage  FirstStageWealth\n')
-    data.write(' '* 10 + 'SecondStage SecondStageWealth ;')
+    data.write('param StageCostVariable := FirstStage  FirstStageWealth\n')
+    data.write(' '* 21 + 'SecondStage SecondStageWealth ;')
     
     fileName = os.path.join('models', 'ScenarioStructure.dat')
     with open(fileName, 'w') as fout:
@@ -275,4 +318,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     
 
 if __name__ == '__main__':
-    pass
+    startDate = date(2004,1, 1)
+    endDate = date(2004, 1, 10)
+    symbols = ['1101', '1102']
+    money = 1e5
+    hist_day = 5
+    constructModelMtx(symbols, startDate, endDate, money, hist_day)
