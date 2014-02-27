@@ -74,6 +74,8 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     allocatedVec[-1] = money
     
     return {
+        "n_rv": n_rv,
+        "T": T,
         "riskyRetMtx": riskyRetMtx,         #size: n_rv * (hist_day+T+1)
         "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
@@ -147,13 +149,12 @@ def constructScenarioStructureFile(n_scenario, probs):
     data.write('param StageCostVariable := FirstStage  FirstStageWealth\n')
     data.write(' '* 21 + 'SecondStage SecondStageWealth ;')
     
-    fileName = os.path.join('models', 'ScenarioStructure.dat')
+    fileName = os.path.join(FileDir, 'models', 'ScenarioStructure.dat')
     with open(fileName, 'w') as fout:
         fout.write(data.getvalue())
         
     data.close()
     
-    return sys.exit(0)
 
 def generatingScenarios(moments, corrMtx, n_scenario, debug=False):
     '''
@@ -212,28 +213,31 @@ def constructRootNodeFile(symbols, allocatedWealth, depositWealth,
     rootData.close()
     
     
-def constructScenarioFiles( n_scenario, symbols, samplingRetMtx):
+def constructScenarioFiles( n_scenario, symbols, scenarioMtx, debug=True):
     '''
     與Node[num].dat檔案(node based) for pysp
     @param n_scenario, positive integer, scenario個數
     @param symbols, list
     @param samplingRetMtx, numpy.array, size: n_rv * n_scenario
     '''
-    assert samplingRetMtx.shape[0] == len(symbols)
-    assert samplingRetMtx.shape[1] == n_scenario
+    assert scenarioMtx.shape[0] == len(symbols)
+    assert scenarioMtx.shape[1] == n_scenario
     
-   
-        
     for sdx in xrange(n_scenario):
         scenData = StringIO()
-        scenData.write('param riskyRet : = %s ;'%())
+        scen = scenarioMtx[:, sdx]
+        scenData.write('param riskyRet : = %s ;'%(" ".join(str(v) for v in scen)))
         #檔名必須與ScenarioStrucutre.dat中一致
-        scenFileName = os.path.join('models', 'Node%s.dat'%(sdx))
+        scenFileName = os.path.join(FileDir, 'models', 'Node%s.dat'%(sdx))
         with open (scenFileName, 'w') as fout:
             fout.write(scenData.getvalue())
         scenData.close()
     
-    return sys.exit(0)
+    if debug:
+        for sdx in xrange(n_scenario):
+            scenFileName = os.path.join(FileDir, 'models', 'Node%s.dat'%(sdx))
+            os.remove(scenFileName)    
+     
         
 def _constructTargetMomentFile(moments):
     '''
@@ -331,7 +335,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         }
     '''
     param = constructModelMtx(symbols, startDate, endDate, money)
-    n_rv, T = len(param), param['buyTransFeeMtx'].shape[1]
+    n_rv, T =param['n_rv'], param['T']
     
     #setup result directory
     resultDir = os.path.join(ExpResultsDir, "%s_%s"%(
@@ -341,7 +345,10 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     if not os.path.exists(resultDir):
         os.mkdir(resultDir)
     
-    #因為每一期的ScenarioStructure都一樣，建一次即可
+    #每一期的ScenarioStructure都一樣，建一次即可
+    probs = np.ones(n_scenario, dtype=np.float)/n_scenario
+    constructScenarioStructureFile(n_scenario, probs)
+    
     
     for tdx in xrange(T):
         transDate = param['transDates'][tdx]
@@ -392,7 +399,7 @@ if __name__ == '__main__':
     sellTransFee = np.ones(n_rv) * 0.004425
 #     constructRootNodeFile(symbols, allocatedWealth, depositWealth,
 #                           riskFreeRet, buyTransFee, sellTransFee)
-    n_scenario = 100
+    n_scenario = 10
     data = np.random.randn(n_rv, n_scenario)
     moments = np.empty((n_rv, 4))
     moments[:, 0] = data.mean(axis=1)
@@ -401,4 +408,6 @@ if __name__ == '__main__':
     moments[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
     
-    generatingScenarios(moments, corrMtx, n_scenario, True)
+    debug=False
+    prob, scenMtx = generatingScenarios(moments, corrMtx, n_scenario, debug)
+    constructScenarioFiles( n_scenario, symbols, scenMtx, debug)
