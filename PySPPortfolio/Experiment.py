@@ -15,7 +15,8 @@ import scipy as sp
 import scipy.stats as spstats
 from datetime import (date, timedelta)
 
-PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
+FileDir = os.path.abspath(os.path.curdir)
+PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
 if platform.uname()[0] == 'Linux':
     ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
                                   'financial_experiment', 'PySPPortfolio')
@@ -154,24 +155,36 @@ def constructScenarioStructureFile(n_scenario, probs):
     
     return sys.exit(0)
 
-def generatingScenarios(n_scenarios):
+def generatingScenarios(moments, corrMtx, n_scenario, debug=False):
     '''
     --使用scengen_HKW產生scenario, 使用前tg_moms.txt與tg_corrs.txt必須存在
     '''
     if platform.uname()[0] == 'Linux':
-        exe = os.path.join('scenario_generation', 'scengen_HKW')
+        exe = 'scengen_HKW'
     elif platform.uname()[0] == 'Windows':
-        exe = os.path.join('scenario_generation', 'scengen_HKW.exe')
-        
-    moments = os.path.join('scenario_generation', 'tgmoms.txt')
-    corrMtx = os.path.join('scenario_generation', 'tgcorrs.txt')
+        exe = 'scengen_HKW.exe'
+    
+    _constructTargetMomentFile(moments)    
+    _constructTargetcorrMtxFile(corrMtx)
+    
+    moments = os.path.join(FileDir, 'tg_moms.txt')
+    corrMtx = os.path.join(FileDir, 'tg_corrs.txt')
     if not os.path.exists(moments):
         raise ValueError('file %s does not exists'%(moments))
     
     if not os.path.exists(corrMtx):
         raise ValueError('file %s does not exists'%(corrMtx))
     
-    subprocess.call()
+    rc = subprocess.call('%s %s -f 1'%(exe, n_scenario), shell=True)
+    
+    probVec, scenarioMtx = parseSamplingMtx(fileName='out_scen.txt')
+    if debug:
+        os.remove('tg_moms.txt')
+        os.remove('tg_corrs.txt')
+        os.remove('out_scen.txt')
+    
+    return probVec, scenarioMtx
+    
 
 def constructRootNodeFile(symbols, allocatedWealth, depositWealth,
                           riskFreeRet, buyTransFee, sellTransFee):
@@ -222,7 +235,7 @@ def constructScenarioFiles( n_scenario, symbols, samplingRetMtx):
     
     return sys.exit(0)
         
-def constructTargetMomentFile(moments):
+def _constructTargetMomentFile(moments):
     '''
     @param moments, numpy.array, size: n_rv * 4
     file format:
@@ -243,15 +256,13 @@ def constructTargetMomentFile(moments):
         data.write('\n')
     
         
-    fileName = os.path.join('scenario_generation', 'tg_moms.txt')
+    fileName = os.path.join(FileDir, 'tg_moms.txt')
     with open (fileName, 'w') as fout:
         fout.write(data.getvalue())
     data.close()
+
     
-    return sys.exit(0)
-    
-    
-def constructTargetcorrMtxFile(corrMtx):
+def _constructTargetcorrMtxFile(corrMtx):
     '''file format:
     first row: n_rv, n_rv
     then the matrix size: n_rv * n_rv
@@ -259,7 +270,7 @@ def constructTargetcorrMtxFile(corrMtx):
     '''
     n_rv, n_rv2 = corrMtx.shape
     assert n_rv == n_rv2
-    
+    print "start tg_corr.txt"
     data = StringIO()
     data.write('%s\n%s\n'%(n_rv, n_rv))
     
@@ -267,12 +278,10 @@ def constructTargetcorrMtxFile(corrMtx):
         data.write(" ".join(str(v) for v in corrMtx[rdx, :]))
         data.write('\n')
         
-    fileName = os.path.join('scenario_generation', 'tg_corrs.txt')
+    fileName = os.path.join(FileDir, 'tg_corrs.txt')
     with open (fileName, 'w') as fout:
         fout.write(data.getvalue())
     data.close()
-    
-    return sys.exit(0)
     
 
 def parseSamplingMtx(fileName='out_scen.txt'):
@@ -290,9 +299,13 @@ def parseSamplingMtx(fileName='out_scen.txt'):
     return sample matrix, numpy.array, size: n_rv * n_scenario
     '''
     with open(fileName) as fin:
-        mtx = np.genfromtxt(fin, delimiter=" ", dtype=np.float)
+        mtx = np.genfromtxt(fin)
         
-    print mtx
+    probVec = mtx[:, 0]
+    scenarioMtx = mtx[:, (1,2)].T
+    return probVec, scenarioMtx
+ 
+    
         
         
         
@@ -379,7 +392,7 @@ if __name__ == '__main__':
     sellTransFee = np.ones(n_rv) * 0.004425
 #     constructRootNodeFile(symbols, allocatedWealth, depositWealth,
 #                           riskFreeRet, buyTransFee, sellTransFee)
-    n_scenario = 10
+    n_scenario = 100
     data = np.random.randn(n_rv, n_scenario)
     moments = np.empty((n_rv, 4))
     moments[:, 0] = data.mean(axis=1)
@@ -388,5 +401,4 @@ if __name__ == '__main__':
     moments[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
     
-    constructTargetMomentFile(moments)
-    constructTargetcorrMtxFile(corrMtx)
+    generatingScenarios(moments, corrMtx, n_scenario, True)
