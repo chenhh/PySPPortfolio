@@ -28,7 +28,11 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     '''
     -注意因為最後一期只結算不買賣
     -DataFrame以Date取資料時，有包含last day, 即df[startDate: endDate]
-    -包含了endDate的資料，但是使用index取資料時，如df[2:10]，則不包含df.iloc[10]的資料
+    -包含了endDate的資料，但是使用index取資料時，如df[2:10]，則不包含df.ix[10]的資料
+    @param symbols, list
+    @param startDate, endDate, datetime.date
+    @param momey, positive float
+    @param hist_day, positive integer
     
     dataFrame取單一row用df.ix[idx]
     df.index.get_loc(startDate)找index所在位置
@@ -60,7 +64,6 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     for idx, df in enumerate(dfs):
         riskyRetMtx[idx, :] = df['adjROI'].values/100.
     
-    
     riskFreeRetVec = np.zeros(T+1)
     buyTransFeeMtx = np.ones((n_rv, T)) * buyTransFee
     sellTransFeeMtx = np.ones((n_rv, T))* sellTransFee
@@ -74,12 +77,16 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
         "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
         "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
-        "allocatedVec": allocatedVec,       #size: n_rv
+        "allocatedVec": allocatedVec,       #size: (n_rv + 1)
         "transDates": transDates            #size: (hist_day+T+1)
         }
 
-def constructScenarioStructure(n_scenario, probs):
-    '''產生ScenarioStructure.dat檔案 (nodebased)
+
+def constructScenarioStructureFile(n_scenario, probs):
+    '''
+    產生ScenarioStructure.dat檔案 (nodebased) for pysp
+    @param n_scenario, positive integer, scenario個數
+    @param probs, numpy.array, size: n_scenario, 每個scenario發生的機率
     '''
     assert len(probs) == n_scenario
     assert np.all(probs >= 0)
@@ -146,29 +153,63 @@ def constructScenarioStructure(n_scenario, probs):
     data.close()
     
     return sys.exit(0)
-    
-    
-def constructScenarios(transDate, n_scenario, symbols, samplingRetMtx):
-    '''產生transDate_Scenarios_scenario_num.dat檔案(node based)
-    所以要產生rootNode.dat和scenario.dat
+
+def generatingScenarios(n_scenarios):
     '''
-    assert samplingRetMtx.shape[0] == len(symbols)
-    assert samplingRetMtx.shape[1] == n_scenario
+    --使用scengen_HKW產生scenario, 使用前tg_moms.txt與tg_corrs.txt必須存在
+    '''
+    if platform.uname()[0] == 'Linux':
+        exe = os.path.join('scenario_generation', 'scengen_HKW')
+    elif platform.uname()[0] == 'Windows':
+        exe = os.path.join('scenario_generation', 'scengen_HKW.exe')
+        
+    moments = os.path.join('scenario_generation', 'tgmoms.txt')
+    corrMtx = os.path.join('scenario_generation', 'tgcorrs.txt')
+    if not os.path.exists(moments):
+        raise ValueError('file %s does not exists'%(moments))
     
+    if not os.path.exists(corrMtx):
+        raise ValueError('file %s does not exists'%(corrMtx))
     
-    #deterministic parameters
+    subprocess.call()
+
+def constructRootNodeFile(symbols, allocatedWealth, depositWealth,
+                          riskFreeRet, buyTransFee, sellTransFee):
+    '''
+    產生RootNode.dat for pysp
+    @param symbols, list, list of symbols
+    @param allocatedWealth, numpy.array, size: n_rv, 已分配到各symbol的資產
+    @param depositWealth, float, 存款金額
+    @param riskFreeRet, float, 存款利率
+    @param buyTransFee, numpy.array, size: n_rv, 買進手續費
+    @param sellTransFee, numpy.array, size: n_rv, 賣出手續費 
+    '''
+    #RootNode.dat, deterministic parameters
     rootData = StringIO()
-    rootData.write('set symbols := %s ;'%(" ".join(str(s) for s in xrange(len(symbols)))))
-    rootData.write('param allocatedWealth : = %s ;'%())
-    rootData.write('param depositWealth : = %s ;'%())
-    rootData.write('param riskFreeRet : = %s ;'%())
-    rootData.write('param buyTransFee : = %s ;'%())
-    rootData.write('param sellTransFee : = %s ;'%())
+    rootData.write('set symbols := %s ;\n'%(" ".join(symbols)))
+    rootData.write('param allocatedWealth : = %s ;\n'%( " ".join(str(v) for v in allocatedWealth)) )
+    rootData.write('param depositWealth : = %s ;\n'%(depositWealth))
+    rootData.write('param riskFreeRet : = %s ;\n'%(riskFreeRet))
+    rootData.write('param buyTransFee : = %s ;\n'%( " ".join(str(v) for v in buyTransFee)) )
+    rootData.write('param sellTransFee : = %s ;\n'%(" ".join(str(v) for v in sellTransFee)) )
  
     rootFileName = os.path.join('models', 'RootNode.dat')
     with open (rootFileName, 'w') as fout:
         fout.write(rootData.getvalue())
     rootData.close()
+    
+    
+def constructScenarioFiles( n_scenario, symbols, samplingRetMtx):
+    '''
+    與Node[num].dat檔案(node based) for pysp
+    @param n_scenario, positive integer, scenario個數
+    @param symbols, list
+    @param samplingRetMtx, numpy.array, size: n_rv * n_scenario
+    '''
+    assert samplingRetMtx.shape[0] == len(symbols)
+    assert samplingRetMtx.shape[1] == n_scenario
+    
+   
         
     for sdx in xrange(n_scenario):
         scenData = StringIO()
@@ -182,23 +223,27 @@ def constructScenarios(transDate, n_scenario, symbols, samplingRetMtx):
     return sys.exit(0)
         
 def constructTargetMomentFile(moments):
-    '''file format:
+    '''
+    @param moments, numpy.array, size: n_rv * 4
+    file format:
     first row: 4, n_rv
     then the matrix size: 4 * n_rv
     -可在matrix之後加入任何註解
     '''
     assert moments.shape[1] == 4
+    
     n_rv = moments.shape[0]
     data = StringIO()
-    data.write('4 %s\n'%(n_rv))
+    data.write('4\n%s\n'%(n_rv))
     
+    mom = moments.T
     #write moment
     for rdx in xrange(4):
-        data.write()
+        data.write(" ".join(str(v) for v in mom[rdx]))
+        data.write('\n')
     
-    #write comment
-    
-    fileName = os.path.join('.', 'tg_moms.txt')
+        
+    fileName = os.path.join('scenario_generation', 'tg_moms.txt')
     with open (fileName, 'w') as fout:
         fout.write(data.getvalue())
     data.close()
@@ -216,12 +261,13 @@ def constructTargetcorrMtxFile(corrMtx):
     assert n_rv == n_rv2
     
     data = StringIO()
-    data.write('%s %s\n'%(n_rv, n_rv))
+    data.write('%s\n%s\n'%(n_rv, n_rv))
     
     for rdx in xrange(n_rv):
-        data.write()
-    
-    fileName = os.path.join('.', 'tg_corrs.txt')
+        data.write(" ".join(str(v) for v in corrMtx[rdx, :]))
+        data.write('\n')
+        
+    fileName = os.path.join('scenario_generation', 'tg_corrs.txt')
     with open (fileName, 'w') as fout:
         fout.write(data.getvalue())
     data.close()
@@ -294,7 +340,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         
         #將moments, corrMtx寫入tg_moms, tg_corrs, 
         #call scngen_HKW抽出下一期的樣本中
-        subprocess.call("./scengen_HKW %s -f 1"%(n_scenario), shell=True)
+        subprocess.call("scenario_generation/scengen_HKW %s -f 1"%(n_scenario), shell=True)
     
         #讀取抽樣檔 out_scen.txt
         
@@ -323,4 +369,24 @@ if __name__ == '__main__':
     symbols = ['1101', '1102']
     money = 1e5
     hist_day = 5
-    constructModelMtx(symbols, startDate, endDate, money, hist_day)
+#     constructModelMtx(symbols, startDate, endDate, money, hist_day)
+    
+    n_rv = len(symbols)
+    allocatedWealth = np.ones(n_rv) * 100.0
+    depositWealth = 1e5
+    riskFreeRet = 0.
+    buyTransFee = np.ones(n_rv) * 0.003
+    sellTransFee = np.ones(n_rv) * 0.004425
+#     constructRootNodeFile(symbols, allocatedWealth, depositWealth,
+#                           riskFreeRet, buyTransFee, sellTransFee)
+    n_scenario = 10
+    data = np.random.randn(n_rv, n_scenario)
+    moments = np.empty((n_rv, 4))
+    moments[:, 0] = data.mean(axis=1)
+    moments[:, 1] = data.std(axis=1)
+    moments[:, 2] = spstats.skew(data, axis=1)
+    moments[:, 3] = spstats.kurtosis(data, axis=1)
+    corrMtx = np.corrcoef(data)
+    
+    constructTargetMomentFile(moments)
+    constructTargetcorrMtxFile(corrMtx)
