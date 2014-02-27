@@ -60,6 +60,9 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
             raise ValueError('symbol %s do not have the same trans. dates'%(symbol))
         dfs.append(data)
     
+    #fixed transDate data
+    transDates = transDates[hist_day:]
+    
     n_rv, T = len(symbols), dfs[0].index.size - hist_day - 1 
     riskyRetMtx = np.empty((n_rv, hist_day+T+1))
     for idx, df in enumerate(dfs):
@@ -326,16 +329,23 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     @param n_scenario, positive integer, 每一期產生的scenario個數
     
     @return translog 
-        {wealth: 期末資金,
-         wealthProcess: 總資金變動量(matrix of n+1*T),
-         signalProcess: 資產買賣訊號(matrix of n*T)
-         transCount: 交易次數(買進->賣出算一次),
-         n_rv: 投資資產總數，
-         T: 投資期數
+        { "n_rv": n_rv,
+        "T": T,
+        "riskyRetMtx": riskyRetMtx,         #size: n_rv * (hist_day+T+1)
+        "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
+        "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
+        "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
+        "allocatedVec": allocatedVec,       #size: (n_rv + 1)
+        "transDates": transDates   
         }
     '''
     param = constructModelMtx(symbols, startDate, endDate, money)
     n_rv, T =param['n_rv'], param['T']
+    riskyRetMtx = param['riskyRetMtx']
+    riskFreeRetVec = param['riskFreeRetVec']
+    buyTransFeeMtx = param['buyTransFeeMtx']
+    sellTransFeeMtx = param['sellTransFeeMtx']
+    transDates = param['transDates']
     
     #setup result directory
     resultDir = os.path.join(ExpResultsDir, "%s_%s"%(
@@ -349,12 +359,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     probs = np.ones(n_scenario, dtype=np.float)/n_scenario
     constructScenarioStructureFile(n_scenario, probs)
     
-    
     for tdx in xrange(T):
-        transDate = param['transDates'][tdx]
+        transDate = transDates[tdx]
         transDateDir = os.path.join(resultDir, transDate)
         if not os.path.exists(transDateDir):
             os.mkdir(transDateDir)
+        
+        #投資時已知當日的ret(即已經知道當日收盤價)
+        subRiskyRetMtx = riskyRetMtx[:transDate]
         
         #算出4 moments與correlation matrix
         
