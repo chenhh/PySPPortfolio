@@ -114,7 +114,7 @@ def optimalMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
 def constructModelData():
 #     symbols = ('1101', '1102', '1103')
     symbols = ('1101', '1102', '1103', '1104' )
-    startDate, endDate  = date(2000,1,1), date(2012, 12, 31)
+    startDate, endDate  = date(2005,1,1), date(2012, 12, 31)
     
     dfs = []
     for symbol in symbols:
