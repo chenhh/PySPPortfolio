@@ -16,6 +16,7 @@ variable:
 
 '''
 import os
+import csv
 import platform
 import subprocess
 import time
@@ -446,7 +447,12 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         rc = subprocess.call(cmd, shell=True)
         print "%s - runef, %.3f secs"%(transDate, time.time()-t)
         
-        #parse results, 並且執行買賣
+        #parse ef.csv, 並且執行買賣
+        #(stage, node, var, index, value)
+        with open('ef.csv') as fin:  
+            for row in csv.DictReader(fin, ['stage', 'node', 'var', 'symbol', 'value']): 
+                print row
+          
         
         #remove mdl file
         mdlFile = os.path.join('models', 'RootNode.dat')
@@ -485,7 +491,9 @@ if __name__ == '__main__':
     debug=True
 
     
-    fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
-                           hist_period=20, n_scenario=1000, debug=debug)
-    
+#     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
+#                            hist_period=20, n_scenario=10, debug=debug)
+    with open('ef.csv') as fin:  
+        for row in csv.DictReader(fin, ['stage', 'node', 'var', 'symbol', 'value']): 
+            print row
    
