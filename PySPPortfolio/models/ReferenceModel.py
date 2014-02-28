@@ -61,6 +61,6 @@ model.ComputeSecondStageWealth = Constraint()
 
 #objective
 def TotalWealth_rule(model):
-    return model.FirstStageWealth + model.SecondStageWealth
+    return  model.SecondStageWealth
     
 model.totalWealthObjective = Objective(rule= TotalWealth_rule, sense=maximize)

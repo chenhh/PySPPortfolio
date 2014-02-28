@@ -16,7 +16,6 @@ variable:
 
 '''
 import os
-import sys
 import platform
 import subprocess
 import time
@@ -24,15 +23,15 @@ import itertools
 from cStringIO import StringIO
 import numpy as np  
 import pandas as pd
-import scipy as sp
 import scipy.stats as spstats
-from datetime import (date, timedelta)
+from datetime import date
 
 FileDir = os.path.abspath(os.path.curdir)
 PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
 if platform.uname()[0] == 'Linux':
     ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
                                   'financial_experiment', 'PySPPortfolio')
+    
 elif platform.uname()[0] =='Windows':
     ExpResultsDir= os.path.join('C:\\', 'Dropbox', 'financial_experiment', 
                                 'MOGEP', 'PySPPortfolio')    
@@ -409,9 +408,6 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     for tdx in xrange(T):
         tloop = time.time()
         transDate = transDates[tdx]
-        transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
-        if not os.path.exists(transDateDir):
-            os.mkdir(transDateDir)
         
         #投資時已知當日的ret(即已經知道當日收盤價)
         #算出4 moments與correlation matrix
@@ -423,14 +419,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
         moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
         corrMtx = np.corrcoef(subRiskyRetMtx)
-        print "moments, corrMtx %.3f secs"%(time.time()-t)
+        print "%s - moments, corrMtx %.3f secs"%(transDate, time.time()-t)
         
         #call scngen_HKW抽出下一期的樣本中
         t = time.time()
         probVec, scenarioMtx = generatingScenarios(moments, corrMtx, n_scenario)
-        print "probVec size n_rv: ", probVec.shape
-        print "scenarioMtx size: n_rv * n_scenario: ", scenarioMtx.shape
-        print "generation scenario, %.3f secs"%(time.time()-t)
+        print "%s - probVec size n_rv: %s"%(transDate, probVec.shape)
+        print "%s - scenarioMtx size: n_rv * n_scenario: %s"%(transDate, scenarioMtx.shape)
+        print "%s - generation scenario, %.3f secs"%(transDate, time.time()-t)
         
         #使用抽樣樣本建立ScenarioStructure.dat, RootNode.dat與不同scenario的檔案
         t = time.time()
@@ -439,29 +435,44 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                               sellTransFeeMtx[:, tdx])
         
         constructScenarioFiles(symbols, n_scenario,  scenarioMtx)
-        print "generation root and node files, %.3f secs"%(time.time()-t)
+        print "%s - generation root and node files, %.3f secs"%(transDate, time.time()-t)
         
         #使用抽出的樣本解SP(runef)，得到最佳的買進，賣出金額
         t = time.time()
         modelDir = os.path.join(FileDir, "models")
         cmd = 'runef -m %s -i %s  --solution-writer=coopr.pysp.csvsolutionwriter \
-            --solver=cplex --solve'%(modelDir, modelDir)
-        print cmd
+            --solver=%s --solve'%(modelDir, modelDir, "glpk")
+       
         rc = subprocess.call(cmd, shell=True)
-        print "runef, %.3f secs"%(time.time()-t)
-        
-        #remove temporary file
-        os.remove('./parse_table_datacmds.py')
+        print "%s - runef, %.3f secs"%(transDate, time.time()-t)
         
         #parse results, 並且執行買賣
-    
+        
+        #remove mdl file
+        mdlFile = os.path.join('models', 'RootNode.dat')
+        os.remove(mdlFile)
+        for sdx in xrange(n_scenario):
+            mdlFile = os.path.join('models', 'Node%s.dat'%(sdx))
+            os.remove(mdlFile)  
+        
+        #move temporary file
+        if 1 == 2:
+            transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
+            if not os.path.exists(transDateDir):
+                os.mkdir(transDateDir)
+            
+            resultFiles = ('parse_table_datacmds.py', 'ef.csv', 'efout.lp', 'out_scen.txt',
+                           'tg_corrs.txt', 'tg_moms.txt')
+            
+            for res in resultFiles:
+                os.rename(res, os.path.join(transDateDir, res))
+            
+
         #更新wealthProcess與singalProcess
-        pass
-        print '='*40
-        print "transDate %s OK, %.3f secs"%(transDate, time.time()-tloop)
-        print '='*40
+        print '*'*75
+        print "transDate %s PySP OK, %.3f secs"%(transDate, time.time()-tloop)
+        print '*'*75
     #最後一期只結算不買賣
-    
     
     
 
@@ -475,6 +486,6 @@ if __name__ == '__main__':
 
     
     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
-                           hist_period=20, n_scenario=5, debug=debug)
+                           hist_period=20, n_scenario=1000, debug=debug)
     
    
