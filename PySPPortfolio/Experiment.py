@@ -64,9 +64,9 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     transDates = transDates[hist_day:]
     
     n_rv, T = len(symbols), dfs[0].index.size - hist_day - 1 
-    riskyRetMtx = np.empty((n_rv, hist_day+T+1))
+    fullRiskyRetMtx = np.empty((n_rv, hist_day+T+1))
     for idx, df in enumerate(dfs):
-        riskyRetMtx[idx, :] = df['adjROI'].values/100.
+        fullRiskyRetMtx[idx, :] = df['adjROI'].values/100.
     
     riskFreeRetVec = np.zeros(T+1)
     buyTransFeeMtx = np.ones((n_rv, T)) * buyTransFee
@@ -79,7 +79,7 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     return {
         "n_rv": n_rv,
         "T": T,
-        "riskyRetMtx": riskyRetMtx,         #size: n_rv * (hist_day+T+1)
+        "fullRiskyRetMtx": fullRiskyRetMtx,         #size: n_rv * (hist_day+T+1)
         "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
         "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
@@ -341,7 +341,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     '''
     param = constructModelMtx(symbols, startDate, endDate, money)
     n_rv, T =param['n_rv'], param['T']
-    riskyRetMtx = param['riskyRetMtx']
+    fullRiskyRetMtx = param['fullRiskyRetMtx']
     riskFreeRetVec = param['riskFreeRetVec']
     buyTransFeeMtx = param['buyTransFeeMtx']
     sellTransFeeMtx = param['sellTransFeeMtx']
@@ -366,26 +366,31 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             os.mkdir(transDateDir)
         
         #投資時已知當日的ret(即已經知道當日收盤價)
-        subRiskyRetMtx = riskyRetMtx[:transDate]
-        
         #算出4 moments與correlation matrix
-        
-        #將moments, corrMtx寫入tg_moms, tg_corrs, 
+        subRiskyRetMtx = fullRiskyRetMtx[:,tdx:hist_day]
+        moments = np.empty((n_rv, 4))
+        moments[:, 0] = subRiskyRetMtx.mean(axis=1)
+        moments[:, 1] = subRiskyRetMtx.std(axis=1)
+        moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
+        moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
+        corrMtx = np.corrcoef(subRiskyRetMtx)
+       
         #call scngen_HKW抽出下一期的樣本中
-        subprocess.call("scenario_generation/scengen_HKW %s -f 1"%(n_scenario), shell=True)
-    
-        #讀取抽樣檔 out_scen.txt
-        
-        #move tg_moms.txt, tg_corrs.txt to results directory
-        os.rename("tg_moms.txt", os.path.join(transDateDir, "tg_moms.txt"))
-        os.rename("tg_corrs.txt", os.path.join(transDateDir, "tg_corrs.txt"))
-        os.rename("out_scen.txt", os.path.join(transDateDir, "out_scen.txt"))
+        probVec, scenarioMtx = generatingScenarios(moments, corrMtx, n_scenario)
         
         #使用抽樣樣本建立ScenarioStructure.dat, RootNode.dat與不同scenario的檔案
+        constructRootNodeFile(symbols, allocatedWealth, depositWealth,
+                          riskFreeRet, buyTransFee, sellTransFee)
         
+        constructScenarioFiles(n_scenario, symbols, scenarioMtx)
         
         #使用抽出的樣本解SP(runef)，得到最佳的買進，賣出金額
+        modelDir = os.path.join(FileDir, "models")
+        cmd = 'runef -i %s -m %s  --solution-writer=coopr.pysp.csvsolutionwriter --solver=cplex --solve'%(
+                modelDir, modelDir)
+        rc = subprocess.call(cmd, shell=True)
     
+        #parse results, 並且執行買賣
     
         #更新wealthProcess與singalProcess
         pass
