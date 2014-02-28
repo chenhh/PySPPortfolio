@@ -2,12 +2,25 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
+
+variable:
+@var n_rv, positive integer: 投資標的物個數(不含deposit)
+@var T, positive integer: 投資期數
+@var hist_period, positive integer: 計算統計性質時，所使用的資料期數(含today)
+@var startDate，endDate, datetime.date: 投資起始、結束日(非真正投資起始、結束日)
+@var money, positive float: 初始資金
+@var n_scenario, positive integer: 每一期產生的scenario個數
+@var allocatedWealth, numpy.array, size: n_rv: 已投資在標的物的金額
+@var depositWealth, positive float, 放在定存的金額
+
+
 '''
 import os
 import sys
 import platform
 import subprocess
 import time
+import itertools
 from cStringIO import StringIO
 import numpy as np  
 import pandas as pd
@@ -25,7 +38,7 @@ elif platform.uname()[0] =='Windows':
                                 'MOGEP', 'PySPPortfolio')    
     
 
-def constructModelMtx(symbols, startDate, endDate, money, hist_day):
+def constructModelMtx(symbols, startDate, endDate, money, hist_period, debug=False):
     '''
     -注意因為最後一期只結算不買賣
     -DataFrame以Date取資料時，有包含last day, 即df[startDate: endDate]
@@ -33,11 +46,11 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     @param symbols, list
     @param startDate, endDate, datetime.date
     @param momey, positive float
-    @param hist_day, positive integer
+    @param hist_period, positive integer
     
     dataFrame取單一row用df.ix[idx]
     df.index.get_loc(startDate)找index所在位置
-    @return riskyRetMtx, numpy.array, size: (n_rv * hist_day+T+1)
+    @return riskyRetMtx, numpy.array, size: (n_rv * hist_period+T+1)
     '''
     buyTransFee, sellTransFee = 0.003, 0.004425
     
@@ -49,10 +62,10 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
                                     'BasicFeatures_%s_00-12.pkl'%symbol))
         tmp = df[startDate: endDate]
         startIdx, endIdx = df.index.get_loc(tmp.index[0]), df.index.get_loc(tmp.index[-1])
-        if startIdx < hist_day:
+        if startIdx < hist_period:
             raise ValueError('%s do not have enough data'%(symbol))
-        data = df[startIdx-hist_day: endIdx+1]
-        print data['adjROI']
+        data = df[startIdx-hist_period: endIdx+1]
+       
         #check all data have the same transDate
         if transDates is None:
             transDates = data.index.values
@@ -61,10 +74,10 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
         dfs.append(data)
     
     #fixed transDate data
-    transDates = transDates[hist_day:]
+    transDates = transDates[hist_period:]
     
-    n_rv, T = len(symbols), dfs[0].index.size - hist_day - 1 
-    fullRiskyRetMtx = np.empty((n_rv, hist_day+T+1))
+    n_rv, T = len(symbols), dfs[0].index.size - hist_period - 1 
+    fullRiskyRetMtx = np.empty((n_rv, hist_period+T+1))
     for idx, df in enumerate(dfs):
         fullRiskyRetMtx[idx, :] = df['adjROI'].values/100.
     
@@ -76,15 +89,23 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_day):
     allocatedVec = np.zeros(n_rv+1)
     allocatedVec[-1] = money
     
+    if debug:
+        print "n_rv: %s, T: %s, hist_period: %s"%(n_rv, T, hist_period)
+        print "fullRiskyRetMtx size (n_rv * hist_period+T+1): ", fullRiskyRetMtx.shape
+        print "riskFreeRetVec size (T+1): ", riskFreeRetVec.shape
+        print "buyTransFeeMtx size (n_rv, T): ",  buyTransFeeMtx.shape
+        print "sellTransFeeMtx size (n_rv, T): ", sellTransFeeMtx.shape
+        print "allocatedVec size (n_rv+1): ",  allocatedVec.shape
+        
     return {
         "n_rv": n_rv,
         "T": T,
-        "fullRiskyRetMtx": fullRiskyRetMtx,         #size: n_rv * (hist_day+T+1)
-        "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
+        "fullRiskyRetMtx": fullRiskyRetMtx, #size: n_rv * (hist_period+T+1)
+        "riskFreeRetVec": riskFreeRetVec,   #size: T+1
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
         "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
         "allocatedVec": allocatedVec,       #size: (n_rv + 1)
-        "transDates": transDates            #size: (hist_day+T+1)
+        "transDates": transDates            #size: (hist_period+T+1)
         }
 
 
@@ -105,7 +126,7 @@ def constructScenarioStructureFile(n_scenario, probs):
     data.write('set Stages := FirstStage SecondStage ;\n')
     
     #set nodes
-    data.write('set Nodes : = \n')
+    data.write('set Nodes := \n')
     data.write(' ' *4 + 'RootNode\n')
     for scen in xrange(n_scenario):
         data.write(' ' *4 + 'Node%s\n'%(scen))
@@ -147,7 +168,6 @@ def constructScenarioStructureFile(n_scenario, probs):
     data.write('set StageVariables[FirstStage] :=  buys[*] sells[*];\n')
     data.write('set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth;\n')
    
-    
     #stage wealth
     data.write('param StageCostVariable := FirstStage  FirstStageWealth\n')
     data.write(' '* 21 + 'SecondStage SecondStageWealth ;')
@@ -164,7 +184,7 @@ def generatingScenarios(moments, corrMtx, n_scenario, debug=False):
     --使用scengen_HKW產生scenario, 使用前tg_moms.txt與tg_corrs.txt必須存在
     '''
     if platform.uname()[0] == 'Linux':
-        exe = 'scengen_HKW'
+        exe ='scengen_HKW'
     elif platform.uname()[0] == 'Windows':
         exe = 'scengen_HKW.exe'
     
@@ -179,7 +199,8 @@ def generatingScenarios(moments, corrMtx, n_scenario, debug=False):
     if not os.path.exists(corrMtx):
         raise ValueError('file %s does not exists'%(corrMtx))
     
-    rc = subprocess.call('%s %s -f 1'%(exe, n_scenario), shell=True)
+    print os.getcwd()
+    rc = subprocess.call('./%s %s -f 1 -l 0'%(exe, n_scenario), shell=True)
     
     probVec, scenarioMtx = parseSamplingMtx(fileName='out_scen.txt')
     if debug:
@@ -190,7 +211,7 @@ def generatingScenarios(moments, corrMtx, n_scenario, debug=False):
     return probVec, scenarioMtx
     
 
-def constructRootNodeFile(symbols, allocatedWealth, depositWealth,
+def  constructRootNodeFile(symbols, allocatedWealth, depositWealth,
                           riskFreeRet, buyTransFee, sellTransFee):
     '''
     產生RootNode.dat for pysp
@@ -204,19 +225,33 @@ def constructRootNodeFile(symbols, allocatedWealth, depositWealth,
     #RootNode.dat, deterministic parameters
     rootData = StringIO()
     rootData.write('set symbols := %s ;\n'%(" ".join(symbols)))
-    rootData.write('param allocatedWealth : = %s ;\n'%( " ".join(str(v) for v in allocatedWealth)) )
-    rootData.write('param depositWealth : = %s ;\n'%(depositWealth))
-    rootData.write('param riskFreeRet : = %s ;\n'%(riskFreeRet))
-    rootData.write('param buyTransFee : = %s ;\n'%( " ".join(str(v) for v in buyTransFee)) )
-    rootData.write('param sellTransFee : = %s ;\n'%(" ".join(str(v) for v in sellTransFee)) )
- 
-    rootFileName = os.path.join('models', 'RootNode.dat')
+    
+    rootData.write('param allocatedWealth := \n')
+    for symbol, alloc in itertools.izip(symbols, allocatedWealth):
+        rootData.write(' ' * 4 + '%s %s\n'%(symbol, alloc))
+    rootData.write(';\n\n')
+    
+    rootData.write('param depositWealth := %s ;\n'%(depositWealth))
+    rootData.write('param riskFreeRet := %s ;\n'%(riskFreeRet))
+    
+    rootData.write('param buyTransFee := \n')
+    for symbol, fee in itertools.izip(symbols, buyTransFee):
+        rootData.write(' ' * 4 + '%s %s\n'%(symbol, fee))
+    rootData.write(';\n\n')
+                            
+    rootData.write('param sellTransFee := \n')
+    for symbol, fee in itertools.izip(symbols, sellTransFee):
+        rootData.write(' ' * 4 + '%s %s\n'%(symbol, fee))
+    rootData.write(';\n\n')
+    
+
+    rootFileName = os.path.join(FileDir, 'models', 'RootNode.dat')
     with open (rootFileName, 'w') as fout:
         fout.write(rootData.getvalue())
     rootData.close()
     
     
-def constructScenarioFiles( n_scenario, symbols, scenarioMtx, debug=True):
+def constructScenarioFiles(symbols, n_scenario, scenarioMtx, debug=False):
     '''
     與Node[num].dat檔案(node based) for pysp
     @param n_scenario, positive integer, scenario個數
@@ -229,7 +264,11 @@ def constructScenarioFiles( n_scenario, symbols, scenarioMtx, debug=True):
     for sdx in xrange(n_scenario):
         scenData = StringIO()
         scen = scenarioMtx[:, sdx]
-        scenData.write('param riskyRet : = %s ;'%(" ".join(str(v) for v in scen)))
+        scenData.write('param riskyRet := \n')
+        for symbol, ret in itertools.izip(symbols, scen):
+            scenData.write(' ' * 4 + '%s %s\n'%(symbol, ret))
+        scenData.write(';\n\n')
+        
         #檔名必須與ScenarioStrucutre.dat中一致
         scenFileName = os.path.join(FileDir, 'models', 'Node%s.dat'%(sdx))
         with open (scenFileName, 'w') as fout:
@@ -277,7 +316,7 @@ def _constructTargetcorrMtxFile(corrMtx):
     '''
     n_rv, n_rv2 = corrMtx.shape
     assert n_rv == n_rv2
-    print "start tg_corr.txt"
+   
     data = StringIO()
     data.write('%s\n%s\n'%(n_rv, n_rv))
     
@@ -317,7 +356,7 @@ def parseSamplingMtx(fileName='out_scen.txt'):
         
         
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
-                           hist_day=20, n_scenario=1000):
+                           hist_period=20, n_scenario=1000, debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
     -假設symbols有n_rv個，投資期數共T期(最後一期不買賣，只結算)
@@ -325,13 +364,13 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     @param symbols, list, target assets
     @param startDate, endDate, datetime.date, 交易的起始，結束日期
     @param money, positive float, 初使資金
-    @param hist_day, positive integer, 用於計算moment與corr mtx的歷史資料長度
+    @param hist_period, positive integer, 用於計算moment與corr mtx的歷史資料長度
     @param n_scenario, positive integer, 每一期產生的scenario個數
     
     @return translog 
         { "n_rv": n_rv,
         "T": T,
-        "riskyRetMtx": riskyRetMtx,         #size: n_rv * (hist_day+T+1)
+        "riskyRetMtx": riskyRetMtx,         #size: n_rv * (hist_period+T+1)
         "riskFreeRetVec": riskFreeRetVec,   #size: n_rv
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
         "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
@@ -339,13 +378,18 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         "transDates": transDates   
         }
     '''
-    param = constructModelMtx(symbols, startDate, endDate, money)
+    t0 = time.time()
+    param = constructModelMtx(symbols, startDate, endDate, money, hist_period, debug)
+    print "constructModelMtx %.3f secs"%(time.time()-t0)
+    
     n_rv, T =param['n_rv'], param['T']
     fullRiskyRetMtx = param['fullRiskyRetMtx']
     riskFreeRetVec = param['riskFreeRetVec']
     buyTransFeeMtx = param['buyTransFeeMtx']
     sellTransFeeMtx = param['sellTransFeeMtx']
     transDates = param['transDates']
+    allocatedWealth = np.zeros(n_rv)
+    depositWealth = money
     
     #setup result directory
     resultDir = os.path.join(ExpResultsDir, "%s_%s"%(
@@ -356,75 +400,81 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         os.mkdir(resultDir)
     
     #每一期的ScenarioStructure都一樣，建一次即可
+    t = time.time()
     probs = np.ones(n_scenario, dtype=np.float)/n_scenario
     constructScenarioStructureFile(n_scenario, probs)
+    print "constructScenarioStructureFile %.3f secs"%(time.time()-t)
     
+    levelIndent = 4
     for tdx in xrange(T):
+        tloop = time.time()
         transDate = transDates[tdx]
-        transDateDir = os.path.join(resultDir, transDate)
+        transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
         if not os.path.exists(transDateDir):
             os.mkdir(transDateDir)
         
         #投資時已知當日的ret(即已經知道當日收盤價)
         #算出4 moments與correlation matrix
-        subRiskyRetMtx = fullRiskyRetMtx[:,tdx:hist_day]
+        t = time.time()
+        subRiskyRetMtx = fullRiskyRetMtx[:,tdx:hist_period]
         moments = np.empty((n_rv, 4))
         moments[:, 0] = subRiskyRetMtx.mean(axis=1)
         moments[:, 1] = subRiskyRetMtx.std(axis=1)
         moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
         moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
         corrMtx = np.corrcoef(subRiskyRetMtx)
-       
+        print "moments, corrMtx %.3f secs"%(time.time()-t)
+        
         #call scngen_HKW抽出下一期的樣本中
+        t = time.time()
         probVec, scenarioMtx = generatingScenarios(moments, corrMtx, n_scenario)
+        print "probVec size n_rv: ", probVec.shape
+        print "scenarioMtx size: n_rv * n_scenario: ", scenarioMtx.shape
+        print "generation scenario, %.3f secs"%(time.time()-t)
         
         #使用抽樣樣本建立ScenarioStructure.dat, RootNode.dat與不同scenario的檔案
+        t = time.time()
         constructRootNodeFile(symbols, allocatedWealth, depositWealth,
-                          riskFreeRet, buyTransFee, sellTransFee)
+                              riskFreeRetVec[tdx], buyTransFeeMtx[:, tdx], 
+                              sellTransFeeMtx[:, tdx])
         
-        constructScenarioFiles(n_scenario, symbols, scenarioMtx)
+        constructScenarioFiles(symbols, n_scenario,  scenarioMtx)
+        print "generation root and node files, %.3f secs"%(time.time()-t)
         
         #使用抽出的樣本解SP(runef)，得到最佳的買進，賣出金額
+        t = time.time()
         modelDir = os.path.join(FileDir, "models")
-        cmd = 'runef -i %s -m %s  --solution-writer=coopr.pysp.csvsolutionwriter --solver=cplex --solve'%(
-                modelDir, modelDir)
+        cmd = 'runef -i %s -m %s  --solution-writer=coopr.pysp.csvsolutionwriter \
+            --solver=cplex --solve'%(modelDir, modelDir)
+        print cmd
         rc = subprocess.call(cmd, shell=True)
-    
+        print "runef, %.3f secs"%(time.time()-t)
+        
+        #remove temporary file
+        os.remove('./parse_table_datacmds.py')
+        
         #parse results, 並且執行買賣
     
         #更新wealthProcess與singalProcess
         pass
-    
+        print '='*40
+        print "transDate %s OK, %.3f secs"%(transDate, time.time()-tloop)
+        print '='*40
     #最後一期只結算不買賣
     
     
     
 
 if __name__ == '__main__':
-    startDate = date(2004,1, 1)
-    endDate = date(2004, 1, 10)
+    startDate = date(2004,1, 2)
+    endDate = date(2004, 1, 5)
     symbols = ['1101', '1102']
     money = 1e5
-    hist_day = 5
-#     constructModelMtx(symbols, startDate, endDate, money, hist_day)
+    hist_period = 5
+    debug=True
+
     
-    n_rv = len(symbols)
-    allocatedWealth = np.ones(n_rv) * 100.0
-    depositWealth = 1e5
-    riskFreeRet = 0.
-    buyTransFee = np.ones(n_rv) * 0.003
-    sellTransFee = np.ones(n_rv) * 0.004425
-#     constructRootNodeFile(symbols, allocatedWealth, depositWealth,
-#                           riskFreeRet, buyTransFee, sellTransFee)
-    n_scenario = 10
-    data = np.random.randn(n_rv, n_scenario)
-    moments = np.empty((n_rv, 4))
-    moments[:, 0] = data.mean(axis=1)
-    moments[:, 1] = data.std(axis=1)
-    moments[:, 2] = spstats.skew(data, axis=1)
-    moments[:, 3] = spstats.kurtosis(data, axis=1)
-    corrMtx = np.corrcoef(data)
+    fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
+                           hist_period=20, n_scenario=5, debug=debug)
     
-    debug=False
-    prob, scenMtx = generatingScenarios(moments, corrMtx, n_scenario, debug)
-    constructScenarioFiles( n_scenario, symbols, scenMtx, debug)
+   
