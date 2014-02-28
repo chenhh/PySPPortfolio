@@ -444,7 +444,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         #使用抽出的樣本解SP(runef)，得到最佳的買進，賣出金額
         t = time.time()
         modelDir = os.path.join(FileDir, "models")
-        cmd = 'runef -i %s -m %s  --solution-writer=coopr.pysp.csvsolutionwriter \
+        cmd = 'runef -m %s -i %s  --solution-writer=coopr.pysp.csvsolutionwriter \
             --solver=cplex --solve'%(modelDir, modelDir)
         print cmd
         rc = subprocess.call(cmd, shell=True)

@@ -1,0 +1,18 @@
+set symbols := 1101 1102 ;
+param allocatedWealth := 
+    1101 0.0
+    1102 0.0
+;
+
+param depositWealth := 1000000.0 ;
+param riskFreeRet := 0.0 ;
+param buyTransFee := 
+    1101 0.003
+    1102 0.003
+;
+
+param sellTransFee := 
+    1101 0.004425
+    1102 0.004425
+;
+

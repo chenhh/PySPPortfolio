@@ -70,11 +70,11 @@ def total_cost_rule(model):
 model.Total_Cost_Objective = Objective(rule=total_cost_rule, sense=minimize)
 
 
-# opt = SolverFactory('cplex')
-#     
+opt = SolverFactory('cplex')
+     
 # data = DataPortal()
 # data.load(filename='farmer.dat')
-# instance = model.create(data)
-# instance.pprint()
-# results = opt.solve(instance)
-# print results
+instance = model.create('farmer.dat')
+instance.pprint()
+results = opt.solve(instance)
+print results
