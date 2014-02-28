@@ -378,6 +378,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         "transDates": transDates   
         }
     '''
+    
     t0 = time.time()
     param = constructModelMtx(symbols, startDate, endDate, money, hist_period, debug)
     print "constructModelMtx %.3f secs"%(time.time()-t0)
@@ -390,6 +391,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     transDates = param['transDates']
     allocatedWealth = np.zeros(n_rv)
     depositWealth = money
+    
+    wealthProcess = np.zeros((n_rv, T))
+    depositProcess = np.zeros(T)
     
     #setup result directory
     resultDir = os.path.join(ExpResultsDir, "%s_%s"%(
@@ -450,10 +454,24 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         #parse ef.csv, 並且執行買賣
         #(stage, node, var, index, value)
         with open('ef.csv') as fin:  
-            for row in csv.DictReader(fin, ['stage', 'node', 'var', 'symbol', 'value']): 
-                print row
-          
-        
+            for row in csv.DictReader(fin, ('stage', 'node', 'var', 'symbol', 'value')): 
+                for key in row.keys():
+                    row[key] = row[key].strip()
+                
+                if row['node'] == 'RootNode':
+                    #get symbol index 
+                    idx = symbols.index(row['symbol'])
+                    if row['var'] == 'buys':
+                        allocatedWealth[idx] += float(row['value'])
+                    elif row['var'] == 'sells':
+                        allocatedWealth[idx] -= float(row['value'])
+                    else:
+                        raise ValueError('unknown variable %s'%(row))
+                   
+        #log wealth and signal process
+        wealthProcess[:, tdx] = allocatedWealth
+        depositProcess[tdx] = depositWealth
+            
         #remove mdl file
         mdlFile = os.path.join('models', 'RootNode.dat')
         os.remove(mdlFile)
@@ -478,6 +496,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         print '*'*75
         print "transDate %s PySP OK, %.3f secs"%(transDate, time.time()-tloop)
         print '*'*75
+    
     #最後一期只結算不買賣
     
     
@@ -493,7 +512,13 @@ if __name__ == '__main__':
     
 #     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
 #                            hist_period=20, n_scenario=10, debug=debug)
+    data = {}
     with open('ef.csv') as fin:  
-        for row in csv.DictReader(fin, ['stage', 'node', 'var', 'symbol', 'value']): 
+        for row in csv.DictReader(fin, ('stage', 'node', 'var', 'symbol', 'value')): 
+#             print row
+            for key in row.keys():
+                row[key] = row[key].strip()
             print row
+#             if row['node'] == 'RootNode' and row['symbol'] in symbols:
+#                 print row
    
