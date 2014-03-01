@@ -1,0 +1,23 @@
+set symbols := 2330 2002 ;
+param allocatedWealth := 
+    2330 6.9373488344e-14
+    2002 813684.990676
+;
+
+param depositWealth := -7.89328827723e-20 ;
+param buyTransFee := 
+    2330 0.003
+    2002 0.003
+;
+
+param sellTransFee := 
+    2330 0.004425
+    2002 0.004425
+;
+
+param riskyRet := 
+    2330 -0.007194
+    2002 -0.011628
+;
+
+param riskFreeRet := 0.0 ;

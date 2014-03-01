@@ -27,11 +27,13 @@ import pandas as pd
 import scipy.stats as spstats
 from datetime import date
 
+
 FileDir = os.path.abspath(os.path.curdir)
 PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
 if platform.uname()[0] == 'Linux':
-    ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
-                                  'financial_experiment', 'PySPPortfolio')
+#     ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
+#                                   'financial_experiment', 'PySPPortfolio')
+    ExpResultsDir =  os.path.join(FileDir, 'results')
     
 elif platform.uname()[0] =='Windows':
     ExpResultsDir= os.path.join('C:\\', 'Dropbox', 'financial_experiment', 
@@ -454,10 +456,13 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     env = os.environ.copy()
     env['PATH'] += ':/opt/ibm/ILOG/CPLEX_Studio126/cplex/bin/x86-64_linux'
     
-    print env['PATH']
     for tdx in xrange(T):
         tloop = time.time()
         transDate = transDates[tdx]
+        
+        #realized today return
+        allocatedWealth = allocatedWealth * (1+allRiskyRetMtx[:, hist_period+tdx])
+        depositWealth =  depositWealth * (1+riskFreeRetVec[tdx])
         
         #投資時已知當日的ret(即已經知道當日收盤價)
         #算出4 moments與correlation matrix
@@ -544,10 +549,16 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                        'out_scen.txt', 'tg_corrs.txt', 'tg_moms.txt')
          
         for res in resultFiles:
-            os.rename(res, os.path.join(transDateDir, res))
+            try:
+                os.rename(res, os.path.join(transDateDir, res))
+            except OSError as e:
+                print e
+                
         
         print '*'*75
-        print "transDate %s PySP OK, %.3f secs"%(transDate, time.time()-tloop)
+        print "transDate %s PySP OK, current wealth %s"%(
+                transDate,  allocatedWealth.sum() + depositWealth)
+        print "%.3f secs"%(time.time()-tloop)
         print '*'*75
     
     #最後一期只結算不買賣
@@ -625,13 +636,34 @@ def testScenarios():
 
 if __name__ == '__main__':
     startDate = date(2001,1, 1)
-    endDate = date(2012, 12, 31)
-    symbols = ['2330',]
+    endDate = date(2001, 12, 31)
+    symbols = ["1101", "1102", "1103", "1104", "1108", 
+               "1109", "1110", "1201", "1210", "1216", 
+               "1218", "1229", "1301", "1303", "1304", 
+               "1305", "1310", "1312", "1313", "1314", 
+               "1326", "1402", "1409", "1414", "1416", 
+               "1417", "1418", "1419", "1434", "1440", 
+               "1444", "1446", "1449", "1456", "1503", 
+               "1504", "1507", "1513", "1603", "1604", 
+               "1605", "1608", "1609", "1704", "1710", 
+               "1712", "1718", "1802", "1810", "1902", 
+               "1903", "1904", "1905", "1907", "1909", 
+               "2002", "2006", "2007", "2008", "2009", 
+               "2010", "2014", "2015", "2103", "2105", 
+               "2107", "2201", "2204", "2303", "2308", 
+               "2311", "2315", "2330", "2371", "2501", 
+               "2504", "2505", "2506", "2511", "2515", 
+               "2601", "2603", "2605", "2606", "2608", 
+               "2609", "2610", "2704", "2801", "2809", 
+               "2812", "2820", "2903", "2905", "2913", 
+               "2915", "9906", "9907", "9908", "9945"]
     money = 1e6
     hist_period = 20
+    n_scenario = 100
     debug=False
 
     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=money,
-                           hist_period=20, n_scenario=10, debug=debug)
+                           hist_period=hist_period , n_scenario=n_scenario, 
+                           debug=debug)
    
    
