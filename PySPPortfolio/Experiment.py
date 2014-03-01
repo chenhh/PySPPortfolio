@@ -431,7 +431,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     depositProcess = np.zeros(T+1)
     
     #setup result directory
-    resultDir0 = os.path.join(ExpResultsDir, platform.node())
+    resultDir0 = os.path.join(ExpResultsDir, 
+                              "%s_histperiod_%s"%(platform.node(), hist_period))
     if not os.path.exists(resultDir0):
         os.mkdir(resultDir0)
     
@@ -578,6 +579,20 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     print "wealthProcess:\n",pd_wealthProc
     print "depositProcess:\n",pd_depositProc
 
+    #generating summary files
+    summary = StringIO()
+    summary.write('n_rv: %s\n'%(n_rv))
+    summary.write('T: %s\n'%(T))
+    summary.write('symbols: %s \n'%(",".join(symbols)))
+    summary.write('transDates (T+1): %s \n'%(",".join([t.strftime("%Y%m%d") for t in transDates])))
+    summary.write('hist_period: %s\n'%(hist_period))
+    summary.write('final wealth:%s \n'%(finalWealth))
+    
+    fileName = os.path.join(resultDir, 'summary.txt')
+    with open (fileName, 'w') as fout:
+        fout.write(summary.getvalue())
+    summary.close()
+    
     print "simulation ok, %.3f secs"%(time.time()-t0)
 
 
@@ -605,17 +620,17 @@ def testScenarios():
     s_corrMtx = np.corrcoef(scenarioMtx)
     print "s_moments:\n", s_moments
     print "s_corrMtx:\n", s_corrMtx
+   
     
 
 if __name__ == '__main__':
-    startDate = date(2004,1, 1)
-    endDate = date(2004, 1, 7)
-    symbols = ['1101', '1102']
-    money = 1e5
-    hist_period = 5
-    debug=True
+    startDate = date(2001,1, 1)
+    endDate = date(2012, 12, 31)
+    symbols = ['2330',]
+    money = 1e6
+    hist_period = 20
+    debug=False
 
-    
     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=money,
                            hist_period=20, n_scenario=10, debug=debug)
    
