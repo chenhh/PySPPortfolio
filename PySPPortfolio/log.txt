@@ -1,0 +1,84 @@
+
+	DONE
+
+
+Warning: the algorithm did not converge!
+
+
+Warning: the algorithm did not converge!
+
+n_rv: 2, T: 3, hist_period: 20
+allRiskyRetMtx size (n_rv * hist_period+T):  (2, 23)
+riskFreeRetVec size (T+1):  (4,)
+buyTransFeeMtx size (n_rv, T):  (2, 3)
+sellTransFeeMtx size (n_rv, T):  (2, 3)
+allocatedWealth size n_rv:  (2,)
+depositWealth value: 1000000.0
+transDates size (T+1): (4,)
+full transDates, size(hist+T):  (23,)
+constructModelMtx 0.018 secs
+constructScenarioStructureFile 0.001 secs
+2004-01-02 - [datetime.date(2003, 12, 5) datetime.date(2003, 12, 8)
+ datetime.date(2003, 12, 9) datetime.date(2003, 12, 10)
+ datetime.date(2003, 12, 11) datetime.date(2003, 12, 12)
+ datetime.date(2003, 12, 15) datetime.date(2003, 12, 16)
+ datetime.date(2003, 12, 17) datetime.date(2003, 12, 18)
+ datetime.date(2003, 12, 19) datetime.date(2003, 12, 22)
+ datetime.date(2003, 12, 23) datetime.date(2003, 12, 24)
+ datetime.date(2003, 12, 25) datetime.date(2003, 12, 26)
+ datetime.date(2003, 12, 29) datetime.date(2003, 12, 30)
+ datetime.date(2003, 12, 31) datetime.date(2004, 1, 2)] to estimate moments
+2004-01-02 - moments, corrMtx 0.011 secs
+start generating scenarios
+return code: 0
+2004-01-02 - probVec size n_rv: (5,)
+2004-01-02 - scenarioMtx size: (n_rv * n_scenario): (2, 5)
+2004-01-02 - generation scenario, 0.068 secs
+2004-01-02 - generation root and node files, 0.001 secs
+2004-01-02 - runef, 1.077 secs
+***************************************************************************
+transDate 2004-01-02 PySP OK, 1.158 secs
+***************************************************************************
+2004-01-05 - [datetime.date(2003, 12, 8) datetime.date(2003, 12, 9)
+ datetime.date(2003, 12, 10) datetime.date(2003, 12, 11)
+ datetime.date(2003, 12, 12) datetime.date(2003, 12, 15)
+ datetime.date(2003, 12, 16) datetime.date(2003, 12, 17)
+ datetime.date(2003, 12, 18) datetime.date(2003, 12, 19)
+ datetime.date(2003, 12, 22) datetime.date(2003, 12, 23)
+ datetime.date(2003, 12, 24) datetime.date(2003, 12, 25)
+ datetime.date(2003, 12, 26) datetime.date(2003, 12, 29)
+ datetime.date(2003, 12, 30) datetime.date(2003, 12, 31)
+ datetime.date(2004, 1, 2) datetime.date(2004, 1, 5)] to estimate moments
+2004-01-05 - moments, corrMtx 0.001 secs
+start generating scenarios
+return code: 1
+2004-01-05 - probVec size n_rv: (5,)
+2004-01-05 - scenarioMtx size: (n_rv * n_scenario): (2, 5)
+2004-01-05 - generation scenario, 0.060 secs
+2004-01-05 - generation root and node files, 0.001 secs
+2004-01-05 - runef, 1.059 secs
+***************************************************************************
+transDate 2004-01-05 PySP OK, 1.122 secs
+***************************************************************************
+2004-01-06 - [datetime.date(2003, 12, 9) datetime.date(2003, 12, 10)
+ datetime.date(2003, 12, 11) datetime.date(2003, 12, 12)
+ datetime.date(2003, 12, 15) datetime.date(2003, 12, 16)
+ datetime.date(2003, 12, 17) datetime.date(2003, 12, 18)
+ datetime.date(2003, 12, 19) datetime.date(2003, 12, 22)
+ datetime.date(2003, 12, 23) datetime.date(2003, 12, 24)
+ datetime.date(2003, 12, 25) datetime.date(2003, 12, 26)
+ datetime.date(2003, 12, 29) datetime.date(2003, 12, 30)
+ datetime.date(2003, 12, 31) datetime.date(2004, 1, 2)
+ datetime.date(2004, 1, 5) datetime.date(2004, 1, 6)] to estimate moments
+2004-01-06 - moments, corrMtx 0.001 secs
+start generating scenarios
+return code: 1
+2004-01-06 - probVec size n_rv: (5,)
+2004-01-06 - scenarioMtx size: (n_rv * n_scenario): (2, 5)
+2004-01-06 - generation scenario, 0.065 secs
+2004-01-06 - generation root and node files, 0.001 secs
+2004-01-06 - runef, 1.036 secs
+***************************************************************************
+transDate 2004-01-06 PySP OK, 1.104 secs
+***************************************************************************
+final wealth 968658.025922, 3.403 secs

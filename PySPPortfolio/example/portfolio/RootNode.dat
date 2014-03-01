@@ -5,7 +5,6 @@ param allocatedWealth :=
 ;
 
 param depositWealth := 1000000.0 ;
-param riskFreeRet := 0.0 ;
 param buyTransFee := 
     1101 0.003
     1102 0.003
@@ -16,3 +15,9 @@ param sellTransFee :=
     1102 0.004425
 ;
 
+param riskyRet := 
+    1101 0.1
+    1102 0.2
+;
+
+param riskFreeRet := 0.0 ;

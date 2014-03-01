@@ -8,35 +8,53 @@ from coopr.pyomo import *
 
 # Model
 model = AbstractModel()
-
-# Parameters
 model.symbols = Set()
 
-model.riskyRet = Param(model.symbols)    #uncertainty vector
+# Parameters
+#return of current period, known
+model.riskyRet = Param(model.symbols)
+model.riskFreeRet = Param()
+
+#return of next period, uncertain
+model.predictRiskyRet = Param(model.symbols) 
+model.predictRiskFreeRet = Param()
+
 model.allocatedWealth = Param(model.symbols)
 model.depositWealth = Param()
-model.riskFreeRet = Param()
+
 model.buyTransFee = Param(model.symbols)
 model.sellTransFee = Param(model.symbols)
 
 #decision variables
-model.buys = Var(model.symbols, within=NonNegativeReals)
-model.sells = Var(model.symbols, within=NonNegativeReals)
-model.riskyWealth = Var(model.symbols, within=NonNegativeReals)
-model.riskFreeWealth = Var(within=NonNegativeReals)
+model.buys = Var(model.symbols, within=NonNegativeReals)        #stage 1
+model.sells = Var(model.symbols, within=NonNegativeReals)       #stage 1
+model.riskyWealth = Var(model.symbols, within=NonNegativeReals) #stage 2
+model.riskFreeWealth = Var(within=NonNegativeReals)             #stage 2
 model.FirstStageWealth = Var()
 model.SecondStageWealth = Var()
 
 #constraint
 def riskyWeathConstraint_rule(model, m):
+    '''
+    riskyWealth is a decision variable depending on both buys and sells.
+    therefore 
+    buys and sells are fist stage variable,
+    riskywealth is second stage variable
+    '''
     return (model.riskyWealth[m] == 
             (1. + model.riskyRet[m]) * model.allocatedWealth[m] + 
             model.buys[m] - model.sells[m])
     
 def riskFreeWealthConstraint_rule(model):
-    totalSell = sum((1-model.sellTransFee[m])*model.sells[m] 
+    '''
+    riskFreeWealth is decision variable depending on both buys and sells.
+    therefore 
+    buys and sells are fist stage variable,
+    riskFreewealth is second stage variable
+    '''
+    totalSell = sum((1 - model.sellTransFee[m]) * model.sells[m] 
                     for m in model.symbols)
-    totalBuy = sum((1+model.buyTransFee[m])*model.buys[m] 
+    totalBuy = sum((1 + model.buyTransFee[m]) * model.buys[m] 
                    for m in model.symbols)
         
     return (model.riskFreeWealth == 
@@ -48,19 +66,20 @@ model.riskFreeWealthConstraint = Constraint()
 
 # Stage-specific 
 def ComputeFirstStageWealth_rule(model):
-    return (model.FirstStageWealth - sum(model.allocatedWealth) - model.depositWealth) == 0.0 
+    return model.FirstStageWealth  == 0.0
 
 def ComputeSecondStageWealth_rule(model):
-    wealth = sum( (1. + model.riskyRet[m]) * model.riskyWealth[m] 
+    '''total wealth at the beginning of time (t+1) '''
+    wealth1 = sum( (1. + model.predictRiskyRet[m] ) * model.riskyWealth[m] 
                  for m in model.symbols)
-    wealth += (1.+ model.riskFreeRet) * model.riskFreeWealth
-    return model.SecondStageWealth - wealth == 0
+    wealth2 = (1.+ model.predictRiskFreeRet ) * model.riskFreeWealth
+    return model.SecondStageWealth - wealth1 - wealth2 == 0
 
 model.ComputeFirstStageWealth = Constraint()
 model.ComputeSecondStageWealth = Constraint()
 
 #objective
-def TotalWealth_rule(model):
-    return  model.SecondStageWealth
+def TotalWealthObjective_rule(model):
+    return model.FirstStageWealth + model.SecondStageWealth
     
-model.totalWealthObjective = Objective(rule= TotalWealth_rule, sense=maximize)
+model.TotalWealthObjective = Objective(sense=maximize)

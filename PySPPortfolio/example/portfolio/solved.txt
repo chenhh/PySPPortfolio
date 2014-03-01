@@ -1,17 +1,19 @@
+Trying to import solution writer=coopr.pysp.csvsolutionwriter
+Module successfully loaded
 Loading scenario and instance data
-Time to construct scenario instances=0.10 seconds
+Time to construct scenario instances=0.11 seconds
 Creating extensive form binding instance
 Time to construct extensive form instance=0.00 seconds
 Starting to write extensive form
 Output file written to file= efout.lp
 Time to write output file=0.00 seconds
-Time to create and write the extensive form=0.11 seconds
+Time to create and write the extensive form=0.12 seconds
 Queuing extensive form solve
 Waiting for extensive form solve
-Time to solve and load results for the extensive form=0.02 seconds
+Time to solve and load results for the extensive form=0.03 seconds
 
 ***********************************************************************************************
->>>THE EXPECTED SUM OF THE STAGE COST VARIABLES=2002723.43868<<<
+>>>THE EXPECTED SUM OF THE STAGE COST VARIABLES=1096454.63609<<<
 ***********************************************************************************************
 
 Extensive form solution:
@@ -69,7 +71,7 @@ Tree Nodes:
 		None
 	Scenarios:
 		Scenario0
-	Expected node cost=999132.6022
+	Expected node cost=1138783.6491
 
 	Name=Node1
 	Stage=SecondStage
@@ -79,7 +81,7 @@ Tree Nodes:
 		None
 	Scenarios:
 		Scenario1
-	Expected node cost=1021485.5434
+	Expected node cost=1254436.6899
 
 	Name=Node2
 	Stage=SecondStage
@@ -89,7 +91,7 @@ Tree Nodes:
 		None
 	Scenarios:
 		Scenario2
-	Expected node cost=1007477.5673
+	Expected node cost=1009890.3290
 
 	Name=Node3
 	Stage=SecondStage
@@ -99,7 +101,7 @@ Tree Nodes:
 		None
 	Scenarios:
 		Scenario3
-	Expected node cost=982841.4756
+	Expected node cost=1034995.0150
 
 	Name=Node4
 	Stage=SecondStage
@@ -109,7 +111,7 @@ Tree Nodes:
 		None
 	Scenarios:
 		Scenario4
-	Expected node cost=991665.0050
+	Expected node cost=1044167.4975
 
 	Name=RootNode
 	Stage=FirstStage
@@ -127,7 +129,7 @@ Tree Nodes:
 		Scenario2
 		Scenario3
 		Scenario4
-	Expected node cost=2002723.4387
+	Expected node cost=1096454.6361
 
 ----------------------------------------------------
 Scenarios:
@@ -138,9 +140,9 @@ Scenarios:
 	Tree node sequence:
 		RootNode
 		Node0
-	Stage=          FirstStage     Cost=1002203.0000
-	Stage=         SecondStage     Cost=999132.6022
-	Total scenario cost=2001335.6022
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1138783.6491
+	Total scenario cost=1138783.6491
 
 	Name=Scenario1
 	Probability=0.2000
@@ -148,9 +150,9 @@ Scenarios:
 	Tree node sequence:
 		RootNode
 		Node1
-	Stage=          FirstStage     Cost=1002203.0000
-	Stage=         SecondStage     Cost=1021485.5434
-	Total scenario cost=2023688.5434
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1254436.6899
+	Total scenario cost=1254436.6899
 
 	Name=Scenario2
 	Probability=0.2000
@@ -158,9 +160,9 @@ Scenarios:
 	Tree node sequence:
 		RootNode
 		Node2
-	Stage=          FirstStage     Cost=1002203.0000
-	Stage=         SecondStage     Cost=1007477.5673
-	Total scenario cost=2009680.5673
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1009890.3290
+	Total scenario cost=1009890.3290
 
 	Name=Scenario3
 	Probability=0.2000
@@ -168,9 +170,9 @@ Scenarios:
 	Tree node sequence:
 		RootNode
 		Node3
-	Stage=          FirstStage     Cost=1002203.0000
-	Stage=         SecondStage     Cost=982841.4756
-	Total scenario cost=1985044.4756
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1034995.0150
+	Total scenario cost=1034995.0150
 
 	Name=Scenario4
 	Probability=0.2000
@@ -178,9 +180,10 @@ Scenarios:
 	Tree node sequence:
 		RootNode
 		Node4
-	Stage=          FirstStage     Cost=1002203.0000
-	Stage=         SecondStage     Cost=991665.0050
-	Total scenario cost=1993868.0050
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1044167.4975
+	Total scenario cost=1044167.4975
 
 ----------------------------------------------------
-Total execution time=0.13 seconds
+Scenario tree solution written to file=ef.csv
+Total execution time=0.15 seconds
