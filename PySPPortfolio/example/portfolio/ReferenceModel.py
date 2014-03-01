@@ -12,7 +12,11 @@ model = AbstractModel()
 # Parameters
 model.symbols = Set()
 
-model.riskyRet = Param(model.symbols)    #uncertainty vector
+#return of current period, known
+model.riskyRet = Param(model.symbols)
+
+#return of next period, uncertain
+model.tp1RiskyRet = Param(models.symbols) 
 model.allocatedWealth = Param(model.symbols)
 model.depositWealth = Param()
 model.riskFreeRet = Param()
@@ -29,12 +33,24 @@ model.SecondStageWealth = Var()
 
 #constraint
 def riskyWeathConstraint_rule(model, m):
+    '''
+    riskyWealth is decision variable depending on both buys and sells.
+    therefore 
+    buys and sells are fist stage variable,
+    riskywealth is second stage variable
+    '''
     return (model.riskyWealth[m] == 
             (1. + model.riskyRet[m]) * model.allocatedWealth[m] + 
             model.buys[m] - model.sells[m])
     
 def riskFreeWealthConstraint_rule(model):
-    totalSell = sum((1-model.sellTransFee[m])*model.sells[m] 
+    '''
+    riskFreeWealth is decision variable depending on both buys and sells.
+    therefore 
+    buys and sells are fist stage variable,
+    riskFreewealth is second stage variable
+    '''
+    totalSell = sum((1.-model.sellTransFee[m])*model.sells[m] 
                     for m in model.symbols)
     totalBuy = sum((1+model.buyTransFee[m])*model.buys[m] 
                    for m in model.symbols)
@@ -48,9 +64,14 @@ model.riskFreeWealthConstraint = Constraint()
 
 # Stage-specific 
 def ComputeFirstStageWealth_rule(model):
-    return (model.FirstStageWealth - sum(model.allocatedWealth) - model.depositWealth) == 0.0 
+    '''
+    '''
+    return (model.FirstStageWealth - sum(model.riskyWealth) - 
+            model.riskFreeWealth) == 0.0 
 
 def ComputeSecondStageWealth_rule(model):
+    '''
+    '''
     wealth = sum( (1. + model.riskyRet[m]) * model.riskyWealth[m] 
                  for m in model.symbols)
     wealth += (1.+ model.riskFreeRet) * model.riskFreeWealth
@@ -60,7 +81,7 @@ model.ComputeFirstStageWealth = Constraint()
 model.ComputeSecondStageWealth = Constraint()
 
 #objective
-def TotalWealth_rule(model):
+def TotalWealthObjective_rule(model):
     return model.FirstStageWealth + model.SecondStageWealth
     
-model.totalWealthObjective = Objective(rule= TotalWealth_rule, sense=maximize)
+model.TotalWealthObjective = Objective(sense=maximize)
