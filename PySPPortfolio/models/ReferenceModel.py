@@ -30,11 +30,17 @@ model.sellTransFee = Param(model.symbols)
 
 #decision variables
 model.buys = Var(model.symbols, within=NonNegativeReals)        #stage 1
-model.sells = Var(model.symbols, within=NonNegativeReals)       #stage 1
+model.sells = Var(model.symbols)       #stage 1
 model.riskyWealth = Var(model.symbols, within=NonNegativeReals) #stage 2
 model.riskFreeWealth = Var(within=NonNegativeReals)             #stage 2
 model.FirstStageWealth = Var()
 model.SecondStageWealth = Var()
+
+def shortsellConstriant_rule(model, m):
+    return max(models.sells[m], 0)
+
+model.shortsellConstriant = Constraint(model.symbols)
+
 
 #constraint
 def riskyWeathConstraint_rule(model, m):
