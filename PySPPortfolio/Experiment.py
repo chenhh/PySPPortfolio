@@ -320,7 +320,8 @@ def _constructTargetMomentFile(moments, transDate):
     #write moment
     for rdx in xrange(4):
         data.write(" ".join(str(v) for v in mom[rdx]))
-        data.write('\n\n')
+        data.write('\n')
+    data.write('\n')
     
     #write comments
     data.write('transDate: %s\n'%(transDate))
@@ -345,8 +346,9 @@ def _constructTargetcorrMtxFile(corrMtx, transDate):
     
     for rdx in xrange(n_rv):
         data.write(" ".join(str(v) for v in corrMtx[rdx, :]))
+        data.write('\n')
     data.write('\n')
-        
+    
     #write comments
     data.write('transDate: %s\n'%(transDate))
         
@@ -374,13 +376,10 @@ def parseSamplingMtx(fileName='out_scen.txt'):
         mtx = np.genfromtxt(fin)
         
     probVec = mtx[:, 0]
-    scenarioMtx = mtx[:, (1,2)].T
+    scenarioMtx = mtx[:, 1:].T
     return probVec, scenarioMtx
  
-    
-        
-        
-        
+
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=1000,
                            buyTransFee=0.003, sellTransFee=0.004425,
@@ -426,16 +425,23 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     fullTransDates = param['fullTransDates']
     
     #process from t=0 to t=(T+1)
+    buyProcess = np.zeros((n_rv, T))
+    sellProcess = np.zeros((n_rv, T))
     wealthProcess = np.zeros((n_rv, T+1))
     depositProcess = np.zeros(T+1)
     
     #setup result directory
-    resultDir = os.path.join(ExpResultsDir, "%s_%s"%(
+    resultDir0 = os.path.join(ExpResultsDir, platform.node())
+    if not os.path.exists(resultDir0):
+        os.mkdir(resultDir0)
+    
+    resultDir = os.path.join(resultDir0, "%s_%s"%(
                         fixedSymbolSPPortfolio.__name__, 
                         time.strftime("%y%m%d_%H%M%S")))
     
     if not os.path.exists(resultDir):
         os.mkdir(resultDir)
+    
     
     #每一期的ScenarioStructure都一樣，建一次即可
     t = time.time()
@@ -443,6 +449,11 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     constructScenarioStructureFile(n_scenario, probs)
     print "constructScenarioStructureFile %.3f secs"%(time.time()-t)
     
+    #設定subprocess的environment variable for cplex
+    env = os.environ.copy()
+    env['PATH'] += ':/opt/ibm/ILOG/CPLEX_Studio126/cplex/bin/x86-64_linux'
+    
+    print env['PATH']
     for tdx in xrange(T):
         tloop = time.time()
         transDate = transDates[tdx]
@@ -483,9 +494,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         t = time.time()
         modelDir = os.path.join(FileDir, "models")
         cmd = 'runef -m %s -i %s  --solution-writer=coopr.pysp.csvsolutionwriter \
-            --solver=%s --solve 1>/dev/null'%(modelDir, modelDir, "glpk")
+             --solver=cplex --solve 1>/dev/null'%(modelDir, modelDir)
        
-        rc = subprocess.call(cmd, shell=True)
+        rc = subprocess.call(cmd, env=env, shell=True)
         print "%s - runef, %.3f secs"%(transDate, time.time()-t)
         
         #parse ef.csv, 並且執行買賣
@@ -501,10 +512,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                     idx = symbols.index(row['symbol'])
                     if row['var'] == 'buys':
                         allocatedWealth[idx] += float(row['value'])
-                        depositWealth -= (1 + buyTransFeeMtx[idx, tdx]) * float(row['value'])
+                        buy = (1 + buyTransFeeMtx[idx, tdx]) * float(row['value'])
+                        buyProcess[idx, tdx] = buy
+                        depositWealth -= buy
                     elif row['var'] == 'sells':
                         allocatedWealth[idx] -= float(row['value'])
-                        depositWealth += (1 - sellTransFeeMtx[idx, tdx]) * float(row['value'])
+                        sell = (1 - sellTransFeeMtx[idx, tdx]) * float(row['value'])
+                        sellProcess[idx, tdx] = sell
+                        depositWealth += sell
                     else:
                         raise ValueError('unknown variable %s'%(row))
                    
@@ -535,18 +550,66 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         print '*'*75
     
     #最後一期只結算不買賣
-    wealthProcess[:, -1] = np.dot(allocatedWealth, (1+allRiskyRetMtx[:, -1]))
-    depositProcess[-1] =  depositWealth * riskFreeRetVec[-1]
-    
+    wealthProcess[:, -1] = allocatedWealth * (1+allRiskyRetMtx[:, -1])
+    depositProcess[-1] =  depositWealth * (1+riskFreeRetVec[-1])
+   
     finalWealth = (np.dot(allocatedWealth, (1+allRiskyRetMtx[:, -1])) + 
-                   depositWealth * riskFreeRetVec[-1])
-    print "final wealth %s, %.3f secs"%(finalWealth, time.time()-t0)
-    print wealthProcess
-    print depositProcess
+                   depositWealth * (1+riskFreeRetVec[-1]))
+    print "final wealth %s"%(finalWealth)
+    
+    #store data in pkl
+    pd_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], columns=symbols)
+    pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], columns=symbols) 
+    pd_wealthProc = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
+    pd_depositProc = pd.Series(depositProcess.T, index=transDates)
+    
+    buyProcFile = os.path.join(resultDir, 'buyProcess.pkl')
+    sellProcFile = os.path.join(resultDir, 'sellProcess.pkl')
+    wealthProcFile = os.path.join(resultDir, 'wealthProcess.pkl')
+    depositProcFile = os.path.join(resultDir, 'depositProcess.pkl')
+    
+    pd_buyProc.save(buyProcFile)
+    pd_sellProc.save(sellProcFile)
+    pd_wealthProc.save(wealthProcFile)
+    pd_depositProc.save(depositProcFile)
+    
+    print "buyProcess:\n",pd_buyProc
+    print "sellProcess:\n",pd_sellProc
+    print "wealthProcess:\n",pd_wealthProc
+    print "depositProcess:\n",pd_depositProc
+
+    print "simulation ok, %.3f secs"%(time.time()-t0)
+
+
+def testScenarios():
+    n_rv, T = 3, 100
+    data = np.random.randn(n_rv, T)
+    moments = np.empty((n_rv, 4))
+    moments[:, 0] = data.mean(axis=1)
+    moments[:, 1] = data.std(axis=1)
+    moments[:, 2] = spstats.skew(data, axis=1)
+    moments[:, 3] = spstats.kurtosis(data, axis=1)
+    print "moments:\n",moments
+    corrMtx = np.corrcoef(data)
+    print "corrMtx:\n", corrMtx
+    transDate = date(2000,1,1)
+    n_scenario = 1000
+    probVec, scenarioMtx = generatingScenarios(moments, corrMtx, 
+                                    n_scenario, transDate, debug=False)
+    print scenarioMtx.shape
+    s_moments = np.empty((n_rv, 4))
+    s_moments[:, 0] = scenarioMtx.mean(axis=1)
+    s_moments[:, 1] = scenarioMtx.std(axis=1)
+    s_moments[:, 2] = spstats.skew(scenarioMtx, axis=1)
+    s_moments[:, 3] = spstats.kurtosis(scenarioMtx, axis=1)
+    s_corrMtx = np.corrcoef(scenarioMtx)
+    print "s_moments:\n", s_moments
+    print "s_corrMtx:\n", s_corrMtx
+    
 
 if __name__ == '__main__':
     startDate = date(2004,1, 1)
-    endDate = date(2004, 1, 31)
+    endDate = date(2004, 1, 7)
     symbols = ['1101', '1102']
     money = 1e5
     hist_period = 5
@@ -554,6 +617,6 @@ if __name__ == '__main__':
 
     
     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=money,
-                           hist_period=20, n_scenario=100, debug=debug)
+                           hist_period=20, n_scenario=10, debug=debug)
    
    
