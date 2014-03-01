@@ -1,0 +1,186 @@
+Loading scenario and instance data
+Time to construct scenario instances=0.10 seconds
+Creating extensive form binding instance
+Time to construct extensive form instance=0.00 seconds
+Starting to write extensive form
+Output file written to file= efout.lp
+Time to write output file=0.00 seconds
+Time to create and write the extensive form=0.11 seconds
+Queuing extensive form solve
+Waiting for extensive form solve
+Time to solve and load results for the extensive form=0.02 seconds
+
+***********************************************************************************************
+>>>THE EXPECTED SUM OF THE STAGE COST VARIABLES=1096454.63609<<<
+***********************************************************************************************
+
+Extensive form solution:
+----------------------------------------------------
+Tree Nodes:
+
+	Name=Node0
+	Stage=SecondStage
+	Parent=RootNode
+	Variables: 
+		riskyWealth[1101]=997008.973081
+
+	Name=Node1
+	Stage=SecondStage
+	Parent=RootNode
+	Variables: 
+		riskyWealth[1101]=997008.973081
+
+	Name=Node2
+	Stage=SecondStage
+	Parent=RootNode
+	Variables: 
+		riskyWealth[1101]=997008.973081
+
+	Name=Node3
+	Stage=SecondStage
+	Parent=RootNode
+	Variables: 
+		riskyWealth[1101]=997008.973081
+
+	Name=Node4
+	Stage=SecondStage
+	Parent=RootNode
+	Variables: 
+		riskyWealth[1101]=997008.973081
+
+	Name=RootNode
+	Stage=FirstStage
+	Parent=None
+	Variables: 
+		buys[1101]=997008.973081
+
+
+Extensive form costs:
+Scenario Tree Costs
+***CAUTION***: Assumes full (or nearly so) convergence of scenario solutions at each node in the scenario tree - computed costs are invalid otherwise
+----------------------------------------------------
+Tree Nodes:
+
+	Name=Node0
+	Stage=SecondStage
+	Parent=RootNode
+	Conditional probability=0.2000
+	Children:
+		None
+	Scenarios:
+		Scenario0
+	Expected node cost=1138783.6491
+
+	Name=Node1
+	Stage=SecondStage
+	Parent=RootNode
+	Conditional probability=0.2000
+	Children:
+		None
+	Scenarios:
+		Scenario1
+	Expected node cost=1254436.6899
+
+	Name=Node2
+	Stage=SecondStage
+	Parent=RootNode
+	Conditional probability=0.2000
+	Children:
+		None
+	Scenarios:
+		Scenario2
+	Expected node cost=1009890.3290
+
+	Name=Node3
+	Stage=SecondStage
+	Parent=RootNode
+	Conditional probability=0.2000
+	Children:
+		None
+	Scenarios:
+		Scenario3
+	Expected node cost=1034995.0150
+
+	Name=Node4
+	Stage=SecondStage
+	Parent=RootNode
+	Conditional probability=0.2000
+	Children:
+		None
+	Scenarios:
+		Scenario4
+	Expected node cost=1044167.4975
+
+	Name=RootNode
+	Stage=FirstStage
+	Parent=None
+	Conditional probability=1.0000
+	Children:
+		Node0
+		Node1
+		Node2
+		Node3
+		Node4
+	Scenarios:
+		Scenario0
+		Scenario1
+		Scenario2
+		Scenario3
+		Scenario4
+	Expected node cost=1096454.6361
+
+----------------------------------------------------
+Scenarios:
+
+	Name=Scenario0
+	Probability=0.2000
+	Leaf Node=Node0
+	Tree node sequence:
+		RootNode
+		Node0
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1138783.6491
+	Total scenario cost=1138783.6491
+
+	Name=Scenario1
+	Probability=0.2000
+	Leaf Node=Node1
+	Tree node sequence:
+		RootNode
+		Node1
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1254436.6899
+	Total scenario cost=1254436.6899
+
+	Name=Scenario2
+	Probability=0.2000
+	Leaf Node=Node2
+	Tree node sequence:
+		RootNode
+		Node2
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1009890.3290
+	Total scenario cost=1009890.3290
+
+	Name=Scenario3
+	Probability=0.2000
+	Leaf Node=Node3
+	Tree node sequence:
+		RootNode
+		Node3
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1034995.0150
+	Total scenario cost=1034995.0150
+
+	Name=Scenario4
+	Probability=0.2000
+	Leaf Node=Node4
+	Tree node sequence:
+		RootNode
+		Node4
+	Stage=          FirstStage     Cost=    0.0000
+	Stage=         SecondStage     Cost=1044167.4975
+	Total scenario cost=1044167.4975
+
+----------------------------------------------------
+Total execution time=0.13 seconds
