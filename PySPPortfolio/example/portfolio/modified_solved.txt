@@ -1,0 +1,7 @@
+Loading scenario and instance data
+ERROR: Rule failed when generating expression for constraint shortsellConstriant:
+	TypeError: Cannot create an EqualityExpression where one of the sub-expressions is a relational expression:
+	    0.0  <  sells[1101]
+ERROR: Constructing component 'shortsellConstriant' from data=None failed:
+	TypeError: Cannot create an EqualityExpression where one of the sub-expressions is a relational expression:
+	    0.0  <  sells[1101]

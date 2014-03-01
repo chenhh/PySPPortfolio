@@ -1,16 +1,14 @@
-Trying to import solution writer=coopr.pysp.csvsolutionwriter
-Module successfully loaded
 Loading scenario and instance data
-Time to construct scenario instances=0.11 seconds
+Time to construct scenario instances=0.22 seconds
 Creating extensive form binding instance
 Time to construct extensive form instance=0.00 seconds
 Starting to write extensive form
 Output file written to file= efout.lp
 Time to write output file=0.00 seconds
-Time to create and write the extensive form=0.12 seconds
+Time to create and write the extensive form=0.22 seconds
 Queuing extensive form solve
 Waiting for extensive form solve
-Time to solve and load results for the extensive form=0.03 seconds
+Time to solve and load results for the extensive form=0.35 seconds
 
 ***********************************************************************************************
 >>>THE EXPECTED SUM OF THE STAGE COST VARIABLES=1096454.63609<<<
@@ -185,5 +183,4 @@ Scenarios:
 	Total scenario cost=1044167.4975
 
 ----------------------------------------------------
-Scenario tree solution written to file=ef.csv
-Total execution time=0.15 seconds
+Total execution time=0.58 seconds
