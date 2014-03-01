@@ -2,8 +2,9 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
-minimize CVaR risk
-
+the model maximize return in the second stage,
+it will invest all the money to the asset which has
+the highest expect return.
 
 '''
 
