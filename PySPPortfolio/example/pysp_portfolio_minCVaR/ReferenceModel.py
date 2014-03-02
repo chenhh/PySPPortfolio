@@ -2,6 +2,8 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
+minimize the CVaR
+
 '''
 
 from coopr.pyomo import *
@@ -30,8 +32,10 @@ model.buys = Var(model.symbols, within=NonNegativeReals)        #stage 1
 model.sells = Var(model.symbols, within=NonNegativeReals)       #stage 1
 model.riskyWealth = Var(model.symbols, within=NonNegativeReals) #stage 2
 model.riskFreeWealth = Var(within=NonNegativeReals)             #stage 2
-model.FirstStageWealth = Var()
-model.SecondStageWealth = Var()
+model.Z = Var() #aux variable
+model.Ys = Var(within=NonNegativeReals)
+model.FirstStageCost = Var()
+model.SecondStageCost = Var()
 
 #constraint
 def riskyWeathConstraint_rule(model, m):
@@ -44,7 +48,9 @@ def riskyWeathConstraint_rule(model, m):
     return (model.riskyWealth[m] == 
             (1. + model.riskyRet[m]) * model.allocatedWealth[m] + 
             model.buys[m] - model.sells[m])
-    
+
+model.riskyWeathConstraint = Constraint(model.symbols)
+
 def riskFreeWealthConstraint_rule(model):
     '''
     riskFreeWealth is decision variable depending on both buys and sells.
@@ -61,25 +67,32 @@ def riskFreeWealthConstraint_rule(model):
             (1. + model.riskFreeRet)* model.depositWealth  + 
             totalSell - totalBuy)
         
-model.riskyWeathConstraint = Constraint(model.symbols)
 model.riskFreeWealthConstraint = Constraint()
 
-# Stage-specific 
-def ComputeFirstStageWealth_rule(model):
-    return model.FirstStageWealth  == 0.0
-
-def ComputeSecondStageWealth_rule(model):
-    '''total wealth at the beginning of time (t+1) '''
-    wealth1 = sum( (1. + model.predictRiskyRet[m] ) * model.riskyWealth[m] 
+def CVaRConstraint_rule(model):
+    wealth = sum( (1. + model.predictRiskyRet[m] ) * model.riskyWealth[m] 
                  for m in model.symbols)
-    wealth2 = (1.+ model.predictRiskFreeRet ) * model.riskFreeWealth
-    return model.SecondStageWealth - wealth1 - wealth2 == 0
+    return model.Ys >= wealth
 
-model.ComputeFirstStageWealth = Constraint()
-model.ComputeSecondStageWealth = Constraint()
+model.CVaRConstraint = Constraint()
+
+def CVaRConstraint1_rule(model):
+
+# Stage-specific 
+def ComputeFirstStageCost_rule(model):
+    return model.FirstStageCost  == 0.0
+
+model.ComputeFirstStageCost = Constraint()
+
+def ComputeSecondStageCost_rule(model):
+    '''CVaR time (t+1) '''
+    
+    return model.SecondStageCost  == model.Z - 1/(1-.95)* model.Ys
+
+  model.ComputeSecondStageCost = Constraint()
 
 #objective
-def TotalWealthObjective_rule(model):
-    return model.FirstStageWealth + model.SecondStageWealth
+def TotalCostObjective_rule(model):
+    return model.FirstStageCost + model.SecondStageCost
     
-model.TotalWealthObjective = Objective(sense=maximize)
+model.TotalCostObjective = Objective(sense=maximize)

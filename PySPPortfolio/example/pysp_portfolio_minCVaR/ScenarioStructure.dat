@@ -1,0 +1,57 @@
+param ScenarioBasedData := False ;
+set Stages := FirstStage SecondStage ;
+set Nodes := 
+    RootNode
+    Node0
+    Node1
+    Node2
+    Node3
+    Node4
+;
+
+param NodeStage := 
+    RootNode FirstStage 
+    Node0 SecondStage
+    Node1 SecondStage
+    Node2 SecondStage
+    Node3 SecondStage
+    Node4 SecondStage
+;
+
+set Children[RootNode] := 
+    Node0
+    Node1
+    Node2
+    Node3
+    Node4
+;
+
+param ConditionalProbability := 
+    RootNode 1.0
+    Node0 0.2
+    Node1 0.2
+    Node2 0.2
+    Node3 0.2
+    Node4 0.2
+;
+
+set Scenarios := 
+    Scenario0
+    Scenario1
+    Scenario2
+    Scenario3
+    Scenario4
+;
+
+param ScenarioLeafNode := 
+    Scenario0 Node0
+    Scenario1 Node1
+    Scenario2 Node2
+    Scenario3 Node3
+    Scenario4 Node4
+;
+
+set StageVariables[FirstStage] :=  buys[*] sells[*];
+set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth;
+param StageCostVariable := FirstStage  FirstStageWealth
+                           SecondStage SecondStageWealth ;

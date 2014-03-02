@@ -33,8 +33,8 @@ model.buys = Var(model.symbols, within=NonNegativeReals)        #stage 1
 model.sells = Var(model.symbols)       #stage 1
 model.riskyWealth = Var(model.symbols, within=NonNegativeReals) #stage 2
 model.riskFreeWealth = Var(within=NonNegativeReals)             #stage 2
-model.FirstStageWealth = Var()
-model.SecondStageWealth = Var()
+model.FirstStageCost = Var()
+model.SecondStageCost = Var()
 
 def shortsellConstriant_rule(model, m):
     return max(models.sells[m], 0)
@@ -75,20 +75,20 @@ model.riskFreeWealthConstraint = Constraint()
 
 # Stage-specific 
 def ComputeFirstStageWealth_rule(model):
-    return model.FirstStageWealth  == 0.0
+    return model.FirstStageCost  == 0.0
 
 def ComputeSecondStageWealth_rule(model):
     '''total wealth at the beginning of time (t+1) '''
     wealth1 = sum( (1. + model.predictRiskyRet[m] ) * model.riskyWealth[m] 
                  for m in model.symbols)
     wealth2 = (1.+ model.predictRiskFreeRet ) * model.riskFreeWealth
-    return model.SecondStageWealth - wealth1 - wealth2 == 0
+    return model.SecondStageCost - wealth1 - wealth2 == 0
 
 model.ComputeFirstStageWealth = Constraint()
 model.ComputeSecondStageWealth = Constraint()
 
 #objective
 def TotalWealthObjective_rule(model):
-    return model.FirstStageWealth + model.SecondStageWealth
+    return model.FirstStageCost + model.SecondStageCost
     
 model.TotalWealthObjective = Objective(sense=maximize)
