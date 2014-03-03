@@ -212,8 +212,14 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     if not os.path.exists(corrMtx):
         raise ValueError('file %s does not exists'%(corrMtx))
     while True:
-        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50'%(exe, n_scenario), shell=True)
-        if not rc:
+        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 100'%(
+                                exe, n_scenario), shell=True)
+        
+        if rc != 0:
+            #decrease to maxError
+            rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 100 -m 0.01 -c 0.01'%(
+                exe, n_scenario), shell=True)
+        else:
             break
     
     probVec, scenarioMtx = parseSamplingMtx(fileName='out_scen.txt')
@@ -439,18 +445,25 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     VaRProcess = np.zeros(T)
     
     #setup result directory
-    resultDir0 = os.path.join(ExpResultsDir, "%s_n%s_h%s_s%s_a%s"%(
-                                        platform.node(), n_rv, 
-                                        hist_period, n_scenario, alpha))
+    resultDir0 = os.path.join(ExpResultsDir, "n%s_h%s_s%s_a%s"%(
+                                        n_rv, hist_period, n_scenario, alpha))
     if not os.path.exists(resultDir0):
         os.mkdir(resultDir0)
-    
-    resultDir = os.path.join(resultDir0, "%s_%s"%(
+        
+    t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
+    t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
+    rnd = time.strftime("%y%m%d%H%M%S")
+    resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
                         fixedSymbolSPPortfolio.__name__, 
-                        time.strftime("%y%m%d_%H%M%S")))
+                        t1, t2, rnd))
     
-    if not os.path.exists(resultDir):
-        os.mkdir(resultDir)
+    while True:
+        if not os.path.exists(resultDir):
+            os.mkdir(resultDir)
+            break
+        rnd = time.strftime("%y%m%d%H%M%S")
+        resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
+                        fixedSymbolSPPortfolio.__name__, t1, t2, rnd))
     
     
     #每一期的ScenarioStructure都一樣，建一次即可
@@ -546,25 +559,29 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             
         #remove mdl file
         mdlFile = os.path.join(os.getcwd(), 'models', 'RootNode.dat')
+        
         os.remove(mdlFile)
         for sdx in xrange(n_scenario):
             mdlFile = os.path.join(os.getcwd(), 'models', 'Node%s.dat'%(sdx))
             os.remove(mdlFile)  
         
         #move temporary file
-        transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
-        if not os.path.exists(transDateDir):
-            os.mkdir(transDateDir)
-         
         resultFiles = ('parse_table_datacmds.py', 'ef.csv', 'efout.lp', 
                        'out_scen.txt', 'tg_corrs.txt', 'tg_moms.txt')
          
-        for res in resultFiles:
-            try:
-                tgt = os.path.join(transDateDir, res)
-                shutil.move(res, tgt)
-            except Exception as e:
-                print e
+        #delete files
+        for data in  resultFiles:
+            os.remove(data)
+         
+#         transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
+#         if not os.path.exists(transDateDir):
+#             os.mkdir(transDateDir)
+#         for res in resultFiles:
+#             try:
+#                 tgt = os.path.join(transDateDir, res)
+#                 shutil.move(res, tgt)
+#             except Exception as e:
+#                 print e
                 
         
         print '*'*75
@@ -702,7 +719,7 @@ if __name__ == '__main__':
             if opt in ('-y', '--year'):
                 year = int(arg)
                 startDate = date(year, 1, 1)
-                endDate = date(year, 12, 31)
+                endDate = date(year, 1, 31)
             
         fixedSymbolSPPortfolio(symbolIDs, startDate, endDate,  money=money,
                            hist_period=hist_period , n_scenario=n_scenario,
