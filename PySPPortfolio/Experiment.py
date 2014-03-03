@@ -651,6 +651,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                               for t in transDates])))
     summary.write('hist_period: %s\n'%(hist_period))
     summary.write('final wealth:%s \n'%(finalWealth))
+    summary.write('machine: %s, simulation time:%s \n'%(
+                platform.node(), time.time()-t0))
     
     fileName = os.path.join(resultDir, 'summary.txt')
     with open (fileName, 'w') as fout:
@@ -701,9 +703,9 @@ if __name__ == '__main__':
                ]
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:y:", 
+        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:fy:", 
                             ["symbols", "histperiod", "scenario", 
-                             "alpha", "year"])
+                             "alpha", "full", "year" ])
         
         for opt, arg in opts:
             if opt in ('-n', '--symbols'):
@@ -719,15 +721,20 @@ if __name__ == '__main__':
             if opt in ('-a', '--alpha'):
                 alpha = float(arg)
             
-            if opt in ('-y', '--year'):
+            if opt in ('-f', '--full'):
+                startDate = date(2005, 1, 1)
+                endDate = date(2013, 12, 31)
+                
+            elif opt in ('-y', '--year'):
                 year = int(arg)
                 startDate = date(year, 1, 1)
                 endDate = date(year, 12, 31)
-            
+        
+        print startDate, endDate
         fixedSymbolSPPortfolio(symbolIDs, startDate, endDate,  money=money,
                            hist_period=hist_period , n_scenario=n_scenario,
                            alpha=alpha, debug=debug)
-                
+      
     except getopt.GetoptError as e:  
     # print help information and exit:
         print e 
