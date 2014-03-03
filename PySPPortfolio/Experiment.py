@@ -669,8 +669,7 @@ def testScenarios():
     
 
 if __name__ == '__main__':
-    startDate = date(2005,1, 1)
-    endDate = date(2005, 1, 31)
+   
     money = 1e6
     debug = True
     
@@ -682,8 +681,9 @@ if __name__ == '__main__':
                ]
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:", 
-                            ["symbols", "histperiod", "scenario", "alpha"])
+        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:y:", 
+                            ["symbols", "histperiod", "scenario", 
+                             "alpha", "year"])
         
         for opt, arg in opts:
             if opt in ('-n', '--symbols'):
@@ -698,6 +698,11 @@ if __name__ == '__main__':
                 
             if opt in ('-a', '--alpha'):
                 alpha = float(arg)
+            
+            if opt in ('-y', '--year'):
+                year = int(arg)
+                startDate = date(year, 1, 1)
+                endDate = date(year, 12, 31)
             
         fixedSymbolSPPortfolio(symbolIDs, startDate, endDate,  money=money,
                            hist_period=hist_period , n_scenario=n_scenario,
