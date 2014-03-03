@@ -589,8 +589,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 
         
         print '*'*75
-        print "%s-%s n%s-h%s-s%s-a%s transDate %s PySP OK, current wealth %s"%(
-                startDate, endDate, n_rv, hist_period, n_scenario, alpha,    
+        print "%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]\ntransDate %s PySP OK, current wealth %s"%(
+                startDate, endDate, n_rv, hist_period, n_scenario, alpha, len(genScenErrDates),    
                 transDate,  allocatedWealth.sum() + depositWealth)
         print "%.3f secs"%(time.time()-tloop)
         print '*'*75
