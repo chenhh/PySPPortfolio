@@ -224,14 +224,8 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
             print "transDate:", transDate
             print "moment:", moments
             print "corrMtx:", corrMtx
-            paramtxt = 'err_%s_n%s.txt'%(transDate, moments.shape[0])
-            errorFile = os.path.join(ExpResultsDir, paramtxt)
-            with open(errorFile, 'a') as fout:
-                fout.write('transDate:%s\n'%(transDate))
-                fout.write('moment:\n%s\n'%(moments))
-                fout.write('corrMtx:\n%s\n'%(corrMtx))
-                fout.close()
-            sys.exit(1)
+          
+            return None, None
             
     #Problem with the target correlation matrix - Cholesky failed!
     
@@ -467,6 +461,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     env = os.environ.copy()
     env['PATH'] += ':/opt/ibm/ILOG/CPLEX_Studio126/cplex/bin/x86-64_linux'
     
+    genScenErrDates = []
     for tdx in xrange(T):
         tloop = time.time()
         transDate = pd.to_datetime(transDates[tdx])
@@ -492,6 +487,22 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         t = time.time()
         print "start generating scenarios"
         probVec, scenarioMtx = generatingScenarios(moments, corrMtx, n_scenario, transDate)
+        if probVec is None and scenarioMtx is None:
+            paramtxt = 'err_%s_n%s_h%s_s%s_a%s.txt'%(
+                        transDate, n_rv, hist_period, n_scenario, alpha)
+            errorFile = os.path.join(ExpResultsDir, paramtxt)
+            with open(errorFile, 'a') as fout:
+                fout.write('transDate:%s\n'%(transDate))
+                fout.write('moment:\n%s\n'%(moments))
+                fout.write('corrMtx:\n%s\n'%(corrMtx))
+                fout.close()
+            
+            genScenErrDates.append(transDate)
+            #log and goto next period
+            wealthProcess[:, tdx] = allocatedWealth
+            depositProcess[tdx] = depositWealth
+            continue
+        
         print "%s - probVec size n_rv: %s"%(transDate, probVec.shape)
         print "%s - scenarioMtx size: (n_rv * n_scenario): %s"%(transDate, scenarioMtx.shape)
         print "%s - generation scenario, %.3f secs"%(transDate, time.time()-t)
@@ -576,7 +587,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 
         
         print '*'*75
-        print "transDate %s PySP OK, current wealth %s"%(
+        print "n%s-h%s-s%s-a%s transDate %s PySP OK, current wealth %s"%(
+                n_rv, hist_period, n_scenario, alpha,    
                 transDate,  allocatedWealth.sum() + depositWealth)
         print "%.3f secs"%(time.time()-tloop)
         print '*'*75
@@ -661,6 +673,10 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                               for t in transDates])))
     summary.write('hist_period: %s\n'%(hist_period))
     summary.write('final wealth:%s \n'%(finalWealth))
+    summary.write('generate scenario error count:%s\n'%(len(genScenErrDates)))
+    summary.write('generate scenario error dates:\n%s\n'%(
+                 ",".join([t.strftime("%Y%m%d") 
+                for t in genScenErrDates])))
     summary.write('machine: %s, simulation time:%s \n'%(
                 platform.node(), time.time()-t0))
     
