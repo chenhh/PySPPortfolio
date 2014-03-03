@@ -719,7 +719,7 @@ if __name__ == '__main__':
             if opt in ('-y', '--year'):
                 year = int(arg)
                 startDate = date(year, 1, 1)
-                endDate = date(year, 1, 31)
+                endDate = date(year, 12, 31)
             
         fixedSymbolSPPortfolio(symbolIDs, startDate, endDate,  money=money,
                            hist_period=hist_period , n_scenario=n_scenario,
