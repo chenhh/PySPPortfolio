@@ -1,0 +1,260 @@
+3045
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(4), int64(2), object(1)
+
+2311
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2881
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2412
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(4), int64(2), object(1)
+
+2382
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+1303
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2317
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+6505
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2105
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+1216
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2891
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2454
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2882
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2912
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2308
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+1301
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2330
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2886
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+2002
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+
+1326
+<class 'pandas.core.frame.DataFrame'>
+DatetimeIndex: 2486 entries, 2004-01-02 00:00:00 to 2013-12-31 00:00:00
+Data columns (total 7 columns):
+openPrice       2486  non-null values
+highestPrice    2486  non-null values
+lowestPrice     2486  non-null values
+closePrice      2486  non-null values
+volume          2486  non-null values
+value           2486  non-null values
+adjROI          2486  non-null values
+dtypes: float64(5), int64(2)
+

@@ -59,8 +59,7 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_period,
     dfs = []
     transDates = None
     for symbol in symbols:
-        df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, 
-                                    'BasicFeatures_%s_00-12.pkl'%symbol))
+        df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
         tmp = df[startDate: endDate]
         startIdx = df.index.get_loc(tmp.index[0])
         endIdx =  df.index.get_loc(tmp.index[-1])
@@ -84,6 +83,7 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_period,
     n_rv, T = len(symbols), len(transDates) - 1
     allRiskyRetMtx = np.empty((n_rv, hist_period+T))
     for idx, df in enumerate(dfs):
+        print symbol, df['adjROI'].values
         allRiskyRetMtx[idx, :] = df['adjROI'].values/100.
     
     riskFreeRetVec = np.zeros(T+1)
@@ -462,7 +462,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     
     for tdx in xrange(T):
         tloop = time.time()
-        transDate = transDates[tdx]
+        transDate = pd.to_datetime(transDates[tdx])
         
         #realized today return
         allocatedWealth = allocatedWealth * (1+allRiskyRetMtx[:, hist_period+tdx])
@@ -623,7 +623,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     summary.write('alpha: %s\n'%(alpha))
     summary.write('symbols: %s \n'%(",".join(symbols)))
     summary.write('transDates (T+1): %s \n'%(
-                    ",".join([t.strftime("%Y%m%d") for t in transDates])))
+                    ",".join([pd.to_datetime(t).strftime("%Y%m%d") 
+                              for t in transDates])))
     summary.write('hist_period: %s\n'%(hist_period))
     summary.write('final wealth:%s \n'%(finalWealth))
     
@@ -664,18 +665,23 @@ def testScenarios():
     
 
 if __name__ == '__main__':
-    startDate = date(2001,1, 1)
-    endDate = date(2001, 1, 10)
+    startDate = date(2005,1, 1)
+    endDate = date(2005, 1, 10)
     #market value top 20 (2013/12/31)
+#     symbols = ['2330', '2317', '6505', '2412', '2454',
+#                '2882', '1303', '1301', '1326', '2881',
+#                '2002', '2308', '3045', '2886', '2891',
+#                '1216', '2382', '2105', '2311', '2912']
     symbols = ['2330', '2317', '6505', '2412', '2454',
-               '2882', '1303', '1301', '1326', '2881',
-               '2002', '2308', '3045', '2886', '2891',
-               '1216', '2382', '2105', '2311', '2912']
+#                '2882', '1303', '1301', '1326', '2881',
+#                '2002', '2308', '3045', '2886', '2891',
+#                '1216', '2382', '2105', '2311', '2912'
+               ]
   
     money = 1e6
     hist_period = 20
     n_scenario = 100
-    alpha=0.99
+    alpha=0.95
     debug=False
 
     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=money,
