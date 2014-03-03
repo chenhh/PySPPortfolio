@@ -212,6 +212,7 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     if not os.path.exists(corrMtxFile):
         raise ValueError('file %s does not exists'%(corrMtxFile))
     
+    #deal with convergence problem
     for kdx in xrange(3):
         momErr, corrErr = 1e-3 * (10**kdx), 1e-3 * (10**kdx)
         print "kdx: %s, momErr: %s, corrErr:%s"%(kdx, momErr, corrErr)
@@ -223,8 +224,17 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
             print "transDate:", transDate
             print "moment:", moments
             print "corrMtx:", corrMtx
+            paramtxt = 'err_%s_n%s.txt'%(transDate, moments.shape[0])
+            errorFile = os.path.join(ExpResultsDir, paramtxt)
+            with open(errorFile, 'a') as fout:
+                fout.write('transDate:%s\n'%(transDate))
+                fout.write('moment:\n%s\n'%(moments))
+                fout.write('corrMtx:\n%s\n'%(corrMtx))
+                fout.close()
             sys.exit(1)
             
+    #Problem with the target correlation matrix - Cholesky failed!
+    
     probVec, scenarioMtx = parseSamplingMtx(fileName='out_scen.txt')
     if debug:
         os.remove('tg_moms.txt')
