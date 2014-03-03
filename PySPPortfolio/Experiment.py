@@ -474,7 +474,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         #算出4 moments與correlation matrix
         t = time.time()
         subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
-        print "%s - %s to estimate moments"%(transDate, fullTransDates[tdx:(hist_period+tdx)])
+#         print "%s - %s to estimate moments"%(transDate, fullTransDates[tdx:(hist_period+tdx)])
         moments = np.empty((n_rv, 4))
         moments[:, 0] = subRiskyRetMtx.mean(axis=1)
         moments[:, 1] = subRiskyRetMtx.std(axis=1)
@@ -492,7 +492,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                         transDate, n_rv, hist_period, n_scenario, alpha)
             errorFile = os.path.join(ExpResultsDir, paramtxt)
             with open(errorFile, 'a') as fout:
+                fout.write('startDate:%s, endDate:%s\n'%(startDate, endDate))
                 fout.write('transDate:%s\n'%(transDate))
+                fout.write('%s_n%s_h%s_s%s_a%s\n'%(n_rv, hist_period, n_scenario, alpha))
                 fout.write('moment:\n%s\n'%(moments))
                 fout.write('corrMtx:\n%s\n'%(corrMtx))
                 fout.close()
@@ -587,8 +589,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 
         
         print '*'*75
-        print "n%s-h%s-s%s-a%s transDate %s PySP OK, current wealth %s"%(
-                n_rv, hist_period, n_scenario, alpha,    
+        print "%s-%s n%s-h%s-s%s-a%s transDate %s PySP OK, current wealth %s"%(
+                startDate, endDate, n_rv, hist_period, n_scenario, alpha,    
                 transDate,  allocatedWealth.sum() + depositWealth)
         print "%.3f secs"%(time.time()-tloop)
         print '*'*75
@@ -677,7 +679,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     summary.write('generate scenario error dates:\n%s\n'%(
                  ",".join([t.strftime("%Y%m%d") 
                 for t in genScenErrDates])))
-    summary.write('machine: %s, simulation time:%s \n'%(
+    summary.write('machine: %s, simulation time:%.3f secs \n'%(
                 platform.node(), time.time()-t0))
     
     fileName = os.path.join(resultDir, 'summary.txt')
@@ -685,8 +687,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         fout.write(summary.getvalue())
     summary.close()
     
-    print "n%s-h%s-s%s-a%s\nsimulation ok, %.3f secs"%(
-             n_rv, hist_period, n_scenario, alpha,    
+    print "%s-%s n%s-h%s-s%s-a%s\nsimulation ok, %.3f secs"%(
+             startDate, endDate, n_rv, hist_period, n_scenario, alpha,    
             time.time()-t0)
 
 
