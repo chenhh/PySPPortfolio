@@ -212,12 +212,12 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     if not os.path.exists(corrMtx):
         raise ValueError('file %s does not exists'%(corrMtx))
     while True:
-        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 100'%(
+        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200'%(
                                 exe, n_scenario), shell=True)
         
         if rc != 0:
             #decrease to maxError
-            rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 100 -m 0.01 -c 0.01'%(
+            rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200 -m 0.01 -c 0.01'%(
                 exe, n_scenario), shell=True)
         else:
             break
