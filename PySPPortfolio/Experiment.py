@@ -27,13 +27,12 @@ import pandas as pd
 import scipy.stats as spstats
 from datetime import date
 
-
 FileDir = os.path.abspath(os.path.curdir)
 PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
 if platform.uname()[0] == 'Linux':
-#     ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
-#                                   'financial_experiment', 'PySPPortfolio')
-    ExpResultsDir =  os.path.join(FileDir, 'results')
+    ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
+                                  'financial_experiment', 'PySPPortfolio')
+#     ExpResultsDir =  os.path.join(FileDir, 'results')
     
 elif platform.uname()[0] =='Windows':
     ExpResultsDir= os.path.join('C:\\', 'Dropbox', 'financial_experiment', 
@@ -41,7 +40,8 @@ elif platform.uname()[0] =='Windows':
     
 
 def constructModelMtx(symbols, startDate, endDate, money, hist_period, 
-                      buyTransFee=0.003, sellTransFee=0.004425, debug=False):
+                      buyTransFee=0.003, sellTransFee=0.004425,
+                      alpha = 0.95, debug=False):
     '''
     -注意因為最後一期只結算不買賣
     -DataFrame以Date取資料時，有包含last day, 即df[startDate: endDate]
@@ -104,7 +104,7 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_period,
         print "depositWealth value:", depositWealth
         print "transDates size (T+1):", transDates.shape
         print "full transDates, size(hist+T): ", fullTransDates.shape
-        
+        print "alpha value:", alpha
     return {
         "n_rv": n_rv,
         "T": T,
@@ -116,6 +116,7 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_period,
         "depositWealth": depositWealth,     #size: 1 
         "transDates": transDates,           #size: (T+1)
         "fullTransDates": fullTransDates,   #size: (hist_period+T)
+        "alpha": alpha                      #size：１
         }
 
 
@@ -174,13 +175,13 @@ def constructScenarioStructureFile(n_scenario, probs):
         data.write(" " * 4 + 'Scenario%s Node%s\n'%(scen, scen))
     data.write(';\n\n')
     
-    #stage variable
-    data.write('set StageVariables[FirstStage] :=  buys[*] sells[*];\n')
-    data.write('set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth;\n')
+    #stage variable (Z, Ys are for CVaR)
+    data.write('set StageVariables[FirstStage] :=  buys[*] sells[*] Z;\n')
+    data.write('set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth Ys;\n')
    
-    #stage wealth
-    data.write('param StageCostVariable := FirstStage  FirstStageWealth\n')
-    data.write(' '* 27 + 'SecondStage SecondStageWealth ;')
+    #stage cost
+    data.write('param StageCostVariable := FirstStage  FirstStageCost\n')
+    data.write(' '* 27 + 'SecondStage SecondStageCost ;')
     
     fileName = os.path.join(FileDir, 'models', 'ScenarioStructure.dat')
     with open(fileName, 'w') as fout:
@@ -223,7 +224,8 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     
 
 def  constructRootNodeFile(symbols, allocatedWealth, depositWealth,
-                        riskyRet, riskFreeRet, buyTransFee, sellTransFee):
+                        riskyRet, riskFreeRet, buyTransFee, sellTransFee,
+                        alpha):
     '''
     產生RootNode.dat for pysp
     @param symbols, list, list of symbols
@@ -261,7 +263,7 @@ def  constructRootNodeFile(symbols, allocatedWealth, depositWealth,
     rootData.write(';\n\n')
     
     rootData.write('param riskFreeRet := %s ;\n'%(riskFreeRet))
-    
+    rootData.write('param alpha := %s ;\n'%(alpha))
 
     rootFileName = os.path.join(FileDir, 'models', 'RootNode.dat')
     with open (rootFileName, 'w') as fout:
@@ -385,7 +387,7 @@ def parseSamplingMtx(fileName='out_scen.txt'):
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=1000,
                            buyTransFee=0.003, sellTransFee=0.004425,
-                           debug=False):
+                           alpha=0.95, debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
     -假設symbols有n_rv個，投資期數共T期(最後一期不買賣，只結算)
@@ -408,12 +410,13 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         "depositWealth": depositWealth,     #size: 1 
         "transDates": transDates,           #size: (T+1)
         "fullTransDates": fullTransDates,   #size: (hist_period+T)
+         "alpha": alpha                      #size：１
         }
     '''
     
     t0 = time.time()
     param = constructModelMtx(symbols, startDate, endDate, money, hist_period,
-                              buyTransFee, sellTransFee, debug)
+                              buyTransFee, sellTransFee, alpha, debug)
     print "constructModelMtx %.3f secs"%(time.time()-t0)
     
     n_rv, T =param['n_rv'], param['T']
@@ -431,10 +434,11 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     sellProcess = np.zeros((n_rv, T))
     wealthProcess = np.zeros((n_rv, T+1))
     depositProcess = np.zeros(T+1)
+    VaRProcess = np.zeros(T)
     
     #setup result directory
-    resultDir0 = os.path.join(ExpResultsDir, 
-                              "%s_histperiod_%s"%(platform.node(), hist_period))
+    resultDir0 = os.path.join(ExpResultsDir, "%s_histperiod_%s_%s"%(
+                                        platform.node(), hist_period, alpha))
     if not os.path.exists(resultDir0):
         os.mkdir(resultDir0)
     
@@ -491,7 +495,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                               allRiskyRetMtx[:, hist_period+tdx],
                               riskFreeRetVec[tdx], 
                               buyTransFeeMtx[:, tdx], 
-                              sellTransFeeMtx[:, tdx])
+                              sellTransFeeMtx[:, tdx],
+                              alpha)
         
         constructScenarioFiles(symbols, n_scenario,  scenarioMtx, riskFreeRetVec[tdx+1])
         print "%s - generation root and node files, %.3f secs"%(transDate, time.time()-t)
@@ -513,6 +518,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                     row[key] = row[key].strip()
                 node, symbol = row['node'], row['symbol']
                  
+                if node == "RootNode" and row['var'] == "Z":
+                    VaRProcess[tdx] = float(row['value'])
+                 
                 if  node == 'RootNode' and symbol in symbols:
                     #get symbol index 
                     idx = symbols.index(row['symbol'])
@@ -528,7 +536,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                         depositWealth += sell
                     else:
                         raise ValueError('unknown variable %s'%(row))
-                   
+        
         #log wealth and signal process
         wealthProcess[:, tdx] = allocatedWealth
         depositProcess[tdx] = depositWealth
@@ -574,38 +582,48 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], columns=symbols) 
     pd_wealthProc = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
     pd_depositProc = pd.Series(depositProcess.T, index=transDates)
+    pd_VaRProc = pd.Series(VaRProcess.T, index=transDates[:-1])
     
     buyProcFile = os.path.join(resultDir, 'buyProcess.pkl')
     sellProcFile = os.path.join(resultDir, 'sellProcess.pkl')
     wealthProcFile = os.path.join(resultDir, 'wealthProcess.pkl')
     depositProcFile = os.path.join(resultDir, 'depositProcess.pkl')
+    VaRProcFile = os.path.join(resultDir, 'VaRProcess.pkl')
     
     pd_buyProc.save(buyProcFile)
     pd_sellProc.save(sellProcFile)
     pd_wealthProc.save(wealthProcFile)
     pd_depositProc.save(depositProcFile)
+    pd_VaRProc.save(VaRProcFile)
     
+    #store data in csv 
     buyProcCSV = os.path.join(resultDir, 'buyProcess.csv')
-    sellProcCSV = os.path.join(resultDir, 'sellProcess.csvl')
+    sellProcCSV = os.path.join(resultDir, 'sellProcess.csv')
     wealthProcCSV = os.path.join(resultDir, 'wealthProcess.csv')
     depositProcCSV = os.path.join(resultDir, 'depositProcess.csv')
+    VaRProcCSV = os.path.join(resultDir, 'VaRProcess.csv')
     
     pd_buyProc.to_csv(buyProcCSV)
     pd_sellProc.to_csv(sellProcCSV)
     pd_wealthProc.to_csv(wealthProcCSV)
     pd_depositProc.to_csv(depositProcCSV)
+    pd_VaRProc.to_csv(VaRProcCSV)
     
+    #print results
     print "buyProcess:\n",pd_buyProc
     print "sellProcess:\n",pd_sellProc
     print "wealthProcess:\n",pd_wealthProc
     print "depositProcess:\n",pd_depositProc
-
+    print "VaRProcess:\n", pd_VaRProc
+    
     #generating summary files
     summary = StringIO()
     summary.write('n_rv: %s\n'%(n_rv))
     summary.write('T: %s\n'%(T))
+    summary.write('alpha: %s\n'%(alpha))
     summary.write('symbols: %s \n'%(",".join(symbols)))
-    summary.write('transDates (T+1): %s \n'%(",".join([t.strftime("%Y%m%d") for t in transDates])))
+    summary.write('transDates (T+1): %s \n'%(
+                    ",".join([t.strftime("%Y%m%d") for t in transDates])))
     summary.write('hist_period: %s\n'%(hist_period))
     summary.write('final wealth:%s \n'%(finalWealth))
     
@@ -615,6 +633,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     summary.close()
     
     print "simulation ok, %.3f secs"%(time.time()-t0)
+
 
 
 def testScenarios():
@@ -671,10 +690,11 @@ if __name__ == '__main__':
     money = 1e6
     hist_period = 20
     n_scenario = 100
+    alpha=0.99
     debug=False
 
     fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=money,
-                           hist_period=hist_period , n_scenario=n_scenario, 
-                           debug=debug)
+                           hist_period=hist_period , n_scenario=n_scenario,
+                           alpha=alpha, debug=debug)
    
    

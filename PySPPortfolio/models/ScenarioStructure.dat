@@ -621,7 +621,7 @@ param ScenarioLeafNode :=
     Scenario99 Node99
 ;
 
-set StageVariables[FirstStage] :=  buys[*] sells[*];
-set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth;
-param StageCostVariable := FirstStage  FirstStageWealth
-                           SecondStage SecondStageWealth ;
+set StageVariables[FirstStage] :=  buys[*] sells[*] Z;
+set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth Ys;
+param StageCostVariable := FirstStage  FirstStageCost
+                           SecondStage SecondStageCost ;

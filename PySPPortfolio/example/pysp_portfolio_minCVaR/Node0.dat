@@ -1,0 +1,6 @@
+param predictRiskyRet := 
+    1101 0.1422
+    1102 0.0389
+;
+
+param predictRiskFreeRet := 0.0 ;

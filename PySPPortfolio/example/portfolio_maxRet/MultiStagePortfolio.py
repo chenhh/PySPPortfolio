@@ -15,13 +15,13 @@ from coopr.opt import  SolverFactory
 PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
 
 
-def maxRetMultiStagePortfolio(riskyRetMtx, riskFreeRetVec, 
-                               buyTransFeeMtx, sellTransFeeMtx,
-                               allocatedWealth):
+def maxRetPortfolio(riskyRetMtx, riskFreeRetVec, 
+                    buyTransFeeMtx, sellTransFeeMtx,
+                    allocatedWealth):
     '''
-    -假設資料共T期, 投資在M個risky assets, 以及1個riskfree asset
-    -求出每個risky asset每一期應該要買進以及賣出的金額
-    -最後一期結算不投資
+    -假設有T期的資料, 投資在M個risky assets, 以及1個riskfree asset
+    -在(T+1)期初結算
+    goal: 最大化T+1期期初財產
     
     @param riskyRetMtx, numpy.array, size: M * T+1
     @param riskFreeRetVec, numpy.array, size: T+1

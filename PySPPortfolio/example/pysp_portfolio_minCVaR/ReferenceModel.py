@@ -2,6 +2,7 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
+minimize the CVaR
 '''
 
 from coopr.pyomo import *
@@ -15,28 +16,39 @@ model.symbols = Set()
 model.riskyRet = Param(model.symbols)
 model.riskFreeRet = Param()
 
-#return of next period, uncertain
-model.predictRiskyRet = Param(model.symbols) 
-model.predictRiskFreeRet = Param()
-
 model.allocatedWealth = Param(model.symbols)
 model.depositWealth = Param()
 
 model.buyTransFee = Param(model.symbols)
 model.sellTransFee = Param(model.symbols)
+model.alpha = Param(within=NonNegativeReals)
+
+#return of next period, uncertain
+model.predictRiskyRet = Param(model.symbols) 
+model.predictRiskFreeRet = Param()
+
 
 #decision variables
 model.buys = Var(model.symbols, within=NonNegativeReals)        #stage 1
 model.sells = Var(model.symbols, within=NonNegativeReals)       #stage 1
 model.riskyWealth = Var(model.symbols, within=NonNegativeReals) #stage 2
 model.riskFreeWealth = Var(within=NonNegativeReals)             #stage 2
-model.FirstStageWealth = Var()
-model.SecondStageWealth = Var()
+
+#aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
+model.Z = Var()
+
+#aux variable, portfolio wealth smaller (<=) than VaR
+model.Ys = Var(within=NonNegativeReals)                 
+
+#stage specific variable
+model.FirstStageCost = Var()
+model.SecondStageCost = Var()
 
 #constraint
 def riskyWeathConstraint_rule(model, m):
     '''
     riskyWealth is a decision variable depending on both buys and sells.
+    (it means riskyWealth depending on scenario).
     therefore 
     buys and sells are fist stage variable,
     riskywealth is second stage variable
@@ -44,7 +56,9 @@ def riskyWeathConstraint_rule(model, m):
     return (model.riskyWealth[m] == 
             (1. + model.riskyRet[m]) * model.allocatedWealth[m] + 
             model.buys[m] - model.sells[m])
-    
+
+model.riskyWeathConstraint = Constraint(model.symbols)
+
 def riskFreeWealthConstraint_rule(model):
     '''
     riskFreeWealth is decision variable depending on both buys and sells.
@@ -61,25 +75,31 @@ def riskFreeWealthConstraint_rule(model):
             (1. + model.riskFreeRet)* model.depositWealth  + 
             totalSell - totalBuy)
         
-model.riskyWeathConstraint = Constraint(model.symbols)
 model.riskFreeWealthConstraint = Constraint()
 
-# Stage-specific 
-def ComputeFirstStageWealth_rule(model):
-    return model.FirstStageWealth  == 0.0
-
-def ComputeSecondStageWealth_rule(model):
-    '''total wealth at the beginning of time (t+1) '''
-    wealth1 = sum( (1. + model.predictRiskyRet[m] ) * model.riskyWealth[m] 
+def CVaRConstraint_rule(model):
+    '''auxiliary variable Y depends on scenario. CVaR <= VaR
+    '''
+    wealth = sum( (1. + model.predictRiskyRet[m] ) * model.riskyWealth[m] 
                  for m in model.symbols)
-    wealth2 = (1.+ model.predictRiskFreeRet ) * model.riskFreeWealth
-    return model.SecondStageWealth - wealth1 - wealth2 == 0
+    return model.Ys >= (model.Z - wealth)
 
-model.ComputeFirstStageWealth = Constraint()
-model.ComputeSecondStageWealth = Constraint()
+model.CVaRConstraint = Constraint()
+
+# Stage-specific constraints 
+def ComputeFirstStageCost_rule(model):
+    return model.FirstStageCost  == model.Z
+
+model.ComputeFirstStageCost = Constraint()
+
+def ComputeSecondStageCost_rule(model):
+    '''CVaR time (t+1) '''
+    return model.SecondStageCost  == -1/(1-model.alpha)* model.Ys
+
+model.ComputeSecondStageCost = Constraint()
 
 #objective
-def TotalWealthObjective_rule(model):
-    return model.FirstStageWealth + model.SecondStageWealth
+def TotalCostObjective_rule(model):
+    return model.FirstStageCost + model.SecondStageCost
     
-model.TotalWealthObjective = Objective(sense=maximize)
+model.TotalCostObjective = Objective(sense=maximize)
