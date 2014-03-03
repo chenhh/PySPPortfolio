@@ -21,3 +21,4 @@ param riskyRet :=
 ;
 
 param riskFreeRet := 0.0 ;
+param alpha := 0.95 ;
