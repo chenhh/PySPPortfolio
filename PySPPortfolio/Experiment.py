@@ -494,7 +494,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             with open(errorFile, 'a') as fout:
                 fout.write('startDate:%s, endDate:%s\n'%(startDate, endDate))
                 fout.write('transDate:%s\n'%(transDate))
-                fout.write('%s_n%s_h%s_s%s_a%s\n'%(n_rv, hist_period, n_scenario, alpha))
+                fout.write('n%s_h%s_s%s_a%s\n'%(n_rv, hist_period, n_scenario, alpha))
                 fout.write('moment:\n%s\n'%(moments))
                 fout.write('corrMtx:\n%s\n'%(corrMtx))
                 fout.close()
