@@ -16,7 +16,10 @@ variable:
 
 '''
 import os
+import shutil
 import csv
+import sys
+import getopt
 import platform
 import subprocess
 import time
@@ -83,7 +86,6 @@ def constructModelMtx(symbols, startDate, endDate, money, hist_period,
     n_rv, T = len(symbols), len(transDates) - 1
     allRiskyRetMtx = np.empty((n_rv, hist_period+T))
     for idx, df in enumerate(dfs):
-        print symbol, df['adjROI'].values
         allRiskyRetMtx[idx, :] = df['adjROI'].values/100.
     
     riskFreeRetVec = np.zeros(T+1)
@@ -437,8 +439,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     VaRProcess = np.zeros(T)
     
     #setup result directory
-    resultDir0 = os.path.join(ExpResultsDir, "%s_histperiod_%s_%s"%(
-                                        platform.node(), hist_period, alpha))
+    resultDir0 = os.path.join(ExpResultsDir, "%s_n%s_h%s_s%s_a%s"%(
+                                        platform.node(), n_rv, 
+                                        hist_period, n_scenario, alpha))
     if not os.path.exists(resultDir0):
         os.mkdir(resultDir0)
     
@@ -542,10 +545,10 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         depositProcess[tdx] = depositWealth
             
         #remove mdl file
-        mdlFile = os.path.join('models', 'RootNode.dat')
+        mdlFile = os.path.join(os.getcwd(), 'models', 'RootNode.dat')
         os.remove(mdlFile)
         for sdx in xrange(n_scenario):
-            mdlFile = os.path.join('models', 'Node%s.dat'%(sdx))
+            mdlFile = os.path.join(os.getcwd(), 'models', 'Node%s.dat'%(sdx))
             os.remove(mdlFile)  
         
         #move temporary file
@@ -558,8 +561,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
          
         for res in resultFiles:
             try:
-                os.rename(res, os.path.join(transDateDir, res))
-            except OSError as e:
+                tgt = os.path.join(transDateDir, res)
+                shutil.move(res, tgt)
+            except Exception as e:
                 print e
                 
         
@@ -666,26 +670,41 @@ def testScenarios():
 
 if __name__ == '__main__':
     startDate = date(2005,1, 1)
-    endDate = date(2005, 1, 10)
-    #market value top 20 (2013/12/31)
-#     symbols = ['2330', '2317', '6505', '2412', '2454',
-#                '2882', '1303', '1301', '1326', '2881',
-#                '2002', '2308', '3045', '2886', '2891',
-#                '1216', '2382', '2105', '2311', '2912']
-    symbols = ['2330', '2317', '6505', '2412', '2454',
-#                '2882', '1303', '1301', '1326', '2881',
-#                '2002', '2308', '3045', '2886', '2891',
-#                '1216', '2382', '2105', '2311', '2912'
-               ]
-  
+    endDate = date(2005, 1, 31)
     money = 1e6
-    hist_period = 20
-    n_scenario = 100
-    alpha=0.95
-    debug=False
-
-    fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=money,
+    debug = True
+    
+    #market value top 20 (2013/12/31)
+    symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881',
+                '2002', '2308', '3045', '2886', '2891',
+                '1216', '2382', '2105', '2311', '2912'
+               ]
+    
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:", 
+                            ["symbols", "histperiod", "scenario", "alpha"])
+        
+        for opt, arg in opts:
+            if opt in ('-n', '--symbols'):
+                n_symbol = int(arg)
+                symbolIDs = symbols[:n_symbol]
+                
+            if opt in ('-h', '--histperiod'):
+                hist_period = int(arg)
+            
+            if opt in ('-s', '--scenario'):
+                n_scenario = int(arg)
+                
+            if opt in ('-a', '--alpha'):
+                alpha = float(arg)
+            
+        fixedSymbolSPPortfolio(symbolIDs, startDate, endDate,  money=money,
                            hist_period=hist_period , n_scenario=n_scenario,
                            alpha=alpha, debug=debug)
-   
-   
+                
+    except getopt.GetoptError as e:  
+    # print help information and exit:
+        print e 
+        sys.exit(-1)    
+    
