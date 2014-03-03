@@ -685,7 +685,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         fout.write(summary.getvalue())
     summary.close()
     
-    print "simulation ok, %.3f secs"%(time.time()-t0)
+    print "n%s-h%s-s%s-a%s\nsimulation ok, %.3f secs"%(
+             n_rv, hist_period, n_scenario, alpha,    
+            time.time()-t0)
 
 
 
