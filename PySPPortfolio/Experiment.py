@@ -214,7 +214,7 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     while True:
         rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200'%(
                                 exe, n_scenario), shell=True)
-        
+        print "rc:", rc
         if rc != 0:
             #decrease to maxError
             rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200 -m 0.01 -c 0.01'%(
