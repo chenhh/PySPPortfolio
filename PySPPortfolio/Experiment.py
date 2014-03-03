@@ -444,28 +444,6 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     depositProcess = np.zeros(T+1)
     VaRProcess = np.zeros(T)
     
-    #setup result directory
-    resultDir0 = os.path.join(ExpResultsDir, "n%s_h%s_s%s_a%s"%(
-                                        n_rv, hist_period, n_scenario, alpha))
-    if not os.path.exists(resultDir0):
-        os.mkdir(resultDir0)
-        
-    t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
-    t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
-    rnd = time.strftime("%y%m%d%H%M%S")
-    resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
-                        fixedSymbolSPPortfolio.__name__, 
-                        t1, t2, rnd))
-    
-    while True:
-        if not os.path.exists(resultDir):
-            os.mkdir(resultDir)
-            break
-        rnd = time.strftime("%y%m%d%H%M%S")
-        resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
-                        fixedSymbolSPPortfolio.__name__, t1, t2, rnd))
-    
-    
     #每一期的ScenarioStructure都一樣，建一次即可
     t = time.time()
     probs = np.ones(n_scenario, dtype=np.float)/n_scenario
@@ -597,6 +575,27 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     finalWealth = (np.dot(allocatedWealth, (1+allRiskyRetMtx[:, -1])) + 
                    depositWealth * (1+riskFreeRetVec[-1]))
     print "final wealth %s"%(finalWealth)
+    
+    #setup result directory
+    resultDir0 = os.path.join(ExpResultsDir, "n%s_h%s_s%s_a%s"%(
+                                        n_rv, hist_period, n_scenario, alpha))
+    if not os.path.exists(resultDir0):
+        os.mkdir(resultDir0)
+        
+    t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
+    t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
+    rnd = time.strftime("%y%m%d%H%M%S")
+    resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
+                        fixedSymbolSPPortfolio.__name__, 
+                        t1, t2, rnd))
+    
+    while True:
+        if not os.path.exists(resultDir):
+            os.mkdir(resultDir)
+            break
+        rnd = time.strftime("%y%m%d%H%M%S")
+        resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
+                        fixedSymbolSPPortfolio.__name__, t1, t2, rnd))
     
     #store data in pkl
     pd_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], columns=symbols)
