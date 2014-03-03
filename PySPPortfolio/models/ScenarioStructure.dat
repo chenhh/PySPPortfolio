@@ -1,0 +1,1227 @@
+param ScenarioBasedData := False ;
+set Stages := FirstStage SecondStage ;
+set Nodes := 
+    RootNode
+    Node0
+    Node1
+    Node2
+    Node3
+    Node4
+    Node5
+    Node6
+    Node7
+    Node8
+    Node9
+    Node10
+    Node11
+    Node12
+    Node13
+    Node14
+    Node15
+    Node16
+    Node17
+    Node18
+    Node19
+    Node20
+    Node21
+    Node22
+    Node23
+    Node24
+    Node25
+    Node26
+    Node27
+    Node28
+    Node29
+    Node30
+    Node31
+    Node32
+    Node33
+    Node34
+    Node35
+    Node36
+    Node37
+    Node38
+    Node39
+    Node40
+    Node41
+    Node42
+    Node43
+    Node44
+    Node45
+    Node46
+    Node47
+    Node48
+    Node49
+    Node50
+    Node51
+    Node52
+    Node53
+    Node54
+    Node55
+    Node56
+    Node57
+    Node58
+    Node59
+    Node60
+    Node61
+    Node62
+    Node63
+    Node64
+    Node65
+    Node66
+    Node67
+    Node68
+    Node69
+    Node70
+    Node71
+    Node72
+    Node73
+    Node74
+    Node75
+    Node76
+    Node77
+    Node78
+    Node79
+    Node80
+    Node81
+    Node82
+    Node83
+    Node84
+    Node85
+    Node86
+    Node87
+    Node88
+    Node89
+    Node90
+    Node91
+    Node92
+    Node93
+    Node94
+    Node95
+    Node96
+    Node97
+    Node98
+    Node99
+    Node100
+    Node101
+    Node102
+    Node103
+    Node104
+    Node105
+    Node106
+    Node107
+    Node108
+    Node109
+    Node110
+    Node111
+    Node112
+    Node113
+    Node114
+    Node115
+    Node116
+    Node117
+    Node118
+    Node119
+    Node120
+    Node121
+    Node122
+    Node123
+    Node124
+    Node125
+    Node126
+    Node127
+    Node128
+    Node129
+    Node130
+    Node131
+    Node132
+    Node133
+    Node134
+    Node135
+    Node136
+    Node137
+    Node138
+    Node139
+    Node140
+    Node141
+    Node142
+    Node143
+    Node144
+    Node145
+    Node146
+    Node147
+    Node148
+    Node149
+    Node150
+    Node151
+    Node152
+    Node153
+    Node154
+    Node155
+    Node156
+    Node157
+    Node158
+    Node159
+    Node160
+    Node161
+    Node162
+    Node163
+    Node164
+    Node165
+    Node166
+    Node167
+    Node168
+    Node169
+    Node170
+    Node171
+    Node172
+    Node173
+    Node174
+    Node175
+    Node176
+    Node177
+    Node178
+    Node179
+    Node180
+    Node181
+    Node182
+    Node183
+    Node184
+    Node185
+    Node186
+    Node187
+    Node188
+    Node189
+    Node190
+    Node191
+    Node192
+    Node193
+    Node194
+    Node195
+    Node196
+    Node197
+    Node198
+    Node199
+;
+
+param NodeStage := 
+    RootNode FirstStage 
+    Node0 SecondStage
+    Node1 SecondStage
+    Node2 SecondStage
+    Node3 SecondStage
+    Node4 SecondStage
+    Node5 SecondStage
+    Node6 SecondStage
+    Node7 SecondStage
+    Node8 SecondStage
+    Node9 SecondStage
+    Node10 SecondStage
+    Node11 SecondStage
+    Node12 SecondStage
+    Node13 SecondStage
+    Node14 SecondStage
+    Node15 SecondStage
+    Node16 SecondStage
+    Node17 SecondStage
+    Node18 SecondStage
+    Node19 SecondStage
+    Node20 SecondStage
+    Node21 SecondStage
+    Node22 SecondStage
+    Node23 SecondStage
+    Node24 SecondStage
+    Node25 SecondStage
+    Node26 SecondStage
+    Node27 SecondStage
+    Node28 SecondStage
+    Node29 SecondStage
+    Node30 SecondStage
+    Node31 SecondStage
+    Node32 SecondStage
+    Node33 SecondStage
+    Node34 SecondStage
+    Node35 SecondStage
+    Node36 SecondStage
+    Node37 SecondStage
+    Node38 SecondStage
+    Node39 SecondStage
+    Node40 SecondStage
+    Node41 SecondStage
+    Node42 SecondStage
+    Node43 SecondStage
+    Node44 SecondStage
+    Node45 SecondStage
+    Node46 SecondStage
+    Node47 SecondStage
+    Node48 SecondStage
+    Node49 SecondStage
+    Node50 SecondStage
+    Node51 SecondStage
+    Node52 SecondStage
+    Node53 SecondStage
+    Node54 SecondStage
+    Node55 SecondStage
+    Node56 SecondStage
+    Node57 SecondStage
+    Node58 SecondStage
+    Node59 SecondStage
+    Node60 SecondStage
+    Node61 SecondStage
+    Node62 SecondStage
+    Node63 SecondStage
+    Node64 SecondStage
+    Node65 SecondStage
+    Node66 SecondStage
+    Node67 SecondStage
+    Node68 SecondStage
+    Node69 SecondStage
+    Node70 SecondStage
+    Node71 SecondStage
+    Node72 SecondStage
+    Node73 SecondStage
+    Node74 SecondStage
+    Node75 SecondStage
+    Node76 SecondStage
+    Node77 SecondStage
+    Node78 SecondStage
+    Node79 SecondStage
+    Node80 SecondStage
+    Node81 SecondStage
+    Node82 SecondStage
+    Node83 SecondStage
+    Node84 SecondStage
+    Node85 SecondStage
+    Node86 SecondStage
+    Node87 SecondStage
+    Node88 SecondStage
+    Node89 SecondStage
+    Node90 SecondStage
+    Node91 SecondStage
+    Node92 SecondStage
+    Node93 SecondStage
+    Node94 SecondStage
+    Node95 SecondStage
+    Node96 SecondStage
+    Node97 SecondStage
+    Node98 SecondStage
+    Node99 SecondStage
+    Node100 SecondStage
+    Node101 SecondStage
+    Node102 SecondStage
+    Node103 SecondStage
+    Node104 SecondStage
+    Node105 SecondStage
+    Node106 SecondStage
+    Node107 SecondStage
+    Node108 SecondStage
+    Node109 SecondStage
+    Node110 SecondStage
+    Node111 SecondStage
+    Node112 SecondStage
+    Node113 SecondStage
+    Node114 SecondStage
+    Node115 SecondStage
+    Node116 SecondStage
+    Node117 SecondStage
+    Node118 SecondStage
+    Node119 SecondStage
+    Node120 SecondStage
+    Node121 SecondStage
+    Node122 SecondStage
+    Node123 SecondStage
+    Node124 SecondStage
+    Node125 SecondStage
+    Node126 SecondStage
+    Node127 SecondStage
+    Node128 SecondStage
+    Node129 SecondStage
+    Node130 SecondStage
+    Node131 SecondStage
+    Node132 SecondStage
+    Node133 SecondStage
+    Node134 SecondStage
+    Node135 SecondStage
+    Node136 SecondStage
+    Node137 SecondStage
+    Node138 SecondStage
+    Node139 SecondStage
+    Node140 SecondStage
+    Node141 SecondStage
+    Node142 SecondStage
+    Node143 SecondStage
+    Node144 SecondStage
+    Node145 SecondStage
+    Node146 SecondStage
+    Node147 SecondStage
+    Node148 SecondStage
+    Node149 SecondStage
+    Node150 SecondStage
+    Node151 SecondStage
+    Node152 SecondStage
+    Node153 SecondStage
+    Node154 SecondStage
+    Node155 SecondStage
+    Node156 SecondStage
+    Node157 SecondStage
+    Node158 SecondStage
+    Node159 SecondStage
+    Node160 SecondStage
+    Node161 SecondStage
+    Node162 SecondStage
+    Node163 SecondStage
+    Node164 SecondStage
+    Node165 SecondStage
+    Node166 SecondStage
+    Node167 SecondStage
+    Node168 SecondStage
+    Node169 SecondStage
+    Node170 SecondStage
+    Node171 SecondStage
+    Node172 SecondStage
+    Node173 SecondStage
+    Node174 SecondStage
+    Node175 SecondStage
+    Node176 SecondStage
+    Node177 SecondStage
+    Node178 SecondStage
+    Node179 SecondStage
+    Node180 SecondStage
+    Node181 SecondStage
+    Node182 SecondStage
+    Node183 SecondStage
+    Node184 SecondStage
+    Node185 SecondStage
+    Node186 SecondStage
+    Node187 SecondStage
+    Node188 SecondStage
+    Node189 SecondStage
+    Node190 SecondStage
+    Node191 SecondStage
+    Node192 SecondStage
+    Node193 SecondStage
+    Node194 SecondStage
+    Node195 SecondStage
+    Node196 SecondStage
+    Node197 SecondStage
+    Node198 SecondStage
+    Node199 SecondStage
+;
+
+set Children[RootNode] := 
+    Node0
+    Node1
+    Node2
+    Node3
+    Node4
+    Node5
+    Node6
+    Node7
+    Node8
+    Node9
+    Node10
+    Node11
+    Node12
+    Node13
+    Node14
+    Node15
+    Node16
+    Node17
+    Node18
+    Node19
+    Node20
+    Node21
+    Node22
+    Node23
+    Node24
+    Node25
+    Node26
+    Node27
+    Node28
+    Node29
+    Node30
+    Node31
+    Node32
+    Node33
+    Node34
+    Node35
+    Node36
+    Node37
+    Node38
+    Node39
+    Node40
+    Node41
+    Node42
+    Node43
+    Node44
+    Node45
+    Node46
+    Node47
+    Node48
+    Node49
+    Node50
+    Node51
+    Node52
+    Node53
+    Node54
+    Node55
+    Node56
+    Node57
+    Node58
+    Node59
+    Node60
+    Node61
+    Node62
+    Node63
+    Node64
+    Node65
+    Node66
+    Node67
+    Node68
+    Node69
+    Node70
+    Node71
+    Node72
+    Node73
+    Node74
+    Node75
+    Node76
+    Node77
+    Node78
+    Node79
+    Node80
+    Node81
+    Node82
+    Node83
+    Node84
+    Node85
+    Node86
+    Node87
+    Node88
+    Node89
+    Node90
+    Node91
+    Node92
+    Node93
+    Node94
+    Node95
+    Node96
+    Node97
+    Node98
+    Node99
+    Node100
+    Node101
+    Node102
+    Node103
+    Node104
+    Node105
+    Node106
+    Node107
+    Node108
+    Node109
+    Node110
+    Node111
+    Node112
+    Node113
+    Node114
+    Node115
+    Node116
+    Node117
+    Node118
+    Node119
+    Node120
+    Node121
+    Node122
+    Node123
+    Node124
+    Node125
+    Node126
+    Node127
+    Node128
+    Node129
+    Node130
+    Node131
+    Node132
+    Node133
+    Node134
+    Node135
+    Node136
+    Node137
+    Node138
+    Node139
+    Node140
+    Node141
+    Node142
+    Node143
+    Node144
+    Node145
+    Node146
+    Node147
+    Node148
+    Node149
+    Node150
+    Node151
+    Node152
+    Node153
+    Node154
+    Node155
+    Node156
+    Node157
+    Node158
+    Node159
+    Node160
+    Node161
+    Node162
+    Node163
+    Node164
+    Node165
+    Node166
+    Node167
+    Node168
+    Node169
+    Node170
+    Node171
+    Node172
+    Node173
+    Node174
+    Node175
+    Node176
+    Node177
+    Node178
+    Node179
+    Node180
+    Node181
+    Node182
+    Node183
+    Node184
+    Node185
+    Node186
+    Node187
+    Node188
+    Node189
+    Node190
+    Node191
+    Node192
+    Node193
+    Node194
+    Node195
+    Node196
+    Node197
+    Node198
+    Node199
+;
+
+param ConditionalProbability := 
+    RootNode 1.0
+    Node0 0.005
+    Node1 0.005
+    Node2 0.005
+    Node3 0.005
+    Node4 0.005
+    Node5 0.005
+    Node6 0.005
+    Node7 0.005
+    Node8 0.005
+    Node9 0.005
+    Node10 0.005
+    Node11 0.005
+    Node12 0.005
+    Node13 0.005
+    Node14 0.005
+    Node15 0.005
+    Node16 0.005
+    Node17 0.005
+    Node18 0.005
+    Node19 0.005
+    Node20 0.005
+    Node21 0.005
+    Node22 0.005
+    Node23 0.005
+    Node24 0.005
+    Node25 0.005
+    Node26 0.005
+    Node27 0.005
+    Node28 0.005
+    Node29 0.005
+    Node30 0.005
+    Node31 0.005
+    Node32 0.005
+    Node33 0.005
+    Node34 0.005
+    Node35 0.005
+    Node36 0.005
+    Node37 0.005
+    Node38 0.005
+    Node39 0.005
+    Node40 0.005
+    Node41 0.005
+    Node42 0.005
+    Node43 0.005
+    Node44 0.005
+    Node45 0.005
+    Node46 0.005
+    Node47 0.005
+    Node48 0.005
+    Node49 0.005
+    Node50 0.005
+    Node51 0.005
+    Node52 0.005
+    Node53 0.005
+    Node54 0.005
+    Node55 0.005
+    Node56 0.005
+    Node57 0.005
+    Node58 0.005
+    Node59 0.005
+    Node60 0.005
+    Node61 0.005
+    Node62 0.005
+    Node63 0.005
+    Node64 0.005
+    Node65 0.005
+    Node66 0.005
+    Node67 0.005
+    Node68 0.005
+    Node69 0.005
+    Node70 0.005
+    Node71 0.005
+    Node72 0.005
+    Node73 0.005
+    Node74 0.005
+    Node75 0.005
+    Node76 0.005
+    Node77 0.005
+    Node78 0.005
+    Node79 0.005
+    Node80 0.005
+    Node81 0.005
+    Node82 0.005
+    Node83 0.005
+    Node84 0.005
+    Node85 0.005
+    Node86 0.005
+    Node87 0.005
+    Node88 0.005
+    Node89 0.005
+    Node90 0.005
+    Node91 0.005
+    Node92 0.005
+    Node93 0.005
+    Node94 0.005
+    Node95 0.005
+    Node96 0.005
+    Node97 0.005
+    Node98 0.005
+    Node99 0.005
+    Node100 0.005
+    Node101 0.005
+    Node102 0.005
+    Node103 0.005
+    Node104 0.005
+    Node105 0.005
+    Node106 0.005
+    Node107 0.005
+    Node108 0.005
+    Node109 0.005
+    Node110 0.005
+    Node111 0.005
+    Node112 0.005
+    Node113 0.005
+    Node114 0.005
+    Node115 0.005
+    Node116 0.005
+    Node117 0.005
+    Node118 0.005
+    Node119 0.005
+    Node120 0.005
+    Node121 0.005
+    Node122 0.005
+    Node123 0.005
+    Node124 0.005
+    Node125 0.005
+    Node126 0.005
+    Node127 0.005
+    Node128 0.005
+    Node129 0.005
+    Node130 0.005
+    Node131 0.005
+    Node132 0.005
+    Node133 0.005
+    Node134 0.005
+    Node135 0.005
+    Node136 0.005
+    Node137 0.005
+    Node138 0.005
+    Node139 0.005
+    Node140 0.005
+    Node141 0.005
+    Node142 0.005
+    Node143 0.005
+    Node144 0.005
+    Node145 0.005
+    Node146 0.005
+    Node147 0.005
+    Node148 0.005
+    Node149 0.005
+    Node150 0.005
+    Node151 0.005
+    Node152 0.005
+    Node153 0.005
+    Node154 0.005
+    Node155 0.005
+    Node156 0.005
+    Node157 0.005
+    Node158 0.005
+    Node159 0.005
+    Node160 0.005
+    Node161 0.005
+    Node162 0.005
+    Node163 0.005
+    Node164 0.005
+    Node165 0.005
+    Node166 0.005
+    Node167 0.005
+    Node168 0.005
+    Node169 0.005
+    Node170 0.005
+    Node171 0.005
+    Node172 0.005
+    Node173 0.005
+    Node174 0.005
+    Node175 0.005
+    Node176 0.005
+    Node177 0.005
+    Node178 0.005
+    Node179 0.005
+    Node180 0.005
+    Node181 0.005
+    Node182 0.005
+    Node183 0.005
+    Node184 0.005
+    Node185 0.005
+    Node186 0.005
+    Node187 0.005
+    Node188 0.005
+    Node189 0.005
+    Node190 0.005
+    Node191 0.005
+    Node192 0.005
+    Node193 0.005
+    Node194 0.005
+    Node195 0.005
+    Node196 0.005
+    Node197 0.005
+    Node198 0.005
+    Node199 0.005
+;
+
+set Scenarios := 
+    Scenario0
+    Scenario1
+    Scenario2
+    Scenario3
+    Scenario4
+    Scenario5
+    Scenario6
+    Scenario7
+    Scenario8
+    Scenario9
+    Scenario10
+    Scenario11
+    Scenario12
+    Scenario13
+    Scenario14
+    Scenario15
+    Scenario16
+    Scenario17
+    Scenario18
+    Scenario19
+    Scenario20
+    Scenario21
+    Scenario22
+    Scenario23
+    Scenario24
+    Scenario25
+    Scenario26
+    Scenario27
+    Scenario28
+    Scenario29
+    Scenario30
+    Scenario31
+    Scenario32
+    Scenario33
+    Scenario34
+    Scenario35
+    Scenario36
+    Scenario37
+    Scenario38
+    Scenario39
+    Scenario40
+    Scenario41
+    Scenario42
+    Scenario43
+    Scenario44
+    Scenario45
+    Scenario46
+    Scenario47
+    Scenario48
+    Scenario49
+    Scenario50
+    Scenario51
+    Scenario52
+    Scenario53
+    Scenario54
+    Scenario55
+    Scenario56
+    Scenario57
+    Scenario58
+    Scenario59
+    Scenario60
+    Scenario61
+    Scenario62
+    Scenario63
+    Scenario64
+    Scenario65
+    Scenario66
+    Scenario67
+    Scenario68
+    Scenario69
+    Scenario70
+    Scenario71
+    Scenario72
+    Scenario73
+    Scenario74
+    Scenario75
+    Scenario76
+    Scenario77
+    Scenario78
+    Scenario79
+    Scenario80
+    Scenario81
+    Scenario82
+    Scenario83
+    Scenario84
+    Scenario85
+    Scenario86
+    Scenario87
+    Scenario88
+    Scenario89
+    Scenario90
+    Scenario91
+    Scenario92
+    Scenario93
+    Scenario94
+    Scenario95
+    Scenario96
+    Scenario97
+    Scenario98
+    Scenario99
+    Scenario100
+    Scenario101
+    Scenario102
+    Scenario103
+    Scenario104
+    Scenario105
+    Scenario106
+    Scenario107
+    Scenario108
+    Scenario109
+    Scenario110
+    Scenario111
+    Scenario112
+    Scenario113
+    Scenario114
+    Scenario115
+    Scenario116
+    Scenario117
+    Scenario118
+    Scenario119
+    Scenario120
+    Scenario121
+    Scenario122
+    Scenario123
+    Scenario124
+    Scenario125
+    Scenario126
+    Scenario127
+    Scenario128
+    Scenario129
+    Scenario130
+    Scenario131
+    Scenario132
+    Scenario133
+    Scenario134
+    Scenario135
+    Scenario136
+    Scenario137
+    Scenario138
+    Scenario139
+    Scenario140
+    Scenario141
+    Scenario142
+    Scenario143
+    Scenario144
+    Scenario145
+    Scenario146
+    Scenario147
+    Scenario148
+    Scenario149
+    Scenario150
+    Scenario151
+    Scenario152
+    Scenario153
+    Scenario154
+    Scenario155
+    Scenario156
+    Scenario157
+    Scenario158
+    Scenario159
+    Scenario160
+    Scenario161
+    Scenario162
+    Scenario163
+    Scenario164
+    Scenario165
+    Scenario166
+    Scenario167
+    Scenario168
+    Scenario169
+    Scenario170
+    Scenario171
+    Scenario172
+    Scenario173
+    Scenario174
+    Scenario175
+    Scenario176
+    Scenario177
+    Scenario178
+    Scenario179
+    Scenario180
+    Scenario181
+    Scenario182
+    Scenario183
+    Scenario184
+    Scenario185
+    Scenario186
+    Scenario187
+    Scenario188
+    Scenario189
+    Scenario190
+    Scenario191
+    Scenario192
+    Scenario193
+    Scenario194
+    Scenario195
+    Scenario196
+    Scenario197
+    Scenario198
+    Scenario199
+;
+
+param ScenarioLeafNode := 
+    Scenario0 Node0
+    Scenario1 Node1
+    Scenario2 Node2
+    Scenario3 Node3
+    Scenario4 Node4
+    Scenario5 Node5
+    Scenario6 Node6
+    Scenario7 Node7
+    Scenario8 Node8
+    Scenario9 Node9
+    Scenario10 Node10
+    Scenario11 Node11
+    Scenario12 Node12
+    Scenario13 Node13
+    Scenario14 Node14
+    Scenario15 Node15
+    Scenario16 Node16
+    Scenario17 Node17
+    Scenario18 Node18
+    Scenario19 Node19
+    Scenario20 Node20
+    Scenario21 Node21
+    Scenario22 Node22
+    Scenario23 Node23
+    Scenario24 Node24
+    Scenario25 Node25
+    Scenario26 Node26
+    Scenario27 Node27
+    Scenario28 Node28
+    Scenario29 Node29
+    Scenario30 Node30
+    Scenario31 Node31
+    Scenario32 Node32
+    Scenario33 Node33
+    Scenario34 Node34
+    Scenario35 Node35
+    Scenario36 Node36
+    Scenario37 Node37
+    Scenario38 Node38
+    Scenario39 Node39
+    Scenario40 Node40
+    Scenario41 Node41
+    Scenario42 Node42
+    Scenario43 Node43
+    Scenario44 Node44
+    Scenario45 Node45
+    Scenario46 Node46
+    Scenario47 Node47
+    Scenario48 Node48
+    Scenario49 Node49
+    Scenario50 Node50
+    Scenario51 Node51
+    Scenario52 Node52
+    Scenario53 Node53
+    Scenario54 Node54
+    Scenario55 Node55
+    Scenario56 Node56
+    Scenario57 Node57
+    Scenario58 Node58
+    Scenario59 Node59
+    Scenario60 Node60
+    Scenario61 Node61
+    Scenario62 Node62
+    Scenario63 Node63
+    Scenario64 Node64
+    Scenario65 Node65
+    Scenario66 Node66
+    Scenario67 Node67
+    Scenario68 Node68
+    Scenario69 Node69
+    Scenario70 Node70
+    Scenario71 Node71
+    Scenario72 Node72
+    Scenario73 Node73
+    Scenario74 Node74
+    Scenario75 Node75
+    Scenario76 Node76
+    Scenario77 Node77
+    Scenario78 Node78
+    Scenario79 Node79
+    Scenario80 Node80
+    Scenario81 Node81
+    Scenario82 Node82
+    Scenario83 Node83
+    Scenario84 Node84
+    Scenario85 Node85
+    Scenario86 Node86
+    Scenario87 Node87
+    Scenario88 Node88
+    Scenario89 Node89
+    Scenario90 Node90
+    Scenario91 Node91
+    Scenario92 Node92
+    Scenario93 Node93
+    Scenario94 Node94
+    Scenario95 Node95
+    Scenario96 Node96
+    Scenario97 Node97
+    Scenario98 Node98
+    Scenario99 Node99
+    Scenario100 Node100
+    Scenario101 Node101
+    Scenario102 Node102
+    Scenario103 Node103
+    Scenario104 Node104
+    Scenario105 Node105
+    Scenario106 Node106
+    Scenario107 Node107
+    Scenario108 Node108
+    Scenario109 Node109
+    Scenario110 Node110
+    Scenario111 Node111
+    Scenario112 Node112
+    Scenario113 Node113
+    Scenario114 Node114
+    Scenario115 Node115
+    Scenario116 Node116
+    Scenario117 Node117
+    Scenario118 Node118
+    Scenario119 Node119
+    Scenario120 Node120
+    Scenario121 Node121
+    Scenario122 Node122
+    Scenario123 Node123
+    Scenario124 Node124
+    Scenario125 Node125
+    Scenario126 Node126
+    Scenario127 Node127
+    Scenario128 Node128
+    Scenario129 Node129
+    Scenario130 Node130
+    Scenario131 Node131
+    Scenario132 Node132
+    Scenario133 Node133
+    Scenario134 Node134
+    Scenario135 Node135
+    Scenario136 Node136
+    Scenario137 Node137
+    Scenario138 Node138
+    Scenario139 Node139
+    Scenario140 Node140
+    Scenario141 Node141
+    Scenario142 Node142
+    Scenario143 Node143
+    Scenario144 Node144
+    Scenario145 Node145
+    Scenario146 Node146
+    Scenario147 Node147
+    Scenario148 Node148
+    Scenario149 Node149
+    Scenario150 Node150
+    Scenario151 Node151
+    Scenario152 Node152
+    Scenario153 Node153
+    Scenario154 Node154
+    Scenario155 Node155
+    Scenario156 Node156
+    Scenario157 Node157
+    Scenario158 Node158
+    Scenario159 Node159
+    Scenario160 Node160
+    Scenario161 Node161
+    Scenario162 Node162
+    Scenario163 Node163
+    Scenario164 Node164
+    Scenario165 Node165
+    Scenario166 Node166
+    Scenario167 Node167
+    Scenario168 Node168
+    Scenario169 Node169
+    Scenario170 Node170
+    Scenario171 Node171
+    Scenario172 Node172
+    Scenario173 Node173
+    Scenario174 Node174
+    Scenario175 Node175
+    Scenario176 Node176
+    Scenario177 Node177
+    Scenario178 Node178
+    Scenario179 Node179
+    Scenario180 Node180
+    Scenario181 Node181
+    Scenario182 Node182
+    Scenario183 Node183
+    Scenario184 Node184
+    Scenario185 Node185
+    Scenario186 Node186
+    Scenario187 Node187
+    Scenario188 Node188
+    Scenario189 Node189
+    Scenario190 Node190
+    Scenario191 Node191
+    Scenario192 Node192
+    Scenario193 Node193
+    Scenario194 Node194
+    Scenario195 Node195
+    Scenario196 Node196
+    Scenario197 Node197
+    Scenario198 Node198
+    Scenario199 Node199
+;
+
+set StageVariables[FirstStage] :=  buys[*] sells[*] Z;
+set StageVariables[SecondStage] := riskyWealth[*] riskFreeWealth Ys;
+param StageCostVariable := FirstStage  FirstStageCost
+                           SecondStage SecondStageCost ;

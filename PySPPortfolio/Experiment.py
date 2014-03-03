@@ -204,24 +204,27 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     _constructTargetMomentFile(moments, transDate)    
     _constructTargetcorrMtxFile(corrMtx, transDate)
     
-    moments = os.path.join(FileDir, 'tg_moms.txt')
-    corrMtx = os.path.join(FileDir, 'tg_corrs.txt')
-    if not os.path.exists(moments):
-        raise ValueError('file %s does not exists'%(moments))
+    momentFile = os.path.join(FileDir, 'tg_moms.txt')
+    corrMtxFile = os.path.join(FileDir, 'tg_corrs.txt')
+    if not os.path.exists(momentFile):
+        raise ValueError('file %s does not exists'%(momentFile))
     
-    if not os.path.exists(corrMtx):
-        raise ValueError('file %s does not exists'%(corrMtx))
-    while True:
-        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200'%(
-                                exe, n_scenario), shell=True)
-        print "rc:", rc
-        if rc != 0:
-            #decrease to maxError
-            rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200 -m 0.01 -c 0.01'%(
-                exe, n_scenario), shell=True)
-        else:
+    if not os.path.exists(corrMtxFile):
+        raise ValueError('file %s does not exists'%(corrMtxFile))
+    
+    for kdx in xrange(3):
+        momErr, corrErr = 1e-3 * (10**kdx), 1e-3 * (10**kdx)
+        print "kdx: %s, momErr: %s, corrErr:%s"%(kdx, momErr, corrErr)
+        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 50 -m %s -c %s'%(
+                        exe, n_scenario, momErr, corrErr), shell=True)
+        if rc == 0:
             break
-    
+        elif kdx == 2:
+            print "transDate:", transDate
+            print "moment:", moments
+            print "corrMtx:", corrMtx
+            sys.exit(1)
+            
     probVec, scenarioMtx = parseSamplingMtx(fileName='out_scen.txt')
     if debug:
         os.remove('tg_moms.txt')
@@ -640,6 +643,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     summary = StringIO()
     summary.write('n_rv: %s\n'%(n_rv))
     summary.write('T: %s\n'%(T))
+    summary.write('scenario: %s\n'%(n_scenario))
     summary.write('alpha: %s\n'%(alpha))
     summary.write('symbols: %s \n'%(",".join(symbols)))
     summary.write('transDates (T+1): %s \n'%(
