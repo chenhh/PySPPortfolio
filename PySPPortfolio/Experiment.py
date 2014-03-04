@@ -574,8 +574,12 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                        'out_scen.txt', 'tg_corrs.txt', 'tg_moms.txt')
          
         #delete files
+        
         for data in  resultFiles:
-            os.remove(data)
+            try:
+                os.remove(data)
+            except OSError:
+                pass
          
 #         transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
 #         if not os.path.exists(transDateDir):
