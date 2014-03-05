@@ -204,23 +204,30 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     _constructTargetMomentFile(moments, transDate)    
     _constructTargetcorrMtxFile(corrMtx, transDate)
     
-    moments = os.path.join(FileDir, 'tg_moms.txt')
-    corrMtx = os.path.join(FileDir, 'tg_corrs.txt')
-    if not os.path.exists(moments):
-        raise ValueError('file %s does not exists'%(moments))
+    momentFile = os.path.join(FileDir, 'tg_moms.txt')
+    corrMtxFile = os.path.join(FileDir, 'tg_corrs.txt')
+    if not os.path.exists(momentFile):
+        raise ValueError('file %s does not exists'%(momentFile))
     
-    if not os.path.exists(corrMtx):
-        raise ValueError('file %s does not exists'%(corrMtx))
-    while True:
-        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200'%(
-                                exe, n_scenario), shell=True)
-        print "rc:", rc
-        if rc != 0:
-            #decrease to maxError
-            rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 200 -m 0.01 -c 0.01'%(
-                exe, n_scenario), shell=True)
-        else:
+    if not os.path.exists(corrMtxFile):
+        raise ValueError('file %s does not exists'%(corrMtxFile))
+    
+    #deal with convergence problem
+    for kdx in xrange(3):
+        momErr, corrErr = 1e-3 * (10**kdx), 1e-3 * (10**kdx)
+        print "kdx: %s, momErr: %s, corrErr:%s"%(kdx, momErr, corrErr)
+        rc = subprocess.call('./%s %s -f 1 -l 0 -i 50 -t 50 -m %s -c %s'%(
+                        exe, n_scenario, momErr, corrErr), shell=True)
+        if rc == 0:
             break
+        elif kdx == 2:
+            print "transDate:", transDate
+            print "moment:", moments
+            print "corrMtx:", corrMtx
+          
+            return None, None
+            
+    #Problem with the target correlation matrix - Cholesky failed!
     
     probVec, scenarioMtx = parseSamplingMtx(fileName='out_scen.txt')
     if debug:
@@ -454,6 +461,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     env = os.environ.copy()
     env['PATH'] += ':/opt/ibm/ILOG/CPLEX_Studio126/cplex/bin/x86-64_linux'
     
+    genScenErrDates = []
     for tdx in xrange(T):
         tloop = time.time()
         transDate = pd.to_datetime(transDates[tdx])
@@ -466,7 +474,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         #算出4 moments與correlation matrix
         t = time.time()
         subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
-        print "%s - %s to estimate moments"%(transDate, fullTransDates[tdx:(hist_period+tdx)])
+#         print "%s - %s to estimate moments"%(transDate, fullTransDates[tdx:(hist_period+tdx)])
         moments = np.empty((n_rv, 4))
         moments[:, 0] = subRiskyRetMtx.mean(axis=1)
         moments[:, 1] = subRiskyRetMtx.std(axis=1)
@@ -479,6 +487,24 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         t = time.time()
         print "start generating scenarios"
         probVec, scenarioMtx = generatingScenarios(moments, corrMtx, n_scenario, transDate)
+        if probVec is None and scenarioMtx is None:
+            paramtxt = 'err_%s_n%s_h%s_s%s_a%s.txt'%(
+                        transDate, n_rv, hist_period, n_scenario, alpha)
+            errorFile = os.path.join(ExpResultsDir, paramtxt)
+            with open(errorFile, 'a') as fout:
+                fout.write('startDate:%s, endDate:%s\n'%(startDate, endDate))
+                fout.write('transDate:%s\n'%(transDate))
+                fout.write('n%s_h%s_s%s_a%s\n'%(n_rv, hist_period, n_scenario, alpha))
+                fout.write('moment:\n%s\n'%(moments))
+                fout.write('corrMtx:\n%s\n'%(corrMtx))
+                fout.close()
+            
+            genScenErrDates.append(transDate)
+            #log and goto next period
+            wealthProcess[:, tdx] = allocatedWealth
+            depositProcess[tdx] = depositWealth
+            continue
+        
         print "%s - probVec size n_rv: %s"%(transDate, probVec.shape)
         print "%s - scenarioMtx size: (n_rv * n_scenario): %s"%(transDate, scenarioMtx.shape)
         print "%s - generation scenario, %.3f secs"%(transDate, time.time()-t)
@@ -548,8 +574,12 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                        'out_scen.txt', 'tg_corrs.txt', 'tg_moms.txt')
          
         #delete files
+        
         for data in  resultFiles:
-            os.remove(data)
+            try:
+                os.remove(data)
+            except OSError:
+                pass
          
 #         transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
 #         if not os.path.exists(transDateDir):
@@ -563,7 +593,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 
         
         print '*'*75
-        print "transDate %s PySP OK, current wealth %s"%(
+        print "%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]\ntransDate %s PySP OK, current wealth %s"%(
+                startDate, endDate, n_rv, hist_period, n_scenario, alpha, len(genScenErrDates),    
                 transDate,  allocatedWealth.sum() + depositWealth)
         print "%.3f secs"%(time.time()-tloop)
         print '*'*75
@@ -640,6 +671,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     summary = StringIO()
     summary.write('n_rv: %s\n'%(n_rv))
     summary.write('T: %s\n'%(T))
+    summary.write('scenario: %s\n'%(n_scenario))
     summary.write('alpha: %s\n'%(alpha))
     summary.write('symbols: %s \n'%(",".join(symbols)))
     summary.write('transDates (T+1): %s \n'%(
@@ -647,13 +679,21 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                               for t in transDates])))
     summary.write('hist_period: %s\n'%(hist_period))
     summary.write('final wealth:%s \n'%(finalWealth))
+    summary.write('generate scenario error count:%s\n'%(len(genScenErrDates)))
+    summary.write('generate scenario error dates:\n%s\n'%(
+                 ",".join([t.strftime("%Y%m%d") 
+                for t in genScenErrDates])))
+    summary.write('machine: %s, simulation time:%.3f secs \n'%(
+                platform.node(), time.time()-t0))
     
     fileName = os.path.join(resultDir, 'summary.txt')
     with open (fileName, 'w') as fout:
         fout.write(summary.getvalue())
     summary.close()
     
-    print "simulation ok, %.3f secs"%(time.time()-t0)
+    print "%s-%s n%s-h%s-s%s-a%s\nsimulation ok, %.3f secs"%(
+             startDate, endDate, n_rv, hist_period, n_scenario, alpha,    
+            time.time()-t0)
 
 
 
@@ -697,9 +737,9 @@ if __name__ == '__main__':
                ]
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:y:", 
+        opts, args = getopt.getopt(sys.argv[1:], "n:h:s:a:fy:", 
                             ["symbols", "histperiod", "scenario", 
-                             "alpha", "year"])
+                             "alpha", "full", "year" ])
         
         for opt, arg in opts:
             if opt in ('-n', '--symbols'):
@@ -715,15 +755,20 @@ if __name__ == '__main__':
             if opt in ('-a', '--alpha'):
                 alpha = float(arg)
             
-            if opt in ('-y', '--year'):
+            if opt in ('-f', '--full'):
+                startDate = date(2005, 1, 1)
+                endDate = date(2013, 12, 31)
+                
+            elif opt in ('-y', '--year'):
                 year = int(arg)
                 startDate = date(year, 1, 1)
                 endDate = date(year, 12, 31)
-            
+        
+        print startDate, endDate
         fixedSymbolSPPortfolio(symbolIDs, startDate, endDate,  money=money,
                            hist_period=hist_period , n_scenario=n_scenario,
                            alpha=alpha, debug=debug)
-                
+      
     except getopt.GetoptError as e:  
     # print help information and exit:
         print e 
