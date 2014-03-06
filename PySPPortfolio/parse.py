@@ -208,10 +208,14 @@ def runSPATest():
                         roi = float(w)/tWealth[idx] - 1.
                         rois.append(roi)
                     #construct diff obj
+                    print paramDir,
                     rois = np.asarray(rois)
-                    diffObj = SPATest.DiffObject2(rois)
-                    pval = SPATest.RCTest(diffObj, n_samplings=5000)
-     
+                    benchmarkSignals = np.zeros(len(rois)+1)
+                    diffObj = SPATest.TradingRuleDiffObject(rois, benchmarkSignals, 0)
+                    diffObj.setRuleSignal(np.ones(len(rois)+1))
+                    pval = SPATest.RCTest(diffObj, n_samplings=1000)
+                    print "P-value:", pval
+                    
 if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
