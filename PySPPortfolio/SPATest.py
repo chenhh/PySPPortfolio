@@ -144,6 +144,16 @@ def sampleAverage(diffMtx, samplingMtx, avgType="RC", devDiffColMtx=None):
     #n_models * 1
     return  avgSamplingColMtx
 
+class DiffObject2(object):
+    def __init__(self, dataROI):
+        self.dataROI = dataROI
+        self.n_periods = dataROI.size
+        self.n_rules = 1
+                       
+        self.ruleSignalMatrix = None    #n_rules * (n_periods + 1)
+       
+    def getROIDiffMatrix(self):
+        return np.asarray(self.dataROI)
 
 class TradingRuleDiffObject(object):
     '''different matrix of loss function for predictive ability test'''
