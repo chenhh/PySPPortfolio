@@ -8,6 +8,7 @@ import os
 import re
 import glob
 import platform
+import time
 from cStringIO import StringIO
 import numpy as np
 from datetime import date
@@ -143,31 +144,57 @@ def parseResults():
 def benchmark():
     currDir = os.getcwd()
     symbols = ['2330', '2317', '6505', '2412', '2454',
-#                 '2882', '1303', '1301', '1326', '2881'
+                '2882', '1303', '1301', '1326', '2881'
                ]
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     
     cumROIs = []
-    for src in symbols:
+    for sym in symbols:
         wealth = 1e6
-        fin = os.path.join(currDir, 'pkl', 'BasicFeatures', '%s.pkl'%(src))
+        fin = os.path.join(currDir, 'pkl', 'BasicFeatures', '%s.pkl'%(sym))
         df = pd.read_pickle(fin)
         data = df[startDate: endDate]
-#         print src, data.index[0], data.index[-1]
+#         print sym, data.index[0], data.index[-1]
         rois = data['adjROI']
 #         print data.index[0], data.index[-1]
         for roi in rois[:-1]:
             roi = roi/100.0
             wealth *= (1+roi)
-        cumROI = (wealth/1e6-1) * 100
-        ar = ((np.power((1+cumROI/100), 1./9) -1 ))*100
+        cumROI = (wealth/1e6-1)
+        ar = ((np.power((1+cumROI), 1./9) -1 ))
         cumROIs.append(cumROI)
-        print "buy \& hold, %s, %s, %.2f, %.2f \\\ \hline"%(src, src, cumROI, ar)
-#     mu = np.mean(cumROIs)
-    mu = 188.84
-    ar_mu = ((np.power((1+mu/100), 1./9) -1 ))*100
-    print "avg: %.2f, %.2f \\\ \hline"%( mu, ar_mu)
+        print "buy \& hold, %s, %s, %.2f, %.2f \\\ \hline"%(
+                    sym, sym, cumROI*100, ar*100)
+    
+    mu = np.mean(cumROIs)
+    ar_mu = ((np.power((1+mu), 1./9) -1 ))
+    print "avg: %.2f, %.2f \\\ \hline"%( mu*100, ar_mu*100)
+    
 
+def benchmarkProcess():
+    currDir = os.getcwd()
+    symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881'
+               ]
+    startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
+    
+    ROIMtx = []
+    for sym in symbols:
+        fin = os.path.join(currDir, 'pkl', 'BasicFeatures', '%s.pkl'%(sym))
+        df = pd.read_pickle(fin)
+        data = df[startDate: endDate]
+#         print sym, data.index[0], data.index[-1]
+        rois = data['adjROI']/100.
+        ROIMtx.append(rois[:-1])
+    ROIMtx = np.asarray(ROIMtx)
+    print ROIMtx.shape
+    
+    wealthProcess = np.zeros(ROIMtx.shape)
+    for cdx in xrange(ROIMtx.shape[1]):
+        pass
+    
+    
+    
 def runSPATest():
     currDir = os.getcwd()
     symbols = ['2330', '2317', '6505', '2412', '2454',
@@ -177,8 +204,8 @@ def runSPATest():
     n_rvs = (5, 10)
     hist_periods = (20, 30 ,40 ,50 , 60 ,70 ,80)
     n_scenario = 200
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", "0.8", 
-              "0.85", "0.9", "0.95")
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
+              "0.8", "0.85", "0.9", "0.95")
     
     for n_rv in n_rvs:
         sio = StringIO()
@@ -187,7 +214,8 @@ def runSPATest():
         fullResFile = os.path.join(ExpResultsDir, 'n%s_full_SPA_result.csv'%(n_rv))
         
         for alpha in alphas:
-            latex.write('%s & '%(alpha))
+            al = float(alpha)
+            latex.write('%.2f & '%(al))
             for hdx, hist_period in enumerate(hist_periods):
                 paramDir = os.path.join(ExpResultsDir, 
                             "n%s_h%s_s%s_a%s"%(n_rv, hist_period, 
@@ -196,6 +224,7 @@ def runSPATest():
                 expDirs = glob.glob(os.path.join(paramDir, 
                                 "fixedSymbolSPPortfolio_20050103-20131231_*"))
                 for rdx, expDir in enumerate(expDirs):
+                    t = time.time()
                     runTime = expDir[expDir.rfind('_')+1:]
                     
                     wealthPkl = os.path.join(expDir, 'wealthProcess.pkl')
@@ -213,18 +242,68 @@ def runSPATest():
                         roi = float(w)/tWealth[idx] - 1.
                         rois.append(roi)
                     #construct diff obj
-                    print paramDir,
                     rois = np.asarray(rois)
                     benchmarkSignals = np.zeros(len(rois)+1)
                     diffObj = SPATest.TradingRuleDiffObject(rois, benchmarkSignals, 0)
                     diffObj.setRuleSignal(np.ones(len(rois)+1))
                     pval = SPATest.RCTest(diffObj, n_samplings=1000)
-                    print "P-value:", pval
+                    print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
+
+def runCompareSPATest():
+    startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
+    n_rvs = (5, 10)
+    hist_periods = (20, 30 ,40 ,50 , 60 ,70 ,80)
+    n_scenario = 200
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
+              "0.8", "0.85", "0.9", "0.95")
+    
+    for n_rv in n_rvs:
+        sio = StringIO()
+        latex = StringIO()
+        sio.write('run, n_rv, hist_period, alpha, finalwealth, ROI(%), scen err, compareSPAtest\n')
+        fullResFile = os.path.join(ExpResultsDir, 'n%s_compare_SPA_result.csv'%(n_rv))
+        
+        for alpha in alphas:
+            al = float(alpha)
+            latex.write('%.2f & '%(al))
+            for hdx, hist_period in enumerate(hist_periods):
+                paramDir = os.path.join(ExpResultsDir, 
+                            "n%s_h%s_s%s_a%s"%(n_rv, hist_period, 
+                                               n_scenario, alpha))
+                
+                expDirs = glob.glob(os.path.join(paramDir, 
+                                "fixedSymbolSPPortfolio_20050103-20131231_*"))
+                for rdx, expDir in enumerate(expDirs):
+                    t = time.time()
+                    runTime = expDir[expDir.rfind('_')+1:]
+                    
+                    wealthPkl = os.path.join(expDir, 'wealthProcess.pkl')
+                    depositPkl = os.path.join(expDir, 'depositProcess.pkl')
+                    if not os.path.exists(wealthPkl) or not os.path.exists(depositPkl):
+                        continue
+                    wealth =  pd.read_pickle(wealthPkl)
+                    deposit = pd.read_pickle(depositPkl)
+                    #combine
+                    wealth['deposit'] = deposit
+                    tWealth = wealth.sum(axis=1)
+#                     print tWealth
+                    rois = [0,]
+                    for idx, w in enumerate(tWealth[1:]):
+                        roi = float(w)/tWealth[idx] - 1.
+                        rois.append(roi)
+                    #construct diff obj
+                    rois = np.asarray(rois)
+                    benchmarkSignals = np.zeros(len(rois)+1)
+                    diffObj = SPATest.TradingRuleDiffObject(rois, benchmarkSignals, 0)
+                    diffObj.setRuleSignal(np.ones(len(rois)+1))
+                    pval = SPATest.RCTest(diffObj, n_samplings=1000)
+                    print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
                     
 if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
 #     readPkl()
-    parseResults()
+#     parseResults()
 #     benchmark()
+    benchmarkProcess()
 #     runSPATest()

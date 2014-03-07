@@ -723,6 +723,32 @@ def testScenarios():
     print "s_corrMtx:\n", s_corrMtx
    
     
+def buyHoldPortfolio():
+    currDir = os.getcwd()
+    symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881'
+               ]
+    startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
+    
+    cumROIs = []
+    for src in symbols:
+        wealth = 1e6
+        fin = os.path.join(currDir, 'pkl', 'BasicFeatures', '%s.pkl'%(src))
+        df = pd.read_pickle(fin)
+        data = df[startDate: endDate]
+        rois = data['adjROI']
+        for roi in rois[:-1]:
+            roi = roi/100.0
+            wealth *= (1+roi)
+        cumROI = (wealth/1e6-1)
+        ar = ((np.power((1+cumROI), 1./9) -1 ))
+        cumROIs.append(cumROI)
+        print "buy \& hold, %s, %s, %.2f, %.2f \\\ \hline"%(src, src, cumROI*100, ar*100)
+#     mu = np.mean(cumROIs)
+    mu = 188.84
+    ar_mu = ((np.power((1+mu/100), 1./9) -1 ))*100
+    print "avg: %.2f, %.2f \\\ \hline"%( mu, ar_mu)
+
 
 if __name__ == '__main__':
    
