@@ -322,7 +322,41 @@ def runBenchmarkSPATest():
                     pval = SPATest.RCTest(diffobj, n_samplings=1000)
                     print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
 
+def plotWealthProcess():
+    startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
+    n_rvs = (5, 10)
+    hist_periods = (20, 30 ,40 ,50 , 60 ,70 ,80)
+    n_scenario = 200
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
+              "0.8", "0.85", "0.9", "0.95")
+    
+    for n_rv in n_rvs:
+        bh_wealthProcess = pd.read_pickle(os.path.join(ExpResultsDir, 
+                                "buyhold_wealthprocess_n%s.pkl"%(n_rv)))
+        
+        for alpha in alphas:
+            for hdx, hist_period in enumerate(hist_periods):
+                paramDir = os.path.join(ExpResultsDir, 
+                            "n%s_h%s_s%s_a%s"%(n_rv, hist_period, 
+                                               n_scenario, alpha))
+                
+                expDirs = glob.glob(os.path.join(paramDir, 
+                                "fixedSymbolSPPortfolio_20050103-20131231_*"))
+                for rdx, expDir in enumerate(expDirs):
+                    t = time.time()
+                    runTime = expDir[expDir.rfind('_')+1:]
                     
+                    wealthPkl = os.path.join(expDir, 'wealthProcess.pkl')
+                    depositPkl = os.path.join(expDir, 'depositProcess.pkl')
+                    if not os.path.exists(wealthPkl) or not os.path.exists(depositPkl):
+                        continue
+                    wealth =  pd.read_pickle(wealthPkl)
+                    deposit = pd.read_pickle(depositPkl)
+                    #combine
+                    wealth['deposit'] = deposit
+                    tWealth = wealth.sum(axis=1)
+
+         
 if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
