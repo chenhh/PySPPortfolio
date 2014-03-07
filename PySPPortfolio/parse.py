@@ -177,21 +177,34 @@ def benchmarkProcess():
                 '2882', '1303', '1301', '1326', '2881'
                ]
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
-    
+    wealth = 1e6
     ROIMtx = []
+    transDates = None
     for sym in symbols:
         fin = os.path.join(currDir, 'pkl', 'BasicFeatures', '%s.pkl'%(sym))
         df = pd.read_pickle(fin)
         data = df[startDate: endDate]
+        transDates = data.index
 #         print sym, data.index[0], data.index[-1]
         rois = data['adjROI']/100.
         ROIMtx.append(rois[:-1])
     ROIMtx = np.asarray(ROIMtx)
-    print ROIMtx.shape
+#     print ROIMtx
     
+    allocated = np.ones(len(symbols)) * wealth/len(symbols)
     wealthProcess = np.zeros(ROIMtx.shape)
-    for cdx in xrange(ROIMtx.shape[1]):
-        pass
+    for col in xrange(ROIMtx.shape[1]):
+        if col == 0:
+            wealthProcess[:, col] =  allocated * (1+ROIMtx[:, col])
+        else:
+            wealthProcess[:, col] = wealthProcess[:, col-1]* (1+ROIMtx[:, col])
+    portfolioWealthProcess = wealthProcess.sum(axis=0)
+    print portfolioWealthProcess
+    
+    print transDates.shape
+    df = pd.Series(portfolioWealthProcess, index=transDates[:-1])
+    print df
+    df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
     
     
     
@@ -249,7 +262,7 @@ def runSPATest():
                     pval = SPATest.RCTest(diffObj, n_samplings=1000)
                     print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
 
-def runCompareSPATest():
+def runBenchmarkSPATest():
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     n_rvs = (5, 10)
     hist_periods = (20, 30 ,40 ,50 , 60 ,70 ,80)
@@ -258,6 +271,14 @@ def runCompareSPATest():
               "0.8", "0.85", "0.9", "0.95")
     
     for n_rv in n_rvs:
+        bh_wealthProcess = pd.read_pickle(os.path.join(ExpResultsDir, 
+                                "buyhold_wealthprocess_n%s.pkl"%(n_rv)))
+        bh_ROIs = [0,]
+        for idx, w in enumerate(bh_wealthProcess[1:]):
+            roi = float(w)/bh_wealthProcess[idx] - 1.
+            bh_ROIs.append(roi)
+        bh_ROIs = np.asarray(bh_ROIs)
+        
         sio = StringIO()
         latex = StringIO()
         sio.write('run, n_rv, hist_period, alpha, finalwealth, ROI(%), scen err, compareSPAtest\n')
@@ -287,17 +308,20 @@ def runCompareSPATest():
                     wealth['deposit'] = deposit
                     tWealth = wealth.sum(axis=1)
 #                     print tWealth
-                    rois = [0,]
+                    rois = []
                     for idx, w in enumerate(tWealth[1:]):
                         roi = float(w)/tWealth[idx] - 1.
                         rois.append(roi)
                     #construct diff obj
                     rois = np.asarray(rois)
-                    benchmarkSignals = np.zeros(len(rois)+1)
-                    diffObj = SPATest.TradingRuleDiffObject(rois, benchmarkSignals, 0)
-                    diffObj.setRuleSignal(np.ones(len(rois)+1))
-                    pval = SPATest.RCTest(diffObj, n_samplings=1000)
+                    print rois.shape
+                    print bh_ROIs.shape
+
+                    diffobj = SPATest. ROIDiffObject(bh_ROIs)
+                    diffobj.setROI(rois)
+                    pval = SPATest.RCTest(diffobj, n_samplings=1000)
                     print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
+
                     
 if __name__ == '__main__':
 #     parseCSV2DataFrame()
@@ -305,5 +329,6 @@ if __name__ == '__main__':
 #     readPkl()
 #     parseResults()
 #     benchmark()
-    benchmarkProcess()
+#     benchmarkProcess()
 #     runSPATest()
+    runBenchmarkSPATest()

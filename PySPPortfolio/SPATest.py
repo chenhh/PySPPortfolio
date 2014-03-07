@@ -152,12 +152,12 @@ class ROIDiffObject(object):
         self.n_rules = 0
         self.ROIMtx = None
 
-    def setROI(self,ROIs):
+    def setROI(self, ROIs):
         ''''''
         assert len(ROIs) == self.n_periods
        
         if self.ROIMtx is None:  
-            self.ROIMtx = np.asarray(ROIs)
+            self.ROIMtx = np.asmatrix(ROIs)
         else: 
             self.ROIMtx = np.vstack((self.ROIMtx, ROIs))
         self.n_rules += 1
