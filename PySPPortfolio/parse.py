@@ -73,9 +73,13 @@ def readPkl():
 
 def parseResults():
     n_rvs = (5, 10)
-    hist_periods = (10, 20, 30 ,40 ,50 , 60 ,70 ,80)
+    hist_periods = (
+#                     10, 20, 30 ,40 ,
+                    50 , 60 ,70 ,80
+                    )
     n_scenario = 200
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     
     pat = re.compile(r'final wealth:([\d.]+)')
     errPat = re.compile(r'generate scenario error count:(\d+)')
@@ -86,7 +90,8 @@ def parseResults():
         fullResFile = os.path.join(ExpResultsDir, 'n%s_full_result.csv'%(n_rv))
         
         for alpha in alphas:
-            latex.write('%s & '%(alpha))
+            al = float(alpha)
+            latex.write('%.2f & '%(al))
             for hdx, hist_period in enumerate(hist_periods):
                 paramDir = os.path.join(ExpResultsDir, 
                             "n%s_h%s_s%s_a%s"%(n_rv, hist_period, 
@@ -220,6 +225,6 @@ if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
 #     readPkl()
-#     parseResults()
+    parseResults()
 #     benchmark()
-    runSPATest()
+#     runSPATest()
