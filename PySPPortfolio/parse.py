@@ -75,7 +75,7 @@ def readPkl():
 def parseResults():
     n_rvs = (5, 10)
     hist_periods = (
-#                     10, 20, 30 ,40 ,
+#                     10, 20, 30 ,40,
                     50 , 60 ,70 ,80
                     )
     n_scenario = 200
@@ -84,15 +84,24 @@ def parseResults():
     
     pat = re.compile(r'final wealth:([\d.]+)')
     errPat = re.compile(r'generate scenario error count:(\d+)')
+    
     for n_rv in n_rvs:
         sio = StringIO()
         latex = StringIO()
+        
+        avgIO = StringIO()
+        avgWealthLatex = StringIO()
+        avgROILatex = StringIO()
         sio.write('run, _n_rv, hist_period, alpha, rundime, finalwealth, ROI(%), scen err\n')
+#         avgIO.write('run, _n_rv, hist_period, alpha, rundime, (avg/std)wealth, (avg/std)ROI(%), scen err\n')
         fullResFile = os.path.join(ExpResultsDir, 'n%s_full_result.csv'%(n_rv))
+        avgResFile =  os.path.join(ExpResultsDir, 'avg_full_result.csv')
         
         for alpha in alphas:
             al = float(alpha)
             latex.write('%.2f & '%(al))
+            avgWealthLatex.write('%.2f & '%(al))
+            avgROILatex.write('%.2f & '%(al))
             for hdx, hist_period in enumerate(hist_periods):
                 paramDir = os.path.join(ExpResultsDir, 
                             "n%s_h%s_s%s_a%s"%(n_rv, hist_period, 
@@ -100,6 +109,7 @@ def parseResults():
                 
                 expDirs = glob.glob(os.path.join(paramDir, 
                                 "fixedSymbolSPPortfolio_20050103-20131231_*"))
+                avgWealth, avgROI = [], []
                 for rdx, expDir in enumerate(expDirs):
                     runTime = expDir[expDir.rfind('_')+1:]
                     
@@ -119,6 +129,8 @@ def parseResults():
                     if merr:
                         err = int(merr.group(1))
                     roi = (wealth/1e6 -1)*100
+                    
+                    
                     #只取第一輪的資料
                     if rdx == 0 and hdx != len(hist_periods)-1:
                         if err <= 30:
@@ -130,12 +142,32 @@ def parseResults():
                             latex.write('%.2f \\\ \hline\n'%(roi))
                         else:
                             latex.write('- \\\ \hline \n ')
-                        
-#                     print n_rv, hist_period, alpha, runTime, wealth, roi, err 
+        
                     sio.write('%s,%s,%s,%s,%s,%s,%s,%s\n'%(rdx+1, n_rv, hist_period, 
                             alpha,runTime, wealth, roi, err))
-      
+                                  
+                    if rdx < 3:
+                        avgWealth.append(wealth)
+                        avgROI.append(roi)
+                
+                assert len(avgWealth) == 3 and len(avgROI) == 3
+                avgW, stdW = np.mean(avgWealth), np.std(avgWealth)
+                avgR, stdR = np.mean(avgROI), np.std(avgROI)
+                if hdx != len(hist_periods) -1:
+                    avgWealthLatex.write('%.2f(%.2f) & '%(avgW, stdW))
+                    avgROILatex.write('%.2f(%.2f) & '%(avgR, stdR))
+                else:
+                    avgWealthLatex.write('%.2f(%.2f) \\\ \hline \n'%(avgW, stdW))
+                    avgROILatex.write('%.2f(%.2f) \\\ \hline \n'%(avgR, stdR))
+        print "orig latex:"
         print latex.getvalue()
+        
+        print "avg wealth(3), n%s:"%(n_rv)
+        print avgWealthLatex.getvalue()
+        
+        print "avgROI(3), n%s:"%(n_rv)
+        print avgROILatex.getvalue()
+        
         with open(fullResFile, 'w') as fout:
             fout.write(sio.getvalue())
         sio.close()             
@@ -215,20 +247,28 @@ def runSPATest():
                ]
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     n_rvs = (5, 10)
-    hist_periods = (20, 30 ,40 ,50 , 60 ,70 ,80)
+    hist_periods = (
+#                     10, 20, 30 , 40 ,
+                    50 , 60 ,70 ,80
+                    )
     n_scenario = 200
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
               "0.8", "0.85", "0.9", "0.95")
     
+    
     for n_rv in n_rvs:
         sio = StringIO()
         latex = StringIO()
+        avgLatex= StringIO()
         sio.write('run, n_rv, hist_period, alpha, finalwealth, ROI(%), scen err, SPAtest\n')
         fullResFile = os.path.join(ExpResultsDir, 'n%s_full_SPA_result.csv'%(n_rv))
+        
         
         for alpha in alphas:
             al = float(alpha)
             latex.write('%.2f & '%(al))
+            avgLatex.write('%.2f & '%(al))
+            
             for hdx, hist_period in enumerate(hist_periods):
                 paramDir = os.path.join(ExpResultsDir, 
                             "n%s_h%s_s%s_a%s"%(n_rv, hist_period, 
@@ -236,7 +276,11 @@ def runSPATest():
                 
                 expDirs = glob.glob(os.path.join(paramDir, 
                                 "fixedSymbolSPPortfolio_20050103-20131231_*"))
+                avgPvalues= []
                 for rdx, expDir in enumerate(expDirs):
+                    if rdx >=3:
+                        break
+                    
                     t = time.time()
                     runTime = expDir[expDir.rfind('_')+1:]
                     
@@ -261,7 +305,31 @@ def runSPATest():
                     diffObj.setRuleSignal(np.ones(len(rois)+1))
                     pval = SPATest.RCTest(diffObj, n_samplings=1000)
                     print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
-
+                        
+                    avgPvalues.append(pval)
+                    
+                assert len(avgPvalues) == 3
+                avg, std = np.mean(avgPvalues), np.std(avgPvalues)
+                if avg <=0.01:
+                    avg = "***%.4f"%(avg)
+                elif avg <=0.05:
+                    avg = "**%.4f"%(avg)
+                elif avg <= 0.1:
+                    avg = "*%.4f"%(avg)
+                else:
+                    avg = "%.4f"%(avg)
+                    
+                std = "%.4f"%(std)
+                print "%s, Pval avg: %s, std: %s"%(paramDir, avg, std)
+                if hdx != len(hist_periods) - 1:
+                    avgLatex.write('%s (%s) & '%(avg, std))
+                else:
+                    avgLatex.write('%s (%s) \\\ \hline\n'%(avg, std))
+        
+        print "avgPvalue(3), n%s:"%(n_rv)
+        print avgLatex.getvalue()
+        
+                
 def runBenchmarkSPATest():
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     n_rvs = (5, 10)
@@ -356,7 +424,8 @@ def plotWealthProcess():
                     wealth['deposit'] = deposit
                     tWealth = wealth.sum(axis=1)
 
-         
+
+    
 if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
@@ -364,5 +433,5 @@ if __name__ == '__main__':
 #     parseResults()
 #     benchmark()
 #     benchmarkProcess()
-#     runSPATest()
-    runBenchmarkSPATest()
+    runSPATest()
+#     runBenchmarkSPATest()
