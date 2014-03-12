@@ -75,7 +75,11 @@ def readPkl():
 def parseResults():
     n_rvs = (5, 10)
     hist_periods = (
+<<<<<<< HEAD
+                    10, 20, 30 ,40 ,
+=======
 #                     10, 20, 30 ,40,
+>>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
                     50 , 60 ,70 ,80
                     )
     n_scenario = 200
@@ -114,8 +118,8 @@ def parseResults():
                     runTime = expDir[expDir.rfind('_')+1:]
                     
                     resFile = os.path.join(expDir, 'summary.txt')
-                    if not os.path.exists(resFile):
-                        continue
+#                     if not os.path.exists(resFile):
+#                         continue
                     fin = open(resFile)
                     data = fin.read()        
                     
@@ -432,8 +436,17 @@ if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
 #     readPkl()
-#     parseResults()
+    parseResults()
 #     benchmark()
+<<<<<<< HEAD
     benchmarkProcess()
 #     runSPATest()
+=======
+#     benchmarkProcess()
+<<<<<<< HEAD
+#     runSPATest()
+=======
+    runSPATest()
+>>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
+>>>>>>> f43e3623746ec29e4f7a02f4a8f0499874f52bb7
 #     runBenchmarkSPATest()
