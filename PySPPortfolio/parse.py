@@ -205,8 +205,9 @@ def benchmark():
 
 def benchmarkProcess():
     currDir = os.getcwd()
-    symbols = ['2330', '2317', '6505', '2412', '2454',
-                '2882', '1303', '1301', '1326', '2881'
+    symbols = [
+               '2330', '2317', '6505', '2412', '2454',
+#                '2882', '1303', '1301', '1326', '2881'
                ]
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     wealth = 1e6
@@ -236,7 +237,8 @@ def benchmarkProcess():
     print transDates.shape
     df = pd.Series(portfolioWealthProcess, index=transDates[:-1])
     print df
-    df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
+    df.to_csv(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.csv"%(len(symbols))))
+#     df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
     
     
     
@@ -432,6 +434,6 @@ if __name__ == '__main__':
 #     readPkl()
 #     parseResults()
 #     benchmark()
-#     benchmarkProcess()
-    runSPATest()
+    benchmarkProcess()
+#     runSPATest()
 #     runBenchmarkSPATest()
