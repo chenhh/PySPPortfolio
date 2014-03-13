@@ -252,8 +252,11 @@ def runSPATest():
                     50 , 60 ,70 ,80
                     )
     n_scenario = 200
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
-              "0.8", "0.85", "0.9", "0.95")
+    alphas = (
+#	"0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
+#        "0.8", "0.85", "0.9", "0.95",
+	"0.99",
+	)
     
     
     for n_rv in n_rvs:
@@ -303,7 +306,7 @@ def runSPATest():
                     benchmarkSignals = np.zeros(len(rois)+1)
                     diffObj = SPATest.TradingRuleDiffObject(rois, benchmarkSignals, 0)
                     diffObj.setRuleSignal(np.ones(len(rois)+1))
-                    pval = SPATest.RCTest(diffObj, n_samplings=1000)
+                    pval = SPATest.RCTest(diffObj, n_samplings=5000)
                     print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
                         
                     avgPvalues.append(pval)
