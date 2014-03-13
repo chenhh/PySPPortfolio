@@ -75,7 +75,8 @@ def readPkl():
 def parseResults():
     n_rvs = (5, 10)
     hist_periods = (
-#                     10, 20, 30 ,40,
+                    10, 20, 30 ,40 ,
+
                     50 , 60 ,70 ,80
                     )
     n_scenario = 200
@@ -114,8 +115,8 @@ def parseResults():
                     runTime = expDir[expDir.rfind('_')+1:]
                     
                     resFile = os.path.join(expDir, 'summary.txt')
-                    if not os.path.exists(resFile):
-                        continue
+#                     if not os.path.exists(resFile):
+#                         continue
                     fin = open(resFile)
                     data = fin.read()        
                     
@@ -205,8 +206,9 @@ def benchmark():
 
 def benchmarkProcess():
     currDir = os.getcwd()
-    symbols = ['2330', '2317', '6505', '2412', '2454',
-                '2882', '1303', '1301', '1326', '2881'
+    symbols = [
+               '2330', '2317', '6505', '2412', '2454',
+#                '2882', '1303', '1301', '1326', '2881'
                ]
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     wealth = 1e6
@@ -236,7 +238,8 @@ def benchmarkProcess():
     print transDates.shape
     df = pd.Series(portfolioWealthProcess, index=transDates[:-1])
     print df
-    df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
+    df.to_csv(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.csv"%(len(symbols))))
+#     df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
     
     
     
@@ -433,8 +436,21 @@ if __name__ == '__main__':
 #     parseCSV2DataFrame()
 #     testCSV()
 #     readPkl()
-#     parseResults()
+    parseResults()
 #     benchmark()
+<<<<<<< HEAD
+    benchmarkProcess()
+#     runSPATest()
+=======
 #     benchmarkProcess()
+<<<<<<< HEAD
+#     runSPATest()
+=======
     runSPATest()
+<<<<<<< HEAD
 #     runBenchmarkSPATest()
+=======
+>>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
+>>>>>>> f43e3623746ec29e4f7a02f4a8f0499874f52bb7
+#     runBenchmarkSPATest()
+>>>>>>> e72bc802f6397e91efeabe260fde1a7e1749b151
