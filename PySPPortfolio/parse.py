@@ -75,11 +75,8 @@ def readPkl():
 def parseResults():
     n_rvs = (5, 10)
     hist_periods = (
-<<<<<<< HEAD
                     10, 20, 30 ,40 ,
-=======
-#                     10, 20, 30 ,40,
->>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
+
                     50 , 60 ,70 ,80
                     )
     n_scenario = 200
@@ -209,8 +206,9 @@ def benchmark():
 
 def benchmarkProcess():
     currDir = os.getcwd()
-    symbols = ['2330', '2317', '6505', '2412', '2454',
-                '2882', '1303', '1301', '1326', '2881'
+    symbols = [
+               '2330', '2317', '6505', '2412', '2454',
+#                '2882', '1303', '1301', '1326', '2881'
                ]
     startDate, endDate = date(2005,1, 1), date(2013, 12, 31)
     wealth = 1e6
@@ -240,7 +238,8 @@ def benchmarkProcess():
     print transDates.shape
     df = pd.Series(portfolioWealthProcess, index=transDates[:-1])
     print df
-    df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
+    df.to_csv(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.csv"%(len(symbols))))
+#     df.to_pickle(os.path.join(ExpResultsDir, "buyhold_wealthprocess_n%s.pkl"%(len(symbols))))  
     
     
     
@@ -256,8 +255,11 @@ def runSPATest():
                     50 , 60 ,70 ,80
                     )
     n_scenario = 200
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
-              "0.8", "0.85", "0.9", "0.95")
+    alphas = (
+#	"0.5", "0.55", "0.6", "0.65", "0.7", "0.75", 
+#        "0.8", "0.85", "0.9", "0.95",
+	"0.99",
+	)
     
     
     for n_rv in n_rvs:
@@ -307,7 +309,7 @@ def runSPATest():
                     benchmarkSignals = np.zeros(len(rois)+1)
                     diffObj = SPATest.TradingRuleDiffObject(rois, benchmarkSignals, 0)
                     diffObj.setRuleSignal(np.ones(len(rois)+1))
-                    pval = SPATest.RCTest(diffObj, n_samplings=1000)
+                    pval = SPATest.RCTest(diffObj, n_samplings=5000)
                     print "%s P-value:%s, %.3f secs"%(paramDir, pval, time.time()-t)
                         
                     avgPvalues.append(pval)
@@ -436,10 +438,19 @@ if __name__ == '__main__':
 #     readPkl()
     parseResults()
 #     benchmark()
+<<<<<<< HEAD
+    benchmarkProcess()
+#     runSPATest()
+=======
 #     benchmarkProcess()
 <<<<<<< HEAD
 #     runSPATest()
 =======
     runSPATest()
->>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
+<<<<<<< HEAD
 #     runBenchmarkSPATest()
+=======
+>>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
+>>>>>>> f43e3623746ec29e4f7a02f4a8f0499874f52bb7
+#     runBenchmarkSPATest()
+>>>>>>> e72bc802f6397e91efeabe260fde1a7e1749b151

@@ -580,18 +580,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 os.remove(data)
             except OSError:
                 pass
-         
-#         transDateDir = os.path.join(resultDir, transDate.strftime("%Y%m%d"))
-#         if not os.path.exists(transDateDir):
-#             os.mkdir(transDateDir)
-#         for res in resultFiles:
-#             try:
-#                 tgt = os.path.join(transDateDir, res)
-#                 shutil.move(res, tgt)
-#             except Exception as e:
-#                 print e
-                
-        
+                        
         print '*'*75
         print "%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]\ntransDate %s PySP OK, current wealth %s"%(
                 startDate, endDate, n_rv, hist_period, n_scenario, alpha, len(genScenErrDates),    
