@@ -8,31 +8,20 @@ import numpy as np
 import numpy.linalg as la
 import scipy.optimize as spopt
 import scipy.stats as spstats
-from openopt import NLP
+
 
 def RMSE(predictions, targets):
     return np.sqrt(((predictions - targets) ** 2).mean())
 
 
-def Moment12(scenarios):
+def cubicTransform(cubParams, EY, EX):
     '''
-    samples, numpy.array, size: n_scenarios
-    '''
-    
-    moments = np.fromiter((scenarios**(order+1)).mean() for order in xrange(12))
-  
-    return moments
-
-
-
-def cubicTransform(param, EY, EX):
-    '''
-    param: (a,b,c,d)
+    cubParams: (a,b,c,d)
     EY: 4 moments of target
     EX: 12 moments of samples
     '''
-    print "param;", param
-    a, b, c, d = param
+#     print "cubParams;", cubParams
+    a, b, c, d = cubParams
     v1 = a + b*EX[0] + c*EX[1] + d*EX[2] - EY[0]
     
     v2 = ((d*d)*EX[5] + 2*c*d*EX[4] + (2*b*d+c*c)*EX[3] + 
@@ -54,7 +43,7 @@ def cubicTransform(param, EY, EX):
         (4*a*a*a*c+6*a*a*b*b)*EX[1] + 
         (4*a*a*a*b)*EX[0] + a*a*a*a - EY[3])
     
-    return v1+v2+v3+v4
+    return v1, v2, v3, v4
 
 def heuristicMomentMatching(tgtMoments, tgtCorrMtx, n_scenario):
     '''
@@ -82,34 +71,39 @@ def heuristicMomentMatching(tgtMoments, tgtCorrMtx, n_scenario):
     MOM[:, 1] = 1
     MOM[:, 2] = tgtMoments[:, 2]/(tgtMoments[:, 1]**3)    #skew/(std**3)
     MOM[:, 3] = tgtMoments[:, 2]/(tgtMoments[:, 1]**4)    #skew/(std**4)
-
+    
     #抽出moments與targetMoments相同的樣本
     #cubic transform, find good start points
     for rv in xrange(n_rv):
         cubErr, bestErr = float('inf'), float('inf')
         
-        for start_trial in xrange(MaxStartTrial):
-            #random samples
-            TmpOut = np.random.randn(n_rv)
+        for _ in xrange(MaxStartTrial):
+            tmpOut = np.random.rand(n_scenario)
             
-            for cubIter in xrange(MaxCubIter):
+            for _ in xrange(MaxCubIter):
                 EY = MOM[rv, :]
-                EX =  np.fromiter((TmpOut**(order+1)).mean() for order in xrange(12))
+                EX =  np.fromiter(((tmpOut**(order+1)).mean() 
+                                  for order in xrange(12)), np.float)
         
-                cubParams = spopt.fsolve(cubicTransform, np.random.rand(4), 
-                                         args=(EY, EX), maxfev=10000)
-        
-                cubErr = (cubParams, EX, EY)
-                
+                sol= spopt.root(cubicTransform, (0,1,0,0), 
+                                         args=(EY, EX), method="broyden1")
+                cubParams = sol.x
+                root = cubicTransform(cubParams, EY, EX)
+                cubErr = np.sum(np.abs(root))
+
                 if cubErr < EPS:
+                    print "early stop"
                     break
                 else:
                     #update random sample(a+bx+cx^2+dx^3)
-                    TmpOut = (cubParams, EX)
+                    tmpOut = (cubParams[0] + 
+                              cubParams[1]*tmpOut +
+                              cubParams[2]*(tmpOut**2)+ 
+                              cubParams[3]*(tmpOut**3)) 
                 
             if cubErr < bestErr:
                 bestErr = cubErr
-                outMtx[n_rv,:] = (cubParams, TmpOut)
+                outMtx[rv,:] = tmpOut 
     
     #computing starting properties and error
     outMoments = np.empty((n_rv, 4))
@@ -121,44 +115,53 @@ def heuristicMomentMatching(tgtMoments, tgtCorrMtx, n_scenario):
     
     errMoment = RMSE(outMoments, tgtMoments)
     errCorr = RMSE(outCorrMtx, tgtCorrMtx)
+    print 'start errMoments:%s, errCorr:%s'%(errMoment, errCorr)
     
     #Cholesky decomposition
     L = la.cholesky(tgtCorrMtx)  
                
     #main iteration of the algorithm
-    for iter in xrange(MaxIter):
-        LOut = la.cholesky(outCorrMtx)
-        LOutInv = la.inv(LOut)
-        transMtx = L.dot(LOutInv)
-        TmpOutMtx = transMtx.dot(outMtx) 
+    for _ in xrange(MaxIter):
+        Lp = la.cholesky(outCorrMtx)
+        LpInv = la.inv(Lp)
+        transMtx = L.dot(LpInv)
+        tmpOutMtx = transMtx.dot(outMtx) 
         
         #update statistics
-        outMoments[:, 0] = TmpOutMtx.mean(axis=1) 
-        outMoments[:, 1] = TmpOutMtx.std(axis=1)
-        outMoments[:, 2] = spstats.skew(TmpOutMtx, axis=1)
-        outMoments[:, 3] = spstats.kurtosis(TmpOutMtx, axis=1)
-        outCorrMtx = np.corrcoef(TmpOutMtx)
+        outMoments[:, 0] = tmpOutMtx.mean(axis=1) 
+        outMoments[:, 1] = tmpOutMtx.std(axis=1)
+        outMoments[:, 2] = spstats.skew(tmpOutMtx, axis=1)
+        outMoments[:, 3] = spstats.kurtosis(tmpOutMtx, axis=1)
+        outCorrMtx = np.corrcoef(tmpOutMtx)
         
         errMoment = RMSE(outMoments, tgtMoments)
         errCorr = RMSE(outCorrMtx, tgtCorrMtx)
         
         #cubic transform
         for rv in xrange(n_rv):
-            for cubIter in xrange(MaxCubIter):
+            tmpOut = tmpOutMtx[rv, :]
+            for _ in xrange(MaxCubIter):
                 EY = MOM[rv, :]
-                EX = moment12ofTmpOutMtx
+                EX = np.fromiter(((tmpOut**(order+1)).mean() 
+                                  for order in xrange(12)), np.float)
         
-                param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=10000)
+                sol = spopt.root(cubicTransform, np.random.rand(4), 
+                                     args=(EY, EX))
         
-        
-                cubErr = (param, EX, EY)
-                
+                cubParams = sol.x 
+            
+                #update tmpOut y=a+bx+cx^2+dx^3
+                outMtx[rv,:] = (cubParams[0] + cubParams[1]*tmpOut +
+                          cubParams[2]*(tmpOut**2)+ cubParams[3]*(tmpOut**3))
+    
+                cubErr = RMSE(tmpOut, outMtx[rv, :])            
                 if cubErr < EPS:
                     break
                 else:
                     #update random sample(a+bx+cx^2+dx^3)
-                    OutMtx = (param, EX)
+                    tmpOut =outMtx[rv,:]
    
+        #update statistics
         outMoments[:, 0] = outMtx.mean(axis=1) 
         outMoments[:, 1] = outMtx.std(axis=1)
         outMoments[:, 2] = spstats.skew(outMtx, axis=1)
@@ -168,29 +171,34 @@ def heuristicMomentMatching(tgtMoments, tgtCorrMtx, n_scenario):
         errMoment = RMSE(outMoments, tgtMoments)
         errCorr = RMSE(outCorrMtx, tgtCorrMtx)
         
-        
         if errMoment <= MaxErrMoment and errCorr <= MaxErrCorr:
             break
             
     #rescale samples    
-    outMtx = tgtMoments[:, 0] + tgtMoments[:, 1] * outMtx
+    outMtx = tgtMoments[:, 0][:, np.newaxis] + tgtMoments[:, 1][:, np.newaxis] * outMtx
     
     return outMtx 
     
 if __name__ == '__main__':
+    import time
+    t = time.time()
     n_rv = 5
     data = np.random.randn(n_rv, 20)
-    targetMoments = np.empty((n_rv, 4))
-    targetMoments[:, 0] = data.mean(axis=1)
-    targetMoments[:, 1] = data.std(axis=1)
-    targetMoments[:, 2] = spstats.skew(data, axis=1)
-    targetMoments[:, 3] = spstats.kurtosis(data, axis=1)
-    print "targetMonents:"
-    print targetMoments.T
+    tgtMoments = np.empty((n_rv, 4))
+    tgtMoments[:, 0] = data.mean(axis=1)
+    tgtMoments[:, 1] = data.std(axis=1)
+    tgtMoments[:, 2] = spstats.skew(data, axis=1)
+    tgtMoments[:, 3] = spstats.kurtosis(data, axis=1)
+    tgtCorrMtx = np.corrcoef(data)
     
-    print "corr"
-    corrMtx = np.corrcoef(data)
-    print corrMtx
-#     heuristicMomentMatching(targetMoments, corrMtx, 10)
+    outMtx = heuristicMomentMatching(tgtMoments, tgtCorrMtx, 100)
+    outMoments = np.empty((n_rv, 4))
+    outMoments[:, 0] = outMtx.mean(axis=1)
+    outMoments[:, 1] = outMtx.std(axis=1)
+    outMoments[:, 2] = spstats.skew(outMtx, axis=1)
+    outMoments[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outCorrMtx = np.corrcoef(outMtx)
     
-    
+    print "error moments:", RMSE(outMoments, tgtMoments)
+    print "error corrMtx:", RMSE(outCorrMtx, tgtCorrMtx)
+    print "%.3f secs"%(time.time()-t)
