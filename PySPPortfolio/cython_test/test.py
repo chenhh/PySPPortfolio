@@ -27,9 +27,6 @@ def testf():
     print time.time()-t
 
 def test2():
-    '''如果pyx模組不需額外的clib時，可用pyximport直接引入
-    '''
-    import pyximport; pyximport.install()
     import hello2
     hello2.hello2("chenhh, hello2")
 

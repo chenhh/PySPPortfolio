@@ -14,17 +14,25 @@ def RMSE(predictions, targets):
     return np.sqrt(((predictions - targets) ** 2).mean())
 
 
-def Moment12(samples):
-    n_rv = samples.shape[0]
-    Moments = np.zeros((n_rv, 12))
-    for order in xrange(12):
-       4 Moments[:,order] = (samples**(order+1)).mean(axis=1)
-    return Moments
+def Moment12(scenarios):
+    '''
+    samples, numpy.array, size: n_scenarios
+    '''
+    
+    moments = np.fromiter((scenarios**(order+1)).mean() for order in xrange(12))
+  
+    return moments
 
 
 
 def cubicTransform(param, EY, EX):
+    '''
+    param: (a,b,c,d)
+    EY: 4 moments of target
+    EX: 12 moments of samples
+    '''
     print "param;", param
+    a, b, c, d = param
     v1 = a + b*EX[0] + c*EX[1] + d*EX[2] - EY[0]
     
     v2 = ((d*d)*EX[5] + 2*c*d*EX[4] + (2*b*d+c*c)*EX[3] + 
@@ -69,14 +77,14 @@ def heuristicMomentMatching(tgtMoments, tgtCorrMtx, n_scenario):
     n_rv = tgtMoments.shape[0]
     outMtx = np.empty((n_rv, n_scenario))
 
-    #original target moments, size: (n_rv * 4)
+    #target origin moments, size: (n_rv * 4)
     MOM = np.zeros((n_rv, 4))
     MOM[:, 1] = 1
     MOM[:, 2] = tgtMoments[:, 2]/(tgtMoments[:, 1]**3)    #skew/(std**3)
     MOM[:, 3] = tgtMoments[:, 2]/(tgtMoments[:, 1]**4)    #skew/(std**4)
 
-    #抽出moments與targetMoments相同的樣本(但corr. mtx不同)
-    #cubic transform
+    #抽出moments與targetMoments相同的樣本
+    #cubic transform, find good start points
     for rv in xrange(n_rv):
         cubErr, bestErr = float('inf'), float('inf')
         
@@ -86,21 +94,22 @@ def heuristicMomentMatching(tgtMoments, tgtCorrMtx, n_scenario):
             
             for cubIter in xrange(MaxCubIter):
                 EY = MOM[rv, :]
-                EX = moment12ofTmpOut
+                EX =  np.fromiter((TmpOut**(order+1)).mean() for order in xrange(12))
         
-                param = spopt.fsolve(cubicTransform, np.random.rand(4), args=(EY, EX), maxfev=10000)
+                cubParams = spopt.fsolve(cubicTransform, np.random.rand(4), 
+                                         args=(EY, EX), maxfev=10000)
         
-                cubErr = (param, EX, EY)
+                cubErr = (cubParams, EX, EY)
                 
                 if cubErr < EPS:
                     break
                 else:
                     #update random sample(a+bx+cx^2+dx^3)
-                    TmpOut = (param, EX)
+                    TmpOut = (cubParams, EX)
                 
             if cubErr < bestErr:
                 bestErr = cubErr
-                outMtx[n_rv,:] = (param, TmpOut)
+                outMtx[n_rv,:] = (cubParams, TmpOut)
     
     #computing starting properties and error
     outMoments = np.empty((n_rv, 4))
