@@ -7,11 +7,18 @@ python setup.py build_ext --inplace
 
 '''
 from distutils.core import setup
+from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy as np
-print np.get_include()
+
+
+extensions = [
+    Extension("HKW", ["HKW.pyx"],
+              include_dirs = [np.get_include()]
+            ),
+]
+
 setup(
   name = 'HKW',
-  ext_modules = cythonize("HKW.pyx",
-                          include_path=[np.get_include()]),
+  ext_modules = cythonize(extensions),
 ) 
