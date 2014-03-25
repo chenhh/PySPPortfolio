@@ -8,3 +8,4 @@ Created on 2014/3/11
 from __future__ import division
 import numpy as np
 cimport numpy as np
+cdef int const a=10

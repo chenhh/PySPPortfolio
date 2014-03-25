@@ -12,6 +12,5 @@ import numpy as np
 print np.get_include()
 setup(
   name = 'HKW',
-  ext_modules = cythonize("HKW.pyx",
-                          include_path=[np.get_include()]),
+  ext_modules = cythonize("HKW.pyx")#                         include_path=[np.get_include()]),
 ) 
