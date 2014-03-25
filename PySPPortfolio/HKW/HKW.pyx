@@ -16,28 +16,7 @@ DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
 
-cdef cubicSolve(double* cubParam):
-    '''
-    cubParam, np.array, size: 4
-    '''
-    cdef: 
-        int IncrDevStep = 50    #how often we increase the START_DEV
-        
-        int i=0
-        int j
-        int nb_iter=0
-        int indx[4]
-        double gk[4]        #gradient
-        double hessk[4][4]  #hessian
-        double invhk[4][4]  #inverse hessian
-        double ni           #infinite norm for the gradient
-        double error1       #L2-error on the target moments, at initial pt
-        double error2       #L2-error on the target moments, at final pt
-        double x_ini[4]
-        
-    #Initialization of the starting point
-    for j in xrange(4):
-        cubParam[j]=x_ini[j]
+
 
 
 

@@ -13,7 +13,7 @@ import numpy as np
 
 
 extensions = [
-    Extension("HKW", ["HKW.pyx"],
+    Extension("HKW", ["*.pyx"],
               include_dirs = [np.get_include()]
             ),
 ]
