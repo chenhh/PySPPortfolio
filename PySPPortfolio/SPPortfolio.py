@@ -21,8 +21,11 @@ class SPPortfolio(object):
         self.n_scenario = n_scenario
         #equalprobs
         self.probs = np.ones(n_scenario, np.float)/n_scenario
+        
+        #add env to utilizing mysolutionwriter
         self.env =  os.environ.copy()
-    
+        self.env['PYTHONPATH'] = os.getcwd()
+        
     def genReferenceModel(self):
         refModel = os.path.join(os.path.curdir, 'models', "minCVaRReferenceModel.py")
         shutil.copy(refModel, self.modelDir)
@@ -178,17 +181,22 @@ class SPPortfolio(object):
         
     def solve(self):
         t = time.time()
-        cmd = 'runef -m %s -i %s --solution-writer=coopr.pysp.csvsolutionwriter \
-             --solver=glpk --solve 1>/dev/null'%(self.modelDir, self.nodeDir)
+        output ="data_%s.lp"%(os.getpid())
+        cmd = 'runef -m %s -i %s --output-file=%s --solution-writer=jsonsolutionwriter\
+             --solver=glpk  --solve '%(self.modelDir, self.nodeDir, output)
+        
         rc = subprocess.call(cmd, env=self.env, shell=True)
+        
+        shutil.move(output, os.path.join('model%s'%(os.getpid()), output))
         print "runef, %.3f secs"%(time.time()-t)
-
+        
 def test():
+    t = time.time()
     modelDir =os.path.join(os.path.curdir, "model%s"%os.getpid())
     if not os.path.exists(modelDir):
         os.mkdir(modelDir)
         
-    n_scenario = 10
+    n_scenario = 100
     obj = SPPortfolio(modelDir, modelDir, n_scenario)
     obj.genReferenceModel()
     obj.genScenarioStructureFile()
@@ -208,6 +216,9 @@ def test():
                         alpha)
     obj.genScenarioFiles(symbols, scenarioMtx, predictRiskFreeRet)
     obj.solve()
+    print "all, %.3f secs"%(time.time()-t)
     
 if __name__ == '__main__':
+#     import sys
+#     sys.path.append(os.path.join(os.getcwd()))
     test()
