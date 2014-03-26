@@ -197,9 +197,9 @@ def generatingScenarios(moments, corrMtx, n_scenario, transDate, debug=False):
     --使用scengen_HKW產生scenario, 使用前tg_moms.txt與tg_corrs.txt必須存在
     '''
     if platform.uname()[0] == 'Linux':
-        exe ='scengen_HKW'
+        exe ='bin/scengen_HKW'
     elif platform.uname()[0] == 'Windows':
-        exe = 'scengen_HKW.exe'
+        exe = 'bin\\scengen_HKW.exe'
     
     _constructTargetMomentFile(moments, transDate)    
     _constructTargetcorrMtxFile(corrMtx, transDate)
