@@ -46,6 +46,9 @@ class JSONSolutionWriter(SingletonPlugin):
         with open(output_filename,"w") as output_file:
             output_file.write(simplejson.dumps(data))
             output_file.close()
-           
+        
+        print "json pid:", os.getpid()
+        print "json ppid:", os.getppid() 
+        print os.environ.copy()
         print("Scenario tree solution written to file %s"%(output_filename))
 

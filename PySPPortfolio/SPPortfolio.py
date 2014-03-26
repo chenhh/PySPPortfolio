@@ -15,10 +15,12 @@ from cStringIO import StringIO
 class SPPortfolio(object):
     '''PySP class for modeling portfolio problem using NodeBasedData'''
     
-    def __init__(self, modelDir, nodeDir, n_scenario):
+    def __init__(self, modelDir, nodeDir, n_scenario, expID):
         self.modelDir = modelDir
         self.nodeDir = nodeDir
         self.n_scenario = n_scenario
+        self.expID = expID
+        
         #equalprobs
         self.probs = np.ones(n_scenario, np.float)/n_scenario
         
@@ -179,15 +181,20 @@ class SPPortfolio(object):
                 fout.write(scenData.getvalue())
             scenData.close()
         
-    def solve(self):
+    def solve(self, solver="glpk", verbose=False):
         t = time.time()
-        output ="data_%s.lp"%(os.getpid())
+        output ="data_%s.lp"%(self.expID )
         cmd = 'runef -m %s -i %s --output-file=%s --solution-writer=jsonsolutionwriter\
-             --solver=glpk  --solve '%(self.modelDir, self.nodeDir, output)
-        
+                 --solver=%s  --solve '%(self.modelDir, self.nodeDir, output, solver)
+        if not verbose:
+            cmd += " 1>/dev/null"
+       
         rc = subprocess.call(cmd, env=self.env, shell=True)
-        
-        shutil.move(output, os.path.join('model%s'%(os.getpid()), output))
+        if rc == 0:
+            data = (output, "parse_table_datacmds.py", "ef.json" )
+            for src in data:
+                shutil.move(src, os.path.join('model%s'%(self.expID ), src))
+            
         print "runef, %.3f secs"%(time.time()-t)
         
 def test():
@@ -197,7 +204,7 @@ def test():
         os.mkdir(modelDir)
         
     n_scenario = 100
-    obj = SPPortfolio(modelDir, modelDir, n_scenario)
+    obj = SPPortfolio(modelDir, modelDir, n_scenario, os.getpid())
     obj.genReferenceModel()
     obj.genScenarioStructureFile()
     
