@@ -11,10 +11,11 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy as np
 
-
 extensions = [
-    Extension("HKW", ["*.pyx"],
-              include_dirs = [np.get_include()]
+    Extension("HKW_wrapper", ["HKW_wrapper.pyx"],
+            include_dirs = [np.get_include(), '.'],
+            libraries = ['HKW'],
+            library_dirs =['.'],
             ),
 ]
 
