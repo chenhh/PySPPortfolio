@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 2014/3/26
 min (x-1)^2 + (y-2)^2 + (z-3)^4 
 s.t. 
     y > 5
@@ -10,7 +9,10 @@ s.t.
 '''
 from openopt import NLP
 from numpy import *
- 
+from time import time
+
+t = time()
+
 # start point estimation
 x0 = [0,0,0] 
  
@@ -34,3 +36,4 @@ c = lambda x: (x[0] - 10)**2 + (x[1]+1) ** 2 - 50
 p = NLP(f, x0, lb=lb, A=A, b=b, c=c)
 r = p.solve('ralg')
 print r.xf # [ 6.25834211  4.99999931  5.20667372]
+print "elapsed %.3f secs"%(time() - t)
