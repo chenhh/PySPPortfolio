@@ -4,6 +4,7 @@
 @mail: chenhh@par.cse.nsysu.edu.tw
 已知所有股票每一期的報酬率，求出最佳報酬率
 '''
+from __future__ import division
 import time
 import os
 from datetime import date
