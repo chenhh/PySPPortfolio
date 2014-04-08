@@ -7,34 +7,46 @@
 
 from coopr.pyomo import *
 from time import time
+from datetime import date
+import numpy as np
+import pandas as pd
+import os
+import time
+from coopr.opt import  SolverFactory
+
+PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
+
 
 def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                        depositWealth, buyTransFee, sellTransFee, alpha,
-                       predictRiskyRet, predictRiskFreeRet):
+                       predictRiskyRet, predictRiskFreeRet, n_scenario, 
+                       solver="glpk"):
     '''
+    two-stage stochastic programming
+    
     variable: 
-        n: num. of symbols, 
-        T: num. of historical periods
+        N: num. of symbols,
         S: num. of scenarios
         
     symbols, list of string,
-    riskRet, numpy.array, size: n * T
-    riskFreeRet, numpy.array, size: T
-    allocatedWealth, numpy.array, size: n
+    riskRet, numpy.array, size: N 
+    riskFreeRet, float
+    allocatedWealth, numpy.array, size: N
     depositWealth, float,
-    buyTransFee, float,
-    sellTransFee, float
-    alpha, float
-    predictRiskRet, numpy.array, size: n*S
+    buyTransFee, numpy.array, size: N
+    sellTransFee, numpy.array, size: N
+    alpha, float,
+    predictRiskRet, numpy.array, size: N * S
     predictRiskFreeRet, float 
     
     '''
-    t = time()
+    t = time.time()
     # Model
     model = ConcreteModel()
     
     #Set
     model.symbols = range(len(symbols))
+    model.scenarios = range(n_scenario)
     
     #decision variables
     model.buys = Var(model.symbols, within=NonNegativeReals)        #stage 1
@@ -48,9 +60,8 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     #aux variable, portfolio wealth smaller (<=) than VaR
     model.Ys = Var(within=NonNegativeReals)                 
     
-    
     #constraint
-    def riskyWeathConstraint_rule(model, m):
+    def riskyWeathConstraint_rule(model, n):
         '''
         riskyWealth is a decision variable depending on both buys and sells.
         (it means riskyWealth depending on scenario).
@@ -58,9 +69,9 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         buys and sells are fist stage variable,
         riskywealth is second stage variable
         '''
-        return (riskyWealth[m] == 
-                (1. + model.riskyRet[m]) * allocatedWealth[m] + 
-                model.buys[m] - model.sells[m])
+        return (model.riskyWealth[n] == 
+                (1. + riskyRet[n]) * allocatedWealth[n] + 
+                model.buys[n] - model.sells[n])
     
     model.riskyWeathConstraint = Constraint(model.symbols)
     
@@ -72,10 +83,10 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         buys and sells are fist stage variable,
         riskFreewealth is second stage variable
         '''
-        totalSell = sum((1. - sellTransFee[m]) * model.sells[m] 
-                        for m in model.symbols)
-        totalBuy = sum((1 + buyTransFee[m]) * model.buys[m] 
-                       for m in model.symbols)
+        totalSell = sum((1 - sellTransFee[n]) * model.sells[n] 
+                        for n in model.symbols)
+        totalBuy = sum((1 + buyTransFee[n]) * model.buys[n] 
+                       for n in model.symbols)
             
         return (model.riskFreeWealth == 
                 (1. + riskFreeRet)* depositWealth  + 
@@ -84,38 +95,26 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     model.riskFreeWealthConstraint = Constraint()
     
     
-    def CVaRConstraint_rule(model):
-        '''auxiliary variable Y depends on scenario. CVaR <= VaR
-        '''
-        wealth = sum( (1. + predictRiskyRet[m] ) * model.riskyWealth[m] 
-                     for m in model.symbols)
+    def CVaRConstraint_rule(model, s):
+        '''auxiliary variable Y depends on scenario. CVaR <= VaR'''
+        wealth = sum( (1. + predictRiskyRet[n][s] ) * model.riskyWealth[n] 
+                     for n in model.symbols)
         return model.Ys >= (model.Z - wealth)
     
-    model.CVaRConstraint = Constraint()
+    model.CVaRConstraint = Constraint(model.scenarios)
     
     #objective
     def TotalCostObjective_rule(model):
-        return model.Z +-1/(1-alpha)* model.Ys
+        return model.Z - 1/(1-alpha)* model.Ys
         
     model.TotalCostObjective = Objective(sense=maximize)
     
-    
     # Create a solver
-    opt = SolverFactory('glpk')
-    print "opt options:", opt.option
+    opt = SolverFactory(solver)
+#     print "opt options:", opt.option
     
     instance = model.create()
-    results = opt.solve(instance)
-#     print type(instance)
-#     print dir(instance)
-#     print results
-#     print 
-#     print results.Solution.Objective.x1.Value
-#     print results.Solver.Status
-#     print results.Solution.Status
-#     print type(results)
-#     print dir(results)
-    
+    results = opt.solve(instance)  
     instance.load(results)
     
     display(instance)
@@ -123,3 +122,34 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
 #     results.write()
     print "MinCVaRPortfolioSP elapsed %.3f secs"%(time.time()-t)
  
+
+def constructModelData():
+    symbols = ('1101', "1102")
+    N = len(symbols)
+    allocated = np.zeros(N)
+    money = 1e6
+    
+    buyTransFee =  np.ones(N)*0.003  #買進0.1425%手續費
+    sellTransFee =  np.ones(N)*0.004425  #賣出0.3%手續費+0.1425%交易稅
+    
+    riskyRet = [0.1, 0.2]
+    riskFreeRet = 0
+    alpha = 0.95 
+    predictRiskyRet = np.array([[0.1422, 0.0389], 
+                       [0.2582, 0.0266],
+                       [0.01292, 0.0347],
+                       [0.0381, 0.0643],
+                       [0.0473, 0.1013],
+                       ]).T
+#     print predictRiskyRet
+    predictRiskFreeRet = 0.
+    
+    
+    MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocated,
+                       money, buyTransFee, sellTransFee, alpha,
+                       predictRiskyRet, predictRiskFreeRet, 
+                       n_scenario = 5,
+                       solver="cplex")
+ 
+if __name__ == '__main__':
+    constructModelData()
