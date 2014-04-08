@@ -5,6 +5,7 @@
 為了加速, 自行將SP轉成LP求解
 '''
 
+from __future__ import division
 from coopr.pyomo import *
 from time import time
 from datetime import date
@@ -58,7 +59,7 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     model.Z = Var()
     
     #aux variable, portfolio wealth smaller (<=) than VaR
-    model.Ys = Var(within=NonNegativeReals)                 
+    model.Ys = Var(model.scenarios, within=NonNegativeReals)                 
     
     #constraint
     def riskyWeathConstraint_rule(model, n):
@@ -99,13 +100,13 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         '''auxiliary variable Y depends on scenario. CVaR <= VaR'''
         wealth = sum( (1. + predictRiskyRet[n][s] ) * model.riskyWealth[n] 
                      for n in model.symbols)
-        return model.Ys >= (model.Z - wealth)
+        return model.Ys[s] >= (model.Z - wealth)
     
     model.CVaRConstraint = Constraint(model.scenarios)
     
     #objective
     def TotalCostObjective_rule(model):
-        return model.Z - 1/(1-alpha)* model.Ys
+        return model.Z - 1/(1-alpha)* sum(model.Ys[s]/n_scenario for s in xrange(n_scenario))
         
     model.TotalCostObjective = Objective(sense=maximize)
     
