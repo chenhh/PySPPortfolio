@@ -64,15 +64,15 @@ def maxRetMultiStagePortfolio(riskyRetMtx, riskFreeRetVec,
     model.objective = Objective(sense=maximize)
     
     #constraint
-    def riskyWeathConstraint_rule(model, m, t):
+    def riskyWeathConstraint_rule(model, n, t):
         if t>=1:
-            preWealth = model.riskyWealth[m, t-1]
+            preWealth = model.riskyWealth[n, t-1]
         else:
-            preWealth = allocatedWealth[m]
+            preWealth = allocatedWealth[n]
        
-        return (model.riskyWealth[m, t] == 
-                (1. + riskyRetMtx[m,t])*preWealth + 
-                model.buys[m,t] - model.sells[m,t])
+        return (model.riskyWealth[n, t] == 
+                (1. + riskyRetMtx[n,t])*preWealth + 
+                model.buys[n,t] - model.sells[n,t])
     
     def riskFreeWealthConstraint_rule(model, t):
         totalSell = sum((1-sellTransFeeMtx[mdx, t])*model.sells[mdx, t] 

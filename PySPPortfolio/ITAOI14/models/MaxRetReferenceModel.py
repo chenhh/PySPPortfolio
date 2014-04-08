@@ -39,16 +39,16 @@ model.FirstStageCost = Var()
 model.SecondStageCost = Var()
 
 #constraint
-def riskyWeathConstraint_rule(model, m):
+def riskyWeathConstraint_rule(model, n):
     '''
     riskyWealth is a decision variable depending on both buys and sells.
     therefore 
     buys and sells are fist stage variable,
     riskywealth is second stage variable
     '''
-    return (model.riskyWealth[m] == 
-            (1. + model.riskyRet[m]) * model.allocatedWealth[m] + 
-            model.buys[m] - model.sells[m])
+    return (model.riskyWealth[n] == 
+            (1. + model.riskyRet[n]) * model.allocatedWealth[n] + 
+            model.buys[n] - model.sells[n])
     
 def riskFreeWealthConstraint_rule(model):
     '''
