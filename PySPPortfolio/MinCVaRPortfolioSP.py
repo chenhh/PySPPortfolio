@@ -30,15 +30,19 @@ def MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         S: num. of scenarios
         
     symbols, list of string,
-    riskRet, numpy.array, size: N 
+    riskRet, numpy.array, size: M
     riskFreeRet, float
-    allocatedWealth, numpy.array, size: N
+    allocatedWealth, numpy.array, size: M
     depositWealth, float,
-    buyTransFee, numpy.array, size: N
-    sellTransFee, numpy.array, size: N
+    buyTransFee, numpy.array, size: M
+    sellTransFee, numpy.array, size: M
     alpha, float,
-    predictRiskRet, numpy.array, size: N * S
+    predictRiskRet, numpy.array, size: M * S
     predictRiskFreeRet, float 
+    n_scenario, positive integer
+    probs, numpy.array, size: S
+    solver, string in {glpk or cplex}
+    n_stock, positive integer, max number of stock to invest in
     
     '''
     t = time.time()
@@ -158,16 +162,17 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         S: num. of scenarios
         
     symbols, list of string,
-    riskRet, numpy.array, size: N 
+    riskRet, numpy.array, size: M
     riskFreeRet, float
-    allocatedWealth, numpy.array, size: N
+    allocatedWealth, numpy.array, size: M
     depositWealth, float,
-    buyTransFee, numpy.array, size: N
-    sellTransFee, numpy.array, size: N
+    buyTransFee, numpy.array, size: M
+    sellTransFee, numpy.array, size: M
     alpha, float,
-    predictRiskRet, numpy.array, size: N * S
+    predictRiskRet, numpy.array, size: M * S
     predictRiskFreeRet, float 
-    
+    probs, numpy.array, size: S
+    solver, string in {glpk or cplex}
     '''
     t = time.time()
     if not probs:
