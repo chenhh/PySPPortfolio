@@ -15,7 +15,7 @@ extensions = [
     Extension("HKW_wrapper", ["HKW_wrapper.pyx"],
             include_dirs = [np.get_include(), '.'],
             libraries = ['HKW'],
-            library_dirs =['.'],
+            library_dirs =['/home/chenhh/lib'],
             ),
 ]
 

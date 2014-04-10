@@ -11,7 +11,7 @@ import numpy as np
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
-cpdef HeuristicMomentMatching(np.ndarray tgtMoms,    #size: n_rv * 4
+cpdef HeuristicMomentMatching(np.ndarray tgtMoms,
                              np.ndarray tgtCorrs,
                              int n_scenario):
     cdef:
@@ -29,12 +29,8 @@ cpdef HeuristicMomentMatching(np.ndarray tgtMoms,    #size: n_rv * 4
         TVector p_Probs
         TMatrix OutMat 
        
-
-
     p_TarMoms = TMatrix(0, 0, NULL) 
-    print "initial tarmom ok"
     p_TgCorrs = TMatrix(0, 0, NULL) 
-    print "initial tgcorr ok"
     p_Probs = TVector(0, NULL)
     OutMat = TMatrix(0, 0, NULL) 
 
@@ -42,7 +38,7 @@ cpdef HeuristicMomentMatching(np.ndarray tgtMoms,    #size: n_rv * 4
     Mat_Init(&p_TgCorrs, n_rv, n_rv)
     Vec_Init(&p_Probs, n_scenario)
     Mat_Init(&OutMat, n_rv, n_scenario)
-
+    
     for i in xrange(n_rv):
         for j in xrange(4):
             p_TarMoms.val[j][i] = tgtMoms[i][j]
@@ -58,10 +54,17 @@ cpdef HeuristicMomentMatching(np.ndarray tgtMoms,    #size: n_rv * 4
     Mat_Display(&p_TgCorrs, "p_tgcorrs")
     Vec_Display(&p_Probs, "p_Probs")
 
-    
     code = HKW_ScenGen(FormatOfTgMoms, &p_TarMoms, &p_TgCorrs, &p_Probs, &OutMat,
                 MaxErrMom, MaxErrCorr, TestLevel, MaxTrial, HKW_MaxIter,
                 UseStartDistrib, NULL, NULL, NULL, NULL
             )
         
     Mat_Display(&OutMat, "OutMat")
+    
+    scenarios = np.empty((n_rv, n_scenario))
+    for i in xrange(n_rv):
+        for j in xrange(n_scenario):
+            scenarios[i][j] = OutMat.val[i][j]
+            
+    return scenarios
+            

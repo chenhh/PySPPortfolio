@@ -9,9 +9,12 @@ from __future__ import division
 import os
 import platform
 import time
+from datetime import date
 import numpy as np 
 import scipy.stats as spstats
-from HKWWrapper import HKW_wrapper
+import pandas as pd
+from HKW_wrapper import HKW_wrapper
+from MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 FileDir = os.path.abspath(os.path.curdir)
 PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
@@ -23,9 +26,9 @@ elif platform.uname()[0] =='Windows':
     ExpResultsDir= os.path.join('C:\\', 'Dropbox', 'financial_experiment', 
                                 'PySPPortfolio')    
     
-def constructModelMtx(symbols, startDate, endDate, money, hist_period, 
-                      buyTransFee=0.003, sellTransFee=0.004425,
-                      alpha = 0.95, debug=False):
+def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
+                      money=1e6, hist_period=60, buyTransFee=0.001425, 
+                      sellTransFee=0.004425, alpha = 0.95, debug=False):
     '''
     -注意因為最後一期只結算不買賣
     -DataFrame以Date取資料時，有包含last day, 即df[startDate: endDate]
@@ -155,12 +158,6 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     depositProcess = np.zeros(T+1)
     VaRProcess = np.zeros(T)
     
-    #每一期的ScenarioStructure都一樣，建一次即可
-    t = time.time()
-    probs = np.ones(n_scenario, dtype=np.float)/n_scenario
-    constructScenarioStructureFile(n_scenario, probs)
-    print "constructScenarioStructureFile %.3f secs"%(time.time()-t)
-    
     #設定subprocess的environment variable for cplex
     env = os.environ.copy()
     env['PATH'] += ':/opt/ibm/ILOG/CPLEX_Studio126/cplex/bin/x86-64_linux'
@@ -178,7 +175,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         #算出4 moments與correlation matrix
         t = time.time()
         subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
-#         print "%s - %s to estimate moments"%(transDate, fullTransDates[tdx:(hist_period+tdx)])
+
         moments = np.empty((n_rv, 4))
         moments[:, 0] = subRiskyRetMtx.mean(axis=1)
         moments[:, 1] = subRiskyRetMtx.std(axis=1)
@@ -189,104 +186,50 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         
         #call scngen_HKW抽出下一期的樣本中
         t = time.time()
-        print "start generating scenarios"
-        probVec, scenarioMtx = generatingScenarios(moments, corrMtx, n_scenario, transDate)
-        if probVec is None and scenarioMtx is None:
-            paramtxt = 'err_%s_n%s_h%s_s%s_a%s.txt'%(
-                        transDate, n_rv, hist_period, n_scenario, alpha)
-            errorFile = os.path.join(ExpResultsDir, paramtxt)
-            with open(errorFile, 'a') as fout:
-                fout.write('startDate:%s, endDate:%s\n'%(startDate, endDate))
-                fout.write('transDate:%s\n'%(transDate))
-                fout.write('n%s_h%s_s%s_a%s\n'%(n_rv, hist_period, n_scenario, alpha))
-                fout.write('moment:\n%s\n'%(moments))
-                fout.write('corrMtx:\n%s\n'%(corrMtx))
-                fout.close()
-            
-            genScenErrDates.append(transDate)
-            #log and goto next period
-            wealthProcess[:, tdx] = allocatedWealth
-            depositProcess[tdx] = depositWealth
-            continue
-        
-        print "%s - probVec size n_rv: %s"%(transDate, probVec.shape)
-        print "%s - scenarioMtx size: (n_rv * n_scenario): %s"%(transDate, scenarioMtx.shape)
-        print "%s - generation scenario, %.3f secs"%(transDate, time.time()-t)
+        scenMtx = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario)
+        print "%s - generate scen. mtx, %.3f secs"%(transDate, time.time()-t)
         
         #使用抽樣樣本建立ScenarioStructure.dat, RootNode.dat與不同scenario的檔案
         t = time.time()
-        constructRootNodeFile(symbols, allocatedWealth, depositWealth,
-                              allRiskyRetMtx[:, hist_period+tdx],
-                              riskFreeRetVec[tdx], 
-                              buyTransFeeMtx[:, tdx], 
-                              sellTransFeeMtx[:, tdx],
-                              alpha)
-        
-        constructScenarioFiles(symbols, n_scenario,  scenarioMtx, riskFreeRetVec[tdx+1])
-        print "%s - generation root and node files, %.3f secs"%(transDate, time.time()-t)
-        
-        #使用抽出的樣本解SP(runef)，得到最佳的買進，賣出金額
-        t = time.time()
-        modelDir = os.path.join(FileDir, "models")
-        cmd = 'runef -m %s -i %s  --solution-writer=coopr.pysp.csvsolutionwriter \
-             --solver=cplex --solve 1>/dev/null'%(modelDir, modelDir)
-       
-        rc = subprocess.call(cmd, env=env, shell=True)
-        print "%s - runef, %.3f secs"%(transDate, time.time()-t)
+        MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
+                       depositWealth, buyTransFee, sellTransFee, alpha,
+                       predictRiskyRet, predictRiskFreeRet, n_scenario, 
+                       probs=None, solver="glpk")
+        print "%s - solve SP, %.3f secs"%(transDate, time.time()-t)
         
         #parse ef.csv, 並且執行買賣
         #(stage, node, var, index, value)
-        with open('ef.csv') as fin:  
-            for row in csv.DictReader(fin, ('stage', 'node', 'var', 'symbol', 'value')): 
-                for key in row.keys():
-                    row[key] = row[key].strip()
-                node, symbol = row['node'], row['symbol']
-                 
-                if node == "RootNode" and row['var'] == "Z":
-                    VaRProcess[tdx] = float(row['value'])
-                 
-                if  node == 'RootNode' and symbol in symbols:
-                    #get symbol index 
-                    idx = symbols.index(row['symbol'])
-                    if row['var'] == 'buys':
-                        allocatedWealth[idx] += float(row['value'])
-                        buy = (1 + buyTransFeeMtx[idx, tdx]) * float(row['value'])
-                        buyProcess[idx, tdx] = buy
-                        depositWealth -= buy
-                    elif row['var'] == 'sells':
-                        allocatedWealth[idx] -= float(row['value'])
-                        sell = (1 - sellTransFeeMtx[idx, tdx]) * float(row['value'])
-                        sellProcess[idx, tdx] = sell
-                        depositWealth += sell
-                    else:
-                        raise ValueError('unknown variable %s'%(row))
+#         with open('ef.csv') as fin:  
+#             for row in csv.DictReader(fin, ('stage', 'node', 'var', 'symbol', 'value')): 
+#                 for key in row.keys():
+#                     row[key] = row[key].strip()
+#                 node, symbol = row['node'], row['symbol']
+#                  
+#                 if node == "RootNode" and row['var'] == "Z":
+#                     VaRProcess[tdx] = float(row['value'])
+#                  
+#                 if  node == 'RootNode' and symbol in symbols:
+#                     #get symbol index 
+#                     idx = symbols.index(row['symbol'])
+#                     if row['var'] == 'buys':
+#                         allocatedWealth[idx] += float(row['value'])
+#                         buy = (1 + buyTransFeeMtx[idx, tdx]) * float(row['value'])
+#                         buyProcess[idx, tdx] = buy
+#                         depositWealth -= buy
+#                     elif row['var'] == 'sells':
+#                         allocatedWealth[idx] -= float(row['value'])
+#                         sell = (1 - sellTransFeeMtx[idx, tdx]) * float(row['value'])
+#                         sellProcess[idx, tdx] = sell
+#                         depositWealth += sell
+#                     else:
+#                         raise ValueError('unknown variable %s'%(row))
         
         #log wealth and signal process
         wealthProcess[:, tdx] = allocatedWealth
         depositProcess[tdx] = depositWealth
-            
-        #remove mdl file
-        mdlFile = os.path.join(os.getcwd(), 'models', 'RootNode.dat')
-        
-        os.remove(mdlFile)
-        for sdx in xrange(n_scenario):
-            mdlFile = os.path.join(os.getcwd(), 'models', 'Node%s.dat'%(sdx))
-            os.remove(mdlFile)  
-        
-        #move temporary file
-        resultFiles = ('parse_table_datacmds.py', 'ef.csv', 'efout.lp', 
-                       'out_scen.txt', 'tg_corrs.txt', 'tg_moms.txt')
-         
-        #delete files
-        
-        for data in  resultFiles:
-            try:
-                os.remove(data)
-            except OSError:
-                pass
-                        
+                                    
         print '*'*75
-        print "%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]\ntransDate %s PySP OK, current wealth %s"%(
+        print "%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]\ntransDate %s fixed CVaR SP OK, current wealth %s"%(
                 startDate, endDate, n_rv, hist_period, n_scenario, alpha, len(genScenErrDates),    
                 transDate,  allocatedWealth.sum() + depositWealth)
         print "%.3f secs"%(time.time()-tloop)
