@@ -158,7 +158,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     sellProcess = np.zeros((n_rv, T))
     wealthProcess = np.zeros((n_rv, T+1))
     depositProcess = np.zeros(T+1)
-    VaRProcess = np.zeros(T)
+    CVaRProcess = np.zeros(T)
     
     #設定subprocess的environment variable for cplex
     env = os.environ.copy()
@@ -183,10 +183,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
         moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
         corrMtx = np.corrcoef(subRiskyRetMtx)
-        print "%s - moments, corrMtx %.3f secs"%(transDate, time.time()-t)
-        
-        #call scngen_HKW抽出下一期的樣本中
-        t = time.time()
+    
         scenMtx = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario)
         print "%s - generate scen. mtx, %.3f secs"%(transDate, time.time()-t)
         
@@ -252,14 +249,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], columns=symbols) 
     pd_wealthProc = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
     pd_depositProc = pd.Series(depositProcess.T, index=transDates)
-    pd_VaRProc = pd.Series(VaRProcess.T, index=transDates[:-1])
+    pd_CVaRProc = pd.Series(CVaRProcess.T, index=transDates[:-1])
     
     records = {
         "buyProcess": pd_buyProc, 
         "sellProcess": pd_sellProc, 
         "wealthProcess": pd_wealthProc, 
         "depositProcess": pd_depositProc, 
-        "VaRProcess": pd_VaRProc
+        "CVaRProcess": pd_CVaRProc
     }
     
     #save pkl
@@ -270,9 +267,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         csvFileName = os.path.join(resultDir, "%s.csv"%(name))
         df.to_csv(csvFileName)
     
-    
     #generating summary files
-   
     summary = {"n_rv": n_rv,
                "T": T,
                "scenario": n_scenario,
@@ -283,6 +278,11 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "final_wealth": finalWealth,
                "scen_err_cnt":len(genScenErrDates),
                "scen_err_dates": genScenErrDates,
+               "buyProcess": buyProcess,
+               "sellProcess": sellProcess,
+               "wealthProcess": wealthProcess,
+               "depositProcess": depositProcess,
+               "CVaRProcess": CVaRProcess,
                "machine": platform.node(),
                "elapsed": time.time()-t0
                }

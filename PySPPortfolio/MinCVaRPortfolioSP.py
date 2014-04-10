@@ -144,10 +144,20 @@ def MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     results = opt.solve(instance)  
     instance.load(results)
     
-    display(instance)
-    #output file to yaml format
-#     results.write()
+#     display(instance)
+    M = len(symbols)
+    results = {}
+    
+    for v in instance.active_components(Var):
+        varobject = getattr(instance, v)
+        if v == "buys":
+            results[v] = np.fromiter((varobject[index].value for index in varobject), np.float)
+        elif v == "sells":
+            results[v] = np.fromiter((varobject[index].value for index in varobject), np.float)
+        elif v == "Z":
+            results[v] = varobject.value
     print "MinCVaRPortfolioSIP elapsed %.3f secs"%(time.time()-t)
+    return results
  
 
 def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
@@ -255,11 +265,23 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     results = opt.solve(instance)  
     instance.load(results)
     
-    display(instance)
-    #output file to yaml format
-#     results.write()
+#     display(instance)
+    M = len(symbols)
+    results = {}
+    
+    for v in instance.active_components(Var):
+#         print "Variable",v
+        varobject = getattr(instance, v)
+        if v == "buys":
+            results[v] = np.fromiter((varobject[index].value for index in varobject), np.float)
+        elif v == "sells":
+            results[v] = np.fromiter((varobject[index].value for index in varobject), np.float)
+        elif v == "Z":
+            results[v] = varobject.value
+#     print results
+    
     print "MinCVaRPortfolioSP elapsed %.3f secs"%(time.time()-t)
- 
+    return  results
 
 
 def constructModelData():
@@ -284,11 +306,12 @@ def constructModelData():
     predictRiskFreeRet = 0.
     
     
-    MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocated,
+    results = MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocated,
                        money, buyTransFee, sellTransFee, alpha,
                        predictRiskyRet, predictRiskFreeRet, 
                        n_scenario = 5,
-                       solver="glpk", n_stock=1)
+                       solver="cplex")
+    print results
  
 if __name__ == '__main__':
     constructModelData()
