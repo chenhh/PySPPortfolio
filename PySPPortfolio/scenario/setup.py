@@ -16,7 +16,7 @@ extensions = [
               "HeuristicMomentMatching", 
               ["HeuristicMomentMatching.pyx"],
               libraries=["m"],
-              include_dirs = [np.get_include()]
+              include_dirs = [np.get_include()],
     ),
     Extension(
               "HeuristicCopula", 

@@ -66,5 +66,5 @@ cpdef HeuristicMomentMatching(np.ndarray tgtMoms,
         for j in xrange(n_scenario):
             scenarios[i][j] = OutMat.val[i][j]
             
-    return scenarios
+    return scenarios, code
             

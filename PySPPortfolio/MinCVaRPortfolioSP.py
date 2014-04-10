@@ -290,7 +290,7 @@ def constructModelData():
     allocated = np.zeros(M)
     money = 1e6
     
-    buyTransFee =  np.ones(M)*0.003  #買進0.1425%手續費
+    buyTransFee =  np.ones(M)*0.001425  #買進0.1425%手續費
     sellTransFee =  np.ones(M)*0.004425  #賣出0.3%手續費+0.1425%交易稅
     
     riskyRet = [0.01, 0.02, 0.015]

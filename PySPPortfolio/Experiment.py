@@ -6,6 +6,7 @@ start from 2005/1/1 to 2013/12/31
 '''
 
 from __future__ import division
+import argparse
 import os
 import platform
 import time
@@ -13,7 +14,6 @@ from datetime import date
 import numpy as np 
 import scipy.stats as spstats
 import pandas as pd
-from cStringIO import StringIO
 from HKW_wrapper import HKW_wrapper
 from MinCVaRPortfolioSP import MinCVaRPortfolioSP
 import simplejson as json 
@@ -93,6 +93,7 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
         print "transDates size (T+1):", transDates.shape
         print "full transDates, size(hist+T): ", fullTransDates.shape
         print "alpha value:", alpha
+    
     return {
         "n_rv": n_rv,
         "T": T,
@@ -111,7 +112,8 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=1000,
                            buyTransFee=0.001425, sellTransFee=0.004425,
-                           alpha=0.95, debug=False):
+                           alpha=0.95, scenFunc="HMM", solver="glpk", 
+                           debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
     -假設symbols有n_rv個，投資期數共T期(最後一期不買賣，只結算)
@@ -121,8 +123,12 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     @param money, positive float, 初使資金
     @param hist_period, positive integer, 用於計算moment與corr mtx的歷史資料長度
     @param n_scenario, positive integer, 每一期產生的scenario個數
+    @param buyTransFee, sellTransFee, float, 買進與賣出手續費
+    @param alpha, float, confidence level of the CVaR
+    @scenFunc, string, 產生scenario的function
+    @solver, string, 解stochastic programming的solver
     
-    @return translog 
+    @return {
         "n_rv": n_rv,
         "T": T,
         "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
@@ -158,61 +164,64 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     sellProcess = np.zeros((n_rv, T))
     wealthProcess = np.zeros((n_rv, T+1))
     depositProcess = np.zeros(T+1)
-    CVaRProcess = np.zeros(T)
-    
-    #設定subprocess的environment variable for cplex
-    env = os.environ.copy()
-    env['PATH'] += ':/opt/ibm/ILOG/CPLEX_Studio126/cplex/bin/x86-64_linux'
+    VaRProcess = np.zeros(T)
     
     genScenErrDates = []
     for tdx in xrange(T):
         tloop = time.time()
         transDate = pd.to_datetime(transDates[tdx])
+         
+        #投資時已知當日的ret(即已經知道當日收盤價)
+        t = time.time()
+        subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
+
+        if scenFunc == "HKW":
+            moments = np.empty((n_rv, 4))
+            moments[:, 0] = subRiskyRetMtx.mean(axis=1)
+            moments[:, 1] = subRiskyRetMtx.std(axis=1)
+            moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
+            moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
+            corrMtx = np.corrcoef(subRiskyRetMtx)
+            scenMtx, rc = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario)
+        else:
+            raise ValueError("unknown scenFunc %s"%(scenFunc))
+        
+        print "%s - generate scen. mtx, %.3f secs"%(transDate, time.time()-t)
+        
+        if rc == 0:
+            #solve SP
+            t = time.time()
+            riskyRet = allRiskyRetMtx[:, hist_period+tdx]
+            riskFreeRet = riskFreeRetVec[tdx]
+            predictRiskyRet = scenMtx
+            predictRiskFreeRet = 0
+            results = MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
+                           depositWealth, buyTransFee, sellTransFee, alpha,
+                           predictRiskyRet, predictRiskFreeRet, n_scenario, 
+                           probs=None, solver=solver)
+            print "%s - %s solve SP, %.3f secs"%(transDate, solver, time.time()-t)
+        else:
+            genScenErrDates.append(transDate)
+            results = None
         
         #realized today return
         allocatedWealth = allocatedWealth * (1+allRiskyRetMtx[:, hist_period+tdx])
         depositWealth =  depositWealth * (1+riskFreeRetVec[tdx])
         
-        #投資時已知當日的ret(即已經知道當日收盤價)
-        t = time.time()
-        subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
-
-        moments = np.empty((n_rv, 4))
-        moments[:, 0] = subRiskyRetMtx.mean(axis=1)
-        moments[:, 1] = subRiskyRetMtx.std(axis=1)
-        moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
-        moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
-        corrMtx = np.corrcoef(subRiskyRetMtx)
-    
-        scenMtx = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario)
-        print "%s - generate scen. mtx, %.3f secs"%(transDate, time.time()-t)
-        
-        #使用抽樣樣本建立ScenarioStructure.dat, RootNode.dat與不同scenario的檔案
-        t = time.time()
-        riskyRet = allRiskyRetMtx[:, hist_period+tdx]
-        riskFreeRet = riskFreeRetVec[tdx]
-        predictRiskyRet = scenMtx
-        predictRiskFreeRet = 0
-        vars = MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
-                       depositWealth, buyTransFee, sellTransFee, alpha,
-                       predictRiskyRet, predictRiskFreeRet, n_scenario, 
-                       probs=None, solver="glpk")
-        print "%s - solve SP, %.3f secs"%(transDate, time.time()-t)
-        
-        #執行買賣
-        #buy action
-        for idx, value in enumerate(vars['buys']):
-            allocatedWealth[idx] += value
-            buy = (1 + buyTransFeeMtx[idx, tdx]) * value
-            buyProcess[idx, tdx] = buy
-            depositWealth -= buy
-        
-        #sell action
-        for jdx, value in enumerate(vars['sells']):
-            allocatedWealth[idx] -= value
-            sell = (1 - sellTransFeeMtx[idx, tdx]) * value
-            sellProcess[idx, tdx] = sell
-            depositWealth += sell
+        if rc == 0 and results is not None:
+            #buy action
+            for idx, value in enumerate(results['buys']):
+                allocatedWealth[idx] += value
+                buy = (1 + buyTransFeeMtx[idx, tdx]) * value
+                buyProcess[idx, tdx] = buy
+                depositWealth -= buy
+            
+            #sell action
+            for jdx, value in enumerate(results['sells']):
+                allocatedWealth[idx] -= value
+                sell = (1 - sellTransFeeMtx[idx, tdx]) * value
+                sellProcess[idx, tdx] = sell
+                depositWealth += sell
     
         #log wealth and signal process
         wealthProcess[:, tdx] = allocatedWealth
@@ -249,14 +258,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], columns=symbols) 
     pd_wealthProc = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
     pd_depositProc = pd.Series(depositProcess.T, index=transDates)
-    pd_CVaRProc = pd.Series(CVaRProcess.T, index=transDates[:-1])
+    pd_VaRProc = pd.Series(VaRProcess.T, index=transDates[:-1])
     
     records = {
         "buyProcess": pd_buyProc, 
         "sellProcess": pd_sellProc, 
         "wealthProcess": pd_wealthProc, 
         "depositProcess": pd_depositProc, 
-        "CVaRProcess": pd_CVaRProc
+        "VaRProcess": pd_VaRProc
     }
     
     #save pkl
@@ -282,7 +291,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "sellProcess": sellProcess,
                "wealthProcess": wealthProcess,
                "depositProcess": depositProcess,
-               "CVaRProcess": CVaRProcess,
+               "VaRProcess": VaRProcess,
                "machine": platform.node(),
                "elapsed": time.time()-t0
                }
@@ -296,5 +305,49 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             time.time()-t0)
 
 
+def dynamicSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
+                           hist_period=20, n_scenario=1000,
+                           buyTransFee=0.001425, sellTransFee=0.004425,
+                           alpha=0.95, solver="glpk", n_stock=3, debug=False):
+    '''
+    utilizing stochastic integer programming to limit the 
+    number of stock to invest in.
+    
+    @param symbols, list, target assets
+    @param startDate, endDate, datetime.date, 交易的起始，結束日期
+    @param money, positive float, 初使資金
+    @param hist_period, positive integer, 用於計算moment與corr mtx的歷史資料長度
+    @param n_scenario, positive integer, 每一期產生的scenario個數
+    
+    @return {
+        "n_rv": n_rv,
+        "T": T,
+        "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
+        #[0:hist_period]用於估計moments與corrMtx
+        "riskFreeRetVec": riskFreeRetVec,   #size: T+1
+        "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
+        "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
+        "allocatedWealth": allocatedWealth, #size: n_rv
+        "depositWealth": depositWealth,     #size: 1 
+        "transDates": transDates,           #size: (T+1)
+        "fullTransDates": fullTransDates,   #size: (hist_period+T)
+         "alpha": alpha                      #size：１
+        }
+    '''
+    assert len(symbols) >= n_stock
+    
+
 if __name__ == '__main__':
-    pass
+    parser = argparse.ArgumentParser()
+    parser.parse_args()
+    group = parser.add_mutually_exclusive_group()
+    parser.add_argument('-n', '--symbols', type=int, default=5, help="num. of symbols")
+    parser.add_argument('-h', '--histperiod', type=int, default=20, help="historical period")
+    parser.add_argument('-s', '--scenario', type=int, default=200, help="num. of scenario")
+    parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
+    group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
+    group.add_argument('-f', '-fullyear', help="from 2005~2013")
+    args = parser.parse_args()
+
+    # 把參數 number 的值印出來
+    print args.number

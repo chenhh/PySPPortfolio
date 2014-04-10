@@ -9,8 +9,10 @@ import numpy as np
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
-@cython.boundscheck(False)
-cpdef HeuristicCopula(np.ndarray[DTYPE_t] data, double alpha, int n_scenario):
+
+
+# @cython.boundscheck(False)
+cpdef HeuristicCopula(np.ndarray data, double alpha, int n_scenario):
     '''
     @data, numpy.array, size: N*D, N is num. of data, D is dimensions
     @alpha, float, confidence level of CVaR

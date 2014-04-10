@@ -6,18 +6,23 @@
 from __future__ import division
 cimport numpy as np
 import numpy as np
+import scipy.stats as spstats
+import scipy.optimize as spopt
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
-@cython.boundscheck(False)
+# @cython.boundscheck(False)
 cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms, 
                                np.ndarray[DTYPE_t, ndim=2]  tgtCorrs, 
                                int n_scenario):
-    
-    assert tgtMoments.shape[1] == 4
-    assert  tgtCorrMtx.shape[0] ==  tgtCorrMtx.shape[1] == tgtMoments.shape[0]
+    '''
+    tgtMoms, numpy.array, size: n_rv * 4
+    tgtCorrs, numpy.array, size: n_rv * n_rv
+    '''
+    assert tgtMoms.shape[1] == 4
+    assert tgtCorrs.shape[0] ==  tgtCorrs.shape[1] == tgtMoms.shape[0]
     cdef:
-        unsigned int n_rv = tgtMoments.shape[0]
+        unsigned int n_rv = tgtMoms.shape[0]
         double EPS= 1e-3
         double MaxErrMoment = 1e-3
         double MaxErrCorr = 1e-3
@@ -34,8 +39,8 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
         
     #origin moments, size: (n_rv * 4)
     MOM[:, 1] = 1
-    MOM[:, 2] = tgtMoments[:, 2]/(tgtMoments[:, 1]**3)    #skew/(std**3)
-    MOM[:, 3] = tgtMoments[:, 2]/(tgtMoments[:, 1]**4)    #skew/(std**4)
+    MOM[:, 2] = tgtMoms[:, 2]/(tgtMoms[:, 1]**3)    #skew/(std**3)
+    MOM[:, 3] = tgtMoms[:, 2]/(tgtMoms[:, 1]**4)    #skew/(std**4)
     
     for rv in xrange(n_rv):
         cubErr = float('inf')
@@ -76,9 +81,9 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
     outMoments[:, 3] = spstats.kurtosis(outMtx, axis=1)
     outCorrMtx = np.corrcoef(outMtx)
     
-    errMoment = RMSE(outMoments, tgtMoments)
-    errCorr = RMSE(outCorrMtx, tgtCorrMtx)
-    print 'start errMoments:%s, errCorr:%s'%(errMoment, errCorr)
+    errMoms = RMSE(outMoments, tgtMoms)
+    errCorrs = RMSE(outCorrMtx, tgtCorrs)
+    print 'start errMoments:%s, errCorr:%s'%(errMoms, errCorrs)
 
 
 
@@ -95,7 +100,7 @@ def RMSE(predictions, targets):
     return np.sqrt(((predictions - targets) ** 2).mean())
 
 
-@cython.boundscheck(False)
+# @cython.boundscheck(False)
 def cubicTransform(np.ndarray[DTYPE_t, ndim=1] cubParams, 
                    np.ndarray[DTYPE_t, ndim=1] EY, 
                    np.ndarray[DTYPE_t, ndim=1] EX):
