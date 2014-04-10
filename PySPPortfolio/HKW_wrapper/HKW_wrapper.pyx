@@ -13,15 +13,20 @@ ctypedef np.float_t DTYPE_t
 
 cpdef HeuristicMomentMatching(np.ndarray tgtMoms,
                              np.ndarray tgtCorrs,
-                             int n_scenario):
+                             int n_scenario,
+                             int MaxTrial,
+                             int HKW_MaxIter,
+                             double MaxErrMom,
+                             double MaxErrCorr
+                             ):
     cdef:
         int i, j
         int n_rv = tgtMoms.shape[0]
         int FormatOfTgMoms = 1
-        int MaxTrial = 10
-        HKW_MaxIter = 20
-        double MaxErrMom = 1e-3
-        double MaxErrCorr = 1e-3
+#         int MaxTrial = 50
+#         int HKW_MaxIter = 50
+#         double MaxErrMom = 1e-3
+#         double MaxErrCorr = 1e-3
         int TestLevel = 2
         unsigned char UseStartDistrib = 0
         TMatrix p_TarMoms
@@ -52,19 +57,26 @@ cpdef HeuristicMomentMatching(np.ndarray tgtMoms,
 
     Mat_Display(&p_TarMoms, "p_tarmoms")
     Mat_Display(&p_TgCorrs, "p_tgcorrs")
-    Vec_Display(&p_Probs, "p_Probs")
+    #Vec_Display(&p_Probs, "p_Probs")
 
     code = HKW_ScenGen(FormatOfTgMoms, &p_TarMoms, &p_TgCorrs, &p_Probs, &OutMat,
                 MaxErrMom, MaxErrCorr, TestLevel, MaxTrial, HKW_MaxIter,
                 UseStartDistrib, NULL, NULL, NULL, NULL
             )
         
-    Mat_Display(&OutMat, "OutMat")
+    #Mat_Display(&OutMat, "OutMat")
     
     scenarios = np.empty((n_rv, n_scenario))
     for i in xrange(n_rv):
         for j in xrange(n_scenario):
             scenarios[i][j] = OutMat.val[i][j]
-            
+    
+    #De-allocate matrices
+    Mat_Kill(&p_TarMoms)
+    Mat_Kill(&p_TgCorrs)
+    Mat_Kill(&OutMat)
+    Vec_Kill(&p_Probs)
+    
+      
     return scenarios, code
             

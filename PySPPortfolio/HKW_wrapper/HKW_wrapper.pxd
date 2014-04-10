@@ -13,7 +13,10 @@ cdef extern from "matrix.h":
     cdef int Vec_Init(TVector* p_vec, int size) 
     cdef void Mat_Display(TMatrix* p_A, char name[])
     cdef void Vec_Display(TVector* p_A, char name[])
-
+    cdef void Vec_Kill(TVector* p_A)
+    cdef void Mat_Kill(TMatrix* p_A)
+    
+    
 cdef extern from "HKW_sg.h":
     int HKW_ScenGen(int FormatOfMoms,
                     TMatrix* p_TarMoms, #size: 4 * n_rv

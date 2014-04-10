@@ -11,7 +11,8 @@ import os
 import platform
 import time
 from datetime import date
-import numpy as np 
+import numpy as np
+import numpy.linalg as la 
 import scipy.stats as spstats
 import pandas as pd
 from HKW_wrapper import HKW_wrapper
@@ -113,7 +114,7 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=1000,
                            buyTransFee=0.001425, sellTransFee=0.004425,
-                           alpha=0.95, scenFunc="HMM", solver="glpk", 
+                           alpha=0.95, scenFunc="Moment", solver="glpk", 
                            debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
@@ -176,14 +177,23 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         t = time.time()
         subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
 
-        if scenFunc == "HKW":
+        if scenFunc == "Moment":
             moments = np.empty((n_rv, 4))
             moments[:, 0] = subRiskyRetMtx.mean(axis=1)
             moments[:, 1] = subRiskyRetMtx.std(axis=1)
             moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
             moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
             corrMtx = np.corrcoef(subRiskyRetMtx)
-            scenMtx, rc = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario)
+            MaxTrial = 50
+            HKW_MaxIter =50
+            MaxErrMom = 1e-1
+            MaxErrCorr = 1e-1
+            
+            print "mom:", moments
+            print "corr:", corrMtx
+            L= la.cholesky(corrMtx)
+            scenMtx, rc = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario,
+                                            MaxTrial, HKW_MaxIter, MaxErrMom, MaxErrCorr)
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
@@ -194,6 +204,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             t = time.time()
             riskyRet = allRiskyRetMtx[:, hist_period+tdx]
             riskFreeRet = riskFreeRetVec[tdx]
+            buyTransFee = buyTransFeeMtx[:, tdx]
+            sellTransFee =  sellTransFeeMtx[:, tdx]
             predictRiskyRet = scenMtx
             predictRiskFreeRet = 0
             results = MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
@@ -310,9 +322,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='fixedSymbolSPPortfolio')
-    parser.parse_args()
+#     parser.parse_args()
     parser.add_argument('-n', '--symbols', type=int, default=5, help="num. of symbols")
-    parser.add_argument('-h', '--hist', type=int, default=20, help="historical period")
+    parser.add_argument('-p', '--histPeriod', type=int, default=40, help="historical period")
     parser.add_argument('-s', '--scenario', type=int, default=200, help="num. of scenario")
     parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
     parser.add_argument('--solver', choices=["glpk", "cplex"], default="glpk", help="solver for SP")
@@ -320,8 +332,36 @@ if __name__ == '__main__':
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
-    group.add_argument('-f', '-fullyear', help="from 2005~2013")
+    group.add_argument('-f', '--full', help="from 2005~2013")
     args = parser.parse_args()
 
     # 把參數 number 的值印出來
-    print args.number
+    print args
+    print args.symbols
+    print args.solver
+        
+    #market value top 20 (2013/12/31)
+    symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881',
+                '2002', '2308', '3045', '2886', '2891',
+                '1216', '2382', '2105', '2311', '2912'
+               ]
+    symbols = symbols[:args.symbols]
+    
+    if args.year:
+        startDate = date(args.year, 2, 1)
+        endDate = date(args.year, 3, 31)
+        
+    money = 1e6
+    hist_period = args.histPeriod
+    n_scenario = args.scenario
+    buyTransFee=0.001425
+    sellTransFee=0.004425
+    alpha = args.alpha
+    scenFunc = args.scenFunc
+    solver = args.solver
+    debug = False
+    fixedSymbolSPPortfolio(symbols, startDate, endDate,  money,
+                           hist_period, n_scenario,
+                           buyTransFee, sellTransFee,
+                           alpha, scenFunc, solver, debug)
