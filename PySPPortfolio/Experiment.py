@@ -13,8 +13,10 @@ from datetime import date
 import numpy as np 
 import scipy.stats as spstats
 import pandas as pd
+from cStringIO import StringIO
 from HKW_wrapper import HKW_wrapper
 from MinCVaRPortfolioSP import MinCVaRPortfolioSP
+import simplejson as json 
 
 FileDir = os.path.abspath(os.path.curdir)
 PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
@@ -172,7 +174,6 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         depositWealth =  depositWealth * (1+riskFreeRetVec[tdx])
         
         #投資時已知當日的ret(即已經知道當日收盤價)
-        #算出4 moments與correlation matrix
         t = time.time()
         subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
 
@@ -191,48 +192,41 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         
         #使用抽樣樣本建立ScenarioStructure.dat, RootNode.dat與不同scenario的檔案
         t = time.time()
-        MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
+        riskyRet = allRiskyRetMtx[:, hist_period+tdx]
+        riskFreeRet = riskFreeRetVec[tdx]
+        predictRiskyRet = scenMtx
+        predictRiskFreeRet = 0
+        vars = MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                        depositWealth, buyTransFee, sellTransFee, alpha,
                        predictRiskyRet, predictRiskFreeRet, n_scenario, 
                        probs=None, solver="glpk")
         print "%s - solve SP, %.3f secs"%(transDate, time.time()-t)
         
-        #parse ef.csv, 並且執行買賣
-        #(stage, node, var, index, value)
-#         with open('ef.csv') as fin:  
-#             for row in csv.DictReader(fin, ('stage', 'node', 'var', 'symbol', 'value')): 
-#                 for key in row.keys():
-#                     row[key] = row[key].strip()
-#                 node, symbol = row['node'], row['symbol']
-#                  
-#                 if node == "RootNode" and row['var'] == "Z":
-#                     VaRProcess[tdx] = float(row['value'])
-#                  
-#                 if  node == 'RootNode' and symbol in symbols:
-#                     #get symbol index 
-#                     idx = symbols.index(row['symbol'])
-#                     if row['var'] == 'buys':
-#                         allocatedWealth[idx] += float(row['value'])
-#                         buy = (1 + buyTransFeeMtx[idx, tdx]) * float(row['value'])
-#                         buyProcess[idx, tdx] = buy
-#                         depositWealth -= buy
-#                     elif row['var'] == 'sells':
-#                         allocatedWealth[idx] -= float(row['value'])
-#                         sell = (1 - sellTransFeeMtx[idx, tdx]) * float(row['value'])
-#                         sellProcess[idx, tdx] = sell
-#                         depositWealth += sell
-#                     else:
-#                         raise ValueError('unknown variable %s'%(row))
+        #執行買賣
+        #buy action
+        for idx, value in enumerate(vars['buys']):
+            allocatedWealth[idx] += value
+            buy = (1 + buyTransFeeMtx[idx, tdx]) * value
+            buyProcess[idx, tdx] = buy
+            depositWealth -= buy
         
+        #sell action
+        for jdx, value in enumerate(vars['sells']):
+            allocatedWealth[idx] -= value
+            sell = (1 - sellTransFeeMtx[idx, tdx]) * value
+            sellProcess[idx, tdx] = sell
+            depositWealth += sell
+    
         #log wealth and signal process
         wealthProcess[:, tdx] = allocatedWealth
         depositProcess[tdx] = depositWealth
                                     
         print '*'*75
-        print "%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]\ntransDate %s fixed CVaR SP OK, current wealth %s"%(
-                startDate, endDate, n_rv, hist_period, n_scenario, alpha, len(genScenErrDates),    
-                transDate,  allocatedWealth.sum() + depositWealth)
-        print "%.3f secs"%(time.time()-tloop)
+        print '''%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]
+                  transDate %s fixed CVaR SP OK, current wealth %s, %.3f secs
+               '''%( startDate, endDate, n_rv, hist_period, n_scenario, alpha, 
+                len(genScenErrDates),  transDate,  allocatedWealth.sum() + depositWealth,
+                time.time()-tloop)
         print '*'*75
     
     #最後一期只結算不買賣
@@ -244,25 +238,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     print "final wealth %s"%(finalWealth)
     
     #setup result directory
-    resultDir0 = os.path.join(ExpResultsDir, "n%s_h%s_s%s_a%s"%(
-                                        n_rv, hist_period, n_scenario, alpha))
-    if not os.path.exists(resultDir0):
-        os.mkdir(resultDir0)
-        
     t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
     t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
     rnd = time.strftime("%y%m%d%H%M%S")
-    resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
-                        fixedSymbolSPPortfolio.__name__, 
-                        t1, t2, rnd))
-    
-    while True:
-        if not os.path.exists(resultDir):
-            os.mkdir(resultDir)
-            break
-        rnd = time.strftime("%y%m%d%H%M%S")
-        resultDir = os.path.join(resultDir0, "%s_%s-%s_%s"%(
-                        fixedSymbolSPPortfolio.__name__, t1, t2, rnd))
+    layer1Dir =  "n%s_h%s_s%s_a%s"%(n_rv, hist_period, n_scenario, alpha)
+    layer2Dir = "%s_%s-%s_%s"%(fixedSymbolSPPortfolio.__name__, t1, t2, rnd)
+    resultDir = os.path.join(ExpResultsDir, layer1Dir, layer2Dir)
+    if not os.path.exists(resultDir):
+        os.makedirs(resultDir)
     
     #store data in pkl
     pd_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], columns=symbols)
@@ -271,61 +254,42 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     pd_depositProc = pd.Series(depositProcess.T, index=transDates)
     pd_VaRProc = pd.Series(VaRProcess.T, index=transDates[:-1])
     
-    buyProcFile = os.path.join(resultDir, 'buyProcess.pkl')
-    sellProcFile = os.path.join(resultDir, 'sellProcess.pkl')
-    wealthProcFile = os.path.join(resultDir, 'wealthProcess.pkl')
-    depositProcFile = os.path.join(resultDir, 'depositProcess.pkl')
-    VaRProcFile = os.path.join(resultDir, 'VaRProcess.pkl')
+    records = {
+        "buyProcess": pd_buyProc, 
+        "sellProcess": pd_sellProc, 
+        "wealthProcess": pd_wealthProc, 
+        "depositProcess": pd_depositProc, 
+        "VaRProcess": pd_VaRProc
+    }
     
-    pd_buyProc.save(buyProcFile)
-    pd_sellProc.save(sellProcFile)
-    pd_wealthProc.save(wealthProcFile)
-    pd_depositProc.save(depositProcFile)
-    pd_VaRProc.save(VaRProcFile)
+    #save pkl
+    for name, df in records.items():
+        pklFileName = os.path.join(resultDir, "%s.pkl"%(name))
+        df.save(pklFileName)
+   
+        csvFileName = os.path.join(resultDir, "%s.csv"%(name))
+        df.to_csv(csvFileName)
     
-    #store data in csv 
-    buyProcCSV = os.path.join(resultDir, 'buyProcess.csv')
-    sellProcCSV = os.path.join(resultDir, 'sellProcess.csv')
-    wealthProcCSV = os.path.join(resultDir, 'wealthProcess.csv')
-    depositProcCSV = os.path.join(resultDir, 'depositProcess.csv')
-    VaRProcCSV = os.path.join(resultDir, 'VaRProcess.csv')
-    
-    pd_buyProc.to_csv(buyProcCSV)
-    pd_sellProc.to_csv(sellProcCSV)
-    pd_wealthProc.to_csv(wealthProcCSV)
-    pd_depositProc.to_csv(depositProcCSV)
-    pd_VaRProc.to_csv(VaRProcCSV)
-    
-    #print results
-    print "buyProcess:\n",pd_buyProc
-    print "sellProcess:\n",pd_sellProc
-    print "wealthProcess:\n",pd_wealthProc
-    print "depositProcess:\n",pd_depositProc
-    print "VaRProcess:\n", pd_VaRProc
     
     #generating summary files
-    summary = StringIO()
-    summary.write('n_rv: %s\n'%(n_rv))
-    summary.write('T: %s\n'%(T))
-    summary.write('scenario: %s\n'%(n_scenario))
-    summary.write('alpha: %s\n'%(alpha))
-    summary.write('symbols: %s \n'%(",".join(symbols)))
-    summary.write('transDates (T+1): %s \n'%(
-                    ",".join([pd.to_datetime(t).strftime("%Y%m%d") 
-                              for t in transDates])))
-    summary.write('hist_period: %s\n'%(hist_period))
-    summary.write('final wealth:%s \n'%(finalWealth))
-    summary.write('generate scenario error count:%s\n'%(len(genScenErrDates)))
-    summary.write('generate scenario error dates:\n%s\n'%(
-                 ",".join([t.strftime("%Y%m%d") 
-                for t in genScenErrDates])))
-    summary.write('machine: %s, simulation time:%.3f secs \n'%(
-                platform.node(), time.time()-t0))
+   
+    summary = {"n_rv": n_rv,
+               "T": T,
+               "scenario": n_scenario,
+               "alpha": alpha,
+               "symbols":  ",".join(symbols),
+               "transDates": transDates,    #(T+!)
+               "hist_period": hist_period,
+               "final_wealth": finalWealth,
+               "scen_err_cnt":len(genScenErrDates),
+               "scen_err_dates": genScenErrDates,
+               "machine": platform.node(),
+               "elapsed": time.time()-t0
+               }
     
-    fileName = os.path.join(resultDir, 'summary.txt')
+    fileName = os.path.join(resultDir, 'summary.json')
     with open (fileName, 'w') as fout:
-        fout.write(summary.getvalue())
-    summary.close()
+        json.dump(summary, fout)
     
     print "%s-%s n%s-h%s-s%s-a%s\nsimulation ok, %.3f secs"%(
              startDate, endDate, n_rv, hist_period, n_scenario, alpha,    
