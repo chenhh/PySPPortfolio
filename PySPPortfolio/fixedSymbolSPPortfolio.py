@@ -44,6 +44,7 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
     df.index.get_loc(startDate)找index所在位置
     @return riskyRetMtx, numpy.array, size: (n_rv * hist_period+T)
     ''' 
+    
     #read data
     dfs = []
     transDates = None
@@ -186,7 +187,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
-        print "%s - generate scen. mtx, %.3f secs"%(transDate, time.time()-t)
+        print "%s-%s - generate scen. mtx, %.3f secs"%(transDate, scenFunc, time.time()-t)
         
         if rc == 0:
             #solve SP
@@ -228,9 +229,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         depositProcess[tdx] = depositWealth
                                     
         print '*'*75
-        print '''%s-%s n%s-h%s-s%s-a%s, genscenErr:[%s]
+        print '''%s-%s n%s-h%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]
                   transDate %s fixed CVaR SP OK, current wealth %s, %.3f secs
-               '''%( startDate, endDate, n_rv, hist_period, n_scenario, alpha, 
+               '''%( startDate, endDate, n_rv, hist_period, n_scenario, alpha, scenFunc, solver, 
                 len(genScenErrDates),  transDate,  allocatedWealth.sum() + depositWealth,
                 time.time()-tloop)
         print '*'*75
@@ -247,8 +248,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
     t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
     rnd = time.strftime("%y%m%d%H%M%S")
-    layer1Dir =  "n%s_h%s_s%s_a%s"%(n_rv, hist_period, n_scenario, alpha)
-    layer2Dir = "%s_%s-%s_%s"%(fixedSymbolSPPortfolio.__name__, t1, t2, rnd)
+    layer1Dir =  "%s_n%s_h%s_s%s_a%s"%(fixedSymbolSPPortfolio.__name__, n_rv, 
+                                       hist_period, n_scenario, alpha)
+    layer2Dir = "%s-%s_%s"%(t1, t2, rnd)
     resultDir = os.path.join(ExpResultsDir, layer1Dir, layer2Dir)
     if not os.path.exists(resultDir):
         os.makedirs(resultDir)
@@ -285,6 +287,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "transDates": transDates,    #(T+!)
                "hist_period": hist_period,
                "final_wealth": finalWealth,
+               "scenFunc": scenFunc,
                "scen_err_cnt":len(genScenErrDates),
                "scen_err_dates": genScenErrDates,
                "buyProcess": buyProcess,
@@ -300,51 +303,22 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     with open (fileName, 'w') as fout:
         json.dump(summary, fout)
     
-    print "%s-%s n%s-h%s-s%s-a%s\nsimulation ok, %.3f secs"%(
-             startDate, endDate, n_rv, hist_period, n_scenario, alpha,    
-            time.time()-t0)
+    print "%s-%s n%s-h%s-s%s-a%s --scenFunc %s --solver %s\nsimulation ok, %.3f secs"%(
+             startDate, endDate, n_rv, hist_period, n_scenario, alpha,
+             scenFunc, solver, time.time()-t0)
 
-
-def dynamicSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
-                           hist_period=20, n_scenario=1000,
-                           buyTransFee=0.001425, sellTransFee=0.004425,
-                           alpha=0.95, solver="glpk", n_stock=3, debug=False):
-    '''
-    utilizing stochastic integer programming to limit the 
-    number of stock to invest in.
-    
-    @param symbols, list, target assets
-    @param startDate, endDate, datetime.date, 交易的起始，結束日期
-    @param money, positive float, 初使資金
-    @param hist_period, positive integer, 用於計算moment與corr mtx的歷史資料長度
-    @param n_scenario, positive integer, 每一期產生的scenario個數
-    
-    @return {
-        "n_rv": n_rv,
-        "T": T,
-        "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
-        #[0:hist_period]用於估計moments與corrMtx
-        "riskFreeRetVec": riskFreeRetVec,   #size: T+1
-        "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
-        "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
-        "allocatedWealth": allocatedWealth, #size: n_rv
-        "depositWealth": depositWealth,     #size: 1 
-        "transDates": transDates,           #size: (T+1)
-        "fullTransDates": fullTransDates,   #size: (hist_period+T)
-         "alpha": alpha                      #size：１
-        }
-    '''
-    assert len(symbols) >= n_stock
-    
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='fixedSymbolSPPortfolio')
     parser.parse_args()
-    group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', '--symbols', type=int, default=5, help="num. of symbols")
-    parser.add_argument('-h', '--histperiod', type=int, default=20, help="historical period")
+    parser.add_argument('-h', '--hist', type=int, default=20, help="historical period")
     parser.add_argument('-s', '--scenario', type=int, default=200, help="num. of scenario")
     parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
+    parser.add_argument('--solver', choices=["glpk", "cplex"], default="glpk", help="solver for SP")
+    parser.add_argument('--scenFunc', choices=["Moment", "Copula"], default="Moment", help="function for generating scenario")
+    
+    group = parser.add_mutually_exclusive_group()
     group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
     group.add_argument('-f', '-fullyear', help="from 2005~2013")
     args = parser.parse_args()
