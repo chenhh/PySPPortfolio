@@ -2,6 +2,10 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
+
+Høyland, K.; Kaut, M. & Wallace, S. W., "A heuristic for 
+moment-matching scenario generation," Computational optimization 
+and applications, vol. 24, pp 169-185, 2003.
 '''
 from __future__ import division
 cimport numpy as np

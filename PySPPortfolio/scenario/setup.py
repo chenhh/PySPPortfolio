@@ -13,14 +13,14 @@ import numpy as np
 
 extensions = [
     Extension(
-              "HeuristicMomentMatching", 
-              ["HeuristicMomentMatching.pyx"],
+              "Moment", 
+              ["Moment.pyx"],
               libraries=["m"],
               include_dirs = [np.get_include()],
     ),
     Extension(
-              "HeuristicCopula", 
-              ["HeuristicCopula.pyx"],
+              "Copula", 
+              ["Copula.pyx"],
               libraries=["m"],
               ibrary_dirs=[np.get_include()],
     ),

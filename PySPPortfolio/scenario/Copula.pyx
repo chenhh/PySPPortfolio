@@ -2,6 +2,9 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
+
+Kaut, M., "A copula-based heuristic for scenario generation," Computational 
+Management Science, pp. 1-14, 2013.
 '''
 from __future__ import division
 cimport numpy as np
