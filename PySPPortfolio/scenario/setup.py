@@ -22,7 +22,8 @@ extensions = [
               "Copula", 
               ["Copula.pyx"],
               libraries=["m"],
-              ibrary_dirs=[np.get_include()],
+              include_dirs = [np.get_include()],
+#               library_dirs=[np.get_include()],
     ),
 ]
 

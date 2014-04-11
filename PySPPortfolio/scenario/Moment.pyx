@@ -8,6 +8,7 @@ moment-matching scenario generation," Computational optimization
 and applications, vol. 24, pp 169-185, 2003.
 '''
 from __future__ import division
+cimport cython
 cimport numpy as np
 import numpy as np
 import scipy.stats as spstats
@@ -20,7 +21,7 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
                                np.ndarray[DTYPE_t, ndim=2]  tgtCorrs, 
                                int n_scenario):
     '''
-    tgtMoms, numpy.array, size: n_rv * 4
+    tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
     tgtCorrs, numpy.array, size: n_rv * n_rv
     '''
     assert tgtMoms.shape[1] == 4
@@ -31,7 +32,7 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
         double MaxErrMoment = 1e-3
         double MaxErrCorr = 1e-3
         unsigned int MaxCubIter = 2
-        unsigned int MaxIter = 20
+        unsigned int MaxMainIter = 20
         unsigned int MaxStartTrial = 20
         np.ndarray[DTYPE_t, ndim=2] outMtx = np.empty((n_rv, n_scenario))
         np.ndarray[DTYPE_t, ndim=2] MOM =  np.zeros((n_rv, 4)) 
@@ -57,7 +58,7 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
                 EY = MOM[rv, :]
                 EX = np.array([(tmpOut**(order+1)).mean() for order in xrange(12)])
 
-                sol= spopt.root(cubicTransform, np.random.randn(4), 
+                sol= spopt.root(cubicTransform, np.zeros(4), 
                                  args=(EY, EX))
                 cubParams = sol.x
                 root = cubicTransform(cubParams, EY, EX)
@@ -136,3 +137,90 @@ def cubicTransform(np.ndarray[DTYPE_t, ndim=1] cubParams,
         (4*a*a*a*b)*EX[0] + a*a*a*a - EY[3])
     
     return v1, v2, v3, v4
+
+
+cpdef  cubicSolve(np.ndarray[DTYPE_t, ndim=1] samples, 
+                           np.ndarray[DTYPE_t, ndim=1] probs,
+                           np.ndarray[DTYPE_t, ndim=1] origMoms):
+    '''
+    samples, size: n_scenario, sample of a r.v.
+    probs, size: n_scenario, probability of each scenario,
+    tgtMoms, size: 4, target original  moments
+    '''
+    cdef:
+        np.ndarray[DTYPE_t, ndim=1] sampleMoms = np.zeros(12)
+        n_scenario = samples.size
+        int idx
+    
+    #計算samples的12階原始動差E[X]~E[X^12]
+    for idx in xrange(12):
+        sampleMoms[idx] = np.sum(probs * samples**(idx+1))
+    
+    
+    cdef:
+        # how often we increase the START_DEV 
+        int IncrDevStep = 50
+        
+        #L2-error on the target moments, at initial and final point
+        double error1,error2
+        
+        #infinite norm for the gradient
+        double ni
+        
+        #Hessian and inverse Hessian matrix
+        np.ndarray[DTYPE_t, ndim=2] Hessian = np.zeros((4,4))
+        np.ndarray[DTYPE_t, ndim=2] invHessian = np.zeros((4,4))
+        
+        #initial point of the solution
+        np.ndarray[DTYPE_t, ndim=1] X_init = np.array([0, 1, 0, 0])
+
+
+cdef void GradientHessian(np.ndarray[DTYPE_t, ndim=1] X)
+    '''
+    Function gradhessian computes the gradient and 
+    the Hessian of obj(x) at the current point X
+    X, size: 4
+    '''
+    cdef:
+        int i, j, k
+        np.ndarray[DTYPE_t, ndim=1] gradient = np.zeros(4)
+        np.ndarray[DTYPE_t, ndim=1] Hessian = np.zeros((4,4))
+        
+
+#     //first row initialisation
+#     for(i=0;i<7;i++){
+#         moment[0][i]=InMom[i];
+#     }
+# 
+#     //initilisation of the other rows
+# 
+#     momF1(moment[1],xk);
+#     momF2(moment[2],xk);
+#     momF3(moment[3],xk);
+#     moment[4][0]=momF4(xk);
+
+    #Gradient at point X
+    for(i=0;i<N;i++){
+        for(j=0;j<N;j++){
+        c[i]+=2*(j+1)*moment[j][i]*(moment[j+1][0]-TgMom[j]);
+        }
+    }
+
+    #hessian - no initialization needed, done for k=0
+    for(i=0;i<N;i++){
+        for (j=0; j<=i; j++){
+            // updated on 2010-06-17 - gcc complained about indexing error for k=0
+            Q[i][j] = 2*(moment[0][i]*moment[0][j]); // version for k=0
+            for (k=1; k<N; k++){
+                Q[i][j] += 2*(k+1)*((k+1)*moment[k][i]*moment[k][j]
+                                    +k*moment[k-1][i+j]*(moment[k+1][0]-TgMom[k]));
+            }
+            //symetrisation of the Hessian
+            if (j<i) {
+                Q[j][i]=Q[i][j];
+            }
+
+        }
+    }
+}
+        

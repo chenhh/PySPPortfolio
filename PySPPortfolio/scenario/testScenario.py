@@ -21,6 +21,19 @@ def testHeuristicMomentMatching():
     
     Moment.HeuristicMomentMatching(moments, corrMtx, n_scenario)
 
+def testCubicSolve():
+    n_scenario = 100
+    data = np.random.randn(n_scenario)
+    
+    moments = np.empty(4)
+    moments[0] = data .mean()
+    moments[1] = data .std()
+    moments[2] = spstats.skew(data)
+    moments[3] = spstats.kurtosis(data)
+    samples = np.random.randn(n_scenario)
+    probs = np.ones(n_scenario)/n_scenario
+    Moment.cubicSolve(samples, probs, moments)
 
 if __name__ == '__main__':
-    testHeuristicMomentMatching()
+#     testHeuristicMomentMatching()
+    testCubicSolve()

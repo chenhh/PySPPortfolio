@@ -191,8 +191,10 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             
             print "mom:", moments
             print "corr:", corrMtx
-            L= la.cholesky(corrMtx)
-            scenMtx, rc = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario,
+            for kdx in xrange(3):
+                MaxErrMom, MaxErrCorr = 1e-3 * (10**kdx), 1e-3 * (10**kdx)
+                print "kdx: %s, momErr: %s, corrErr:%s"%(kdx, MaxErrMom, MaxErrCorr)
+                scenMtx, rc = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario,
                                             MaxTrial, HKW_MaxIter, MaxErrMom, MaxErrCorr)
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
@@ -337,8 +339,6 @@ if __name__ == '__main__':
 
     # 把參數 number 的值印出來
     print args
-    print args.symbols
-    print args.solver
         
     #market value top 20 (2013/12/31)
     symbols = ['2330', '2317', '6505', '2412', '2454',
