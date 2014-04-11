@@ -74,7 +74,8 @@ def testHeuristicCopula():
     HeuristicCopula(data, alpha, n_scenario, K=100)
 
 
-def SparseTree(arr, f, d, D):
+
+def SparseTree(arr, f, d, D, inc):
     '''
     d: current dimension
     D: maximum dimension
@@ -82,15 +83,14 @@ def SparseTree(arr, f, d, D):
     if d == D:
         return
     else:
-        print "d:",d
         branch = f.setdefault(arr[d], {})
         if d >= 1:
-            branch['val'] = 0.01 
-            
-        print "f:", f, id(f)
-        print "branch:", branch, id(branch)
-        SparseTree(arr, branch, d+1, D)
-#         print "f:", f
+            if 'val' in branch.keys():
+                branch['val'] += inc
+            else: 
+                branch['val'] = inc
+                
+        SparseTree(arr, branch, d+1, D, inc)
         return f
     
 
@@ -99,13 +99,14 @@ if __name__ == '__main__':
 #     testHeuristicCopula()
 #     CubicScatter()
     
-    arr = np.array([1,3,5,7])
+    arr = np.array([1,3,5,7,9])
     d = 0
     D = 4
-    f = SparseTree(arr, {}, d, D)
-    print
+    inc = 10
+    f = SparseTree(arr, {}, d, D, inc)
+    print "run1"
     print f
 
-    f = SparseTree(np.array([1,2,5,7]), f, d, D)
-    print 
+    f = SparseTree(np.array([1,3,5,8, 9]), f, d, D, inc)
+    print "run2"
     print f
