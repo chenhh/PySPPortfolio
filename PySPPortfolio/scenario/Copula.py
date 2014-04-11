@@ -39,7 +39,9 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=100):
     delta = 1./K
     inc = 1./N/delta**(D)
     f = {}
-    
+    for arr in empIdx:
+        f= SparseArray(arr, f, 0, D, inc)
+    print f
     
     
     print "HeuristicCopula_alpha-%s_scen-%s OK, %.3f secs"%(
@@ -75,7 +77,7 @@ def testHeuristicCopula():
 
 
 
-def SparseTree(arr, f, d, D, inc):
+def SparseArray(arr, f, d, D, inc):
     '''
     d: current dimension
     D: maximum dimension
@@ -90,23 +92,23 @@ def SparseTree(arr, f, d, D, inc):
             else: 
                 branch['val'] = inc
                 
-        SparseTree(arr, branch, d+1, D, inc)
+        SparseArray(arr, branch, d+1, D, inc)
         return f
     
 
 
 if __name__ == '__main__':
-#     testHeuristicCopula()
+    testHeuristicCopula()
 #     CubicScatter()
     
-    arr = np.array([1,3,5,7,9])
-    d = 0
-    D = 4
-    inc = 10
-    f = SparseTree(arr, {}, d, D, inc)
-    print "run1"
-    print f
-
-    f = SparseTree(np.array([1,3,5,8, 9]), f, d, D, inc)
-    print "run2"
-    print f
+#     arr = np.array([1,3,5,7,9])
+#     d = 0
+#     D = 4
+#     inc = 10
+#     f = SparseArray(arr, {}, d, D, inc)
+#     print "run1"
+#     print f
+# 
+#     f = SparseArray(np.array([1,3,5,8, 9]), f, d, D, inc)
+#     print "run2"
+#     print f
