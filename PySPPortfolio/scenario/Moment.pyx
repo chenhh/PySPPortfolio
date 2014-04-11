@@ -177,8 +177,8 @@ cpdef  cubicSolve(np.ndarray[DTYPE_t, ndim=1] samples,
 
 cdef void GradientHessian(np.ndarray[DTYPE_t, ndim=1] X)
     '''
-    Function gradhessian computes the gradient and 
-    the Hessian of obj(x) at the current point X
+    computes the gradient vector and the Hessian matrix of 
+    obj(X) at the current point X
     X, size: 4
     '''
     cdef:

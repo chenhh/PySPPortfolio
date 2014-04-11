@@ -5,7 +5,7 @@
 '''
 from __future__ import division
 import numpy as np
-import sklearn.preprocessing as skpreprocessing
+import matplotlib.pyplot as plt
 import time
 
 def HeuristicCopula(data, alpha=0.95, n_scenario=200):
@@ -20,42 +20,51 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200):
     print "Z:", data
     
     #empirical marginal distribution of each dimension
-    '''
-    Z: 
-      [[-0.55076287 -1.34021287  0.61119813]
-       [-0.07884559  1.541239   -0.66488592]
-       [-2.3594308  -0.87655953  0.39321225]
-       [ 0.74696397 -1.49711055  0.62888863]
-       [-0.92163626  1.41225068 -0.4675601 ]]
-    U: 
-      [[ 0.6  0.8  0.4]
-       [ 1.   0.2  1. ]
-       [ 0.2  0.6  0.6]
-       [ 0.4  1.   0.2]
-       [ 0.8  0.4  0.8]]
-       in dimension 1, 
-       the empirical dist, of r.v. less than -2.3594308 are 0.
-       
-    '''
-    
-    
     rank = np.empty(data.shape)
     for col in xrange(data.shape[1]):
         rank[:, col] = data[:, col].argsort() + 1
     empData = rank/data.shape[0]
     print "U:", empData
     
+    #將[0,1]分成K段
+    K = 10
+    delta = np.linspace(0, 1, K)
+    
+    #scatter plot
+    plt.scatter(empData[:,0], empData[:,1])
+    plt.show()
     
     print "HeuristicCopula_alpha-%s_scen-%s OK, %.3f secs"%(
                     alpha, n_scenario, time.time()-t0)
     
+   
+def CubicScatter():
+    from numpy.random import random
+    from mpl_toolkits.mplot3d import Axes3D
+    
+    colors=['b', 'c', 'y', 'm', 'r']
+    
+    ax = plt.subplot(111, projection='3d')
+    
+    ax.plot(random(10), random(10), random(10), 'x', color=colors[0], label='Low Outlier')
+    ax.plot(random(10), random(10), random(10), 'o', color=colors[0], label='LoLo')
+    ax.plot(random(10), random(10), random(10), 'o', color=colors[1], label='Lo')
+    ax.plot(random(10), random(10), random(10), 'o', color=colors[2], label='Average')
+    ax.plot(random(10), random(10), random(10), 'o', color=colors[3], label='Hi')
+    ax.plot(random(10), random(10), random(10), 'o', color=colors[4], label='HiHi')
+    ax.plot(random(10), random(10), random(10), 'x', color=colors[4], label='High Outlier')
+    
+    plt.legend(loc='upper left', numpoints=1, ncol=3, fontsize=8, bbox_to_anchor=(0, 0))
+    
+    plt.show()
     
 def testHeuristicCopula():
-    n_rv = 5
-    data = np.random.randn(n_rv, 3)
+    n_rv = 50
+    data = np.random.randn(n_rv, 2)
     alpha=0.95
     n_scenario=200
     HeuristicCopula(data, alpha, n_scenario)
 
 if __name__ == '__main__':
-    testHeuristicCopula()
+#     testHeuristicCopula()
+    CubicScatter()
