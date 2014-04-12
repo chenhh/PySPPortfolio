@@ -2,6 +2,10 @@
 '''
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
+
+Strelen, Johann Christoph, and Feras Nassaj. "Analysis and generation of 
+random vectors with copulas." Proceedings of the 39th conference on 
+Winter simulation: 40 years! The best is yet to come. IEEE Press, 2007.
 '''
 from __future__ import division
 import math
@@ -23,18 +27,18 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=2):
     N, D = data.shape
 
     #step 1. computing copula function
-    print "Z:", data
+#     print "Z:", data
     
     #empirical marginal distribution of each dimension
     rank = np.empty(data.shape)
     for col in xrange(data.shape[1]):
         rank[:, col] = data[:, col].argsort() + 1
     empData = rank/data.shape[0]
-    print "U:", empData
+#     print "U:", empData
     
     #translate U to subcube index
     empIdx = np.ceil(empData*K).astype(np.int)
-    print "subcube idx:", empIdx
+#     print "subcube idx:", empIdx
    
     #computing f^(d)
     delta = 1./K
@@ -42,9 +46,6 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=2):
     f = {}
     for arr in empIdx:
         f= SparseArray(arr, f, 0, D, inc)
-    print "f1key:", f.keys()
-    for key in f.keys():
-        print "f2 keys:", f[key].keys()
     
     #generating samples
     for scen in xrange(n_scenario):
@@ -118,35 +119,7 @@ def get_down_ud(ud_arr, f, u, K):
 
 
 
-def CubicScatter():
-    from numpy.random import random
-    from mpl_toolkits.mplot3d import Axes3D
     
-    colors=['b', 'c', 'y', 'm', 'r']
-    
-    ax = plt.subplot(111, projection='3d')
-    
-    ax.plot(random(10), random(10), random(10), 'x', color=colors[0], label='Low Outlier')
-    ax.plot(random(10), random(10), random(10), 'o', color=colors[0], label='LoLo')
-    ax.plot(random(10), random(10), random(10), 'o', color=colors[1], label='Lo')
-    ax.plot(random(10), random(10), random(10), 'o', color=colors[2], label='Average')
-    ax.plot(random(10), random(10), random(10), 'o', color=colors[3], label='Hi')
-    ax.plot(random(10), random(10), random(10), 'o', color=colors[4], label='HiHi')
-    ax.plot(random(10), random(10), random(10), 'x', color=colors[4], label='High Outlier')
-    
-    plt.legend(loc='upper left', numpoints=1, ncol=3, fontsize=8, bbox_to_anchor=(0, 0))
-    
-    plt.show()
-    
-def testHeuristicCopula():
-    n_rv = 10
-    data = np.random.randn(n_rv, 10)
-    alpha=0.95
-    n_scenario=200
-    HeuristicCopula(data, alpha, n_scenario, K=1)
-
-
-
 def SparseArray(arr, f, d, D, inc):
     '''
     d: current dimension
@@ -180,6 +153,10 @@ def getSparseArrayValue(arr, f, d=0):
 
 
 def getSumSparseArrayValue(arr, f, upperID, d=0):
+    '''
+    given first node element arr, 
+    get sum of the value at this level, if the key is less than or equal to upperID
+    '''
     if d == len(arr):
         return sum(f[key]['val'] for key in f.keys() if key <= upperID)
     else:
@@ -187,6 +164,15 @@ def getSumSparseArrayValue(arr, f, upperID, d=0):
             return getSumSparseArrayValue(arr, f[arr[d]], upperID, d+1)
         else:
             raise ValueError('%dth element of arr is %s, not in f'%(d, arr[d]))
+
+
+def testHeuristicCopula():
+    n_rv = 10
+    data = np.random.randn(n_rv, 10)
+    alpha=0.95
+    n_scenario=200
+    HeuristicCopula(data, alpha, n_scenario, K=1)
+
 
 if __name__ == '__main__':
     testHeuristicCopula()
