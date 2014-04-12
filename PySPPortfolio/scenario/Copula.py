@@ -40,13 +40,44 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=100):
     f = {}
     for arr in empIdx:
         f= SparseArray(arr, f, 0, D, inc)
-    print f
+    print "fkey:", f.keys()
+    
+    #generating samples
+    for scen in xrange(n_scenario):
+        u = np.random.rand()
+        u1 = np.random.rand()
+        down_u2_idx = down_u2(u, u1, K, D, f)
+        u2 = down_u2_idx * delta 
+        
+        
+        if D > 2:
+            pass
+    
     
     
     print "HeuristicCopula_alpha-%s_scen-%s OK, %.3f secs"%(
                     alpha, n_scenario, time.time()-t0)
     
-   
+
+
+def down_u2(u, u1, K, D, f):
+    lowBound = K**(D-1) * u
+    i1 = int(np.maximum(1, np.ceil(u1*K)))
+    fsum, best_u2 = 0, 0
+    for val2 in xrange(K):
+        i2 = int(val2)
+        if i2 in f[i1].keys():
+            fsum += f[i1][i2]['val']
+        
+        if fsum >= lowBound:
+            best_u2 = i2 -1
+            
+    return best_u2
+        
+    
+    
+    return best
+
 def CubicScatter():
     from numpy.random import random
     from mpl_toolkits.mplot3d import Axes3D
@@ -84,7 +115,7 @@ def SparseArray(arr, f, d, D, inc):
     if d == D:
         return
     else:
-        branch = f.setdefault(arr[d], {})
+        branch = f.setdefault(int(arr[d]), {})
         if d >= 1:
             if 'val' in branch.keys():
                 branch['val'] += inc
