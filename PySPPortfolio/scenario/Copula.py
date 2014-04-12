@@ -8,9 +8,10 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import copy
 
 
-def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=10):
+def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=2):
     '''
     pure python version
     @data, numpy.array, size: N*D, N is number of data, D is the dimensions
@@ -47,8 +48,8 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=10):
     
     #generating samples
     for scen in xrange(n_scenario):
+        sample = []
         u = np.random.rand()
-        
         i1keys = f.keys()
         #sampling until i1 in f
         while True:
@@ -57,6 +58,7 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=10):
             if i1 in i1keys:
                 break
 
+        sample.append(u1)
         #sampling u2
         lowerBound = u * K**(D-1) 
         down_u2, i2 = -1, -1
@@ -79,10 +81,18 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=10):
             f2 = f[i1][i2]['val']
             
         u2 = down_u2 * delta + (u-delta**(D-1)*sum_f2)/(delta**(D-2)*f2)
+        sample.append(u2)
         
         if D > 2:
-            pass
-    
+            realized = [i1, i2]
+            for _ in xrange(2, D+1):
+                down_ud, upper_ud, sum_f = get_down_ud(realized, f, u, K)
+                tmp = copy.copy(realized)
+                tmp.append(upper_ud)
+                ud = down_ud * delta + delta * ((u*getSparseArrayValue(realized, f)- sum_f)/( getSparseArrayValue(tmp, f)))  
+                realized.append(upper_ud)
+                sample.append(ud)
+        print "sample:", sample
     
     
     print "HeuristicCopula_alpha-%s_scen-%s OK, %.3f secs"%(
@@ -91,18 +101,20 @@ def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=10):
 
 def get_down_ud(ud_arr, f, u, K):
     lowerBound = u * getSparseArrayValue(ud_arr, f)
-    sum_f, down_ud = -1, -1
+    sum_f, down_ud, upper_ud = -1, -1, -1
     
     for k in xrange(K):
-        if getSumSparseArrayValue(arr, f, k) >= lowerBound:
-            sum_f = getSumSparseArrayValue(arr, f, k-1)
+        if getSumSparseArrayValue(ud_arr, f, k) >= lowerBound:
+            sum_f = getSumSparseArrayValue(ud_arr, f, k-1)
             down_ud = k-1
+            upper_ud = k
     
     if down_ud == -1:
-        down_ud = K
-        sum_f =  getSumSparseArrayValue(arr, f, K)
+        down_ud = K-1
+        upper_ud = K
+        sum_f =  getSumSparseArrayValue(ud_arr, f, K-1)
         
-    return down_ud, sum_f
+    return down_ud, upper_ud, sum_f
 
 
 
@@ -131,7 +143,7 @@ def testHeuristicCopula():
     data = np.random.randn(n_rv, 40)
     alpha=0.95
     n_scenario=200
-    HeuristicCopula(data, alpha, n_scenario, K=100)
+    HeuristicCopula(data, alpha, n_scenario, K=2)
 
 
 
@@ -177,18 +189,18 @@ def getSumSparseArrayValue(arr, f, upperID, d=0):
             raise ValueError('%dth element of arr is %s, not in f'%(d, arr[d]))
 
 if __name__ == '__main__':
-#     testHeuristicCopula()
+    testHeuristicCopula()
 #     CubicScatter()
     
-    arr = np.array([1,3,5,7,9])
-    d = 0
-    D = 4
-    inc = 10
-    f = SparseArray(arr, {}, d, D, inc)
-    print "run1"
-    print f
-    print getSparseArrayValue(np.array([1,3]), f)
-    print getSumSparseArrayValue(np.array([1,3]), f, 5)
+#     arr = np.array([1,3,5,7,9])
+#     d = 0
+#     D = 4
+#     inc = 10
+#     f = SparseArray(arr, {}, d, D, inc)
+#     print "run1"
+#     print f
+#     print getSparseArrayValue(np.array([1,3]), f)
+#     print getSumSparseArrayValue(np.array([1,3]), f, 5)
 # 
 #     f = SparseArray(np.array([1,3,5,8, 9]), f, d, D, inc)
 #     print "run2"
