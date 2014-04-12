@@ -140,10 +140,10 @@ def CubicScatter():
     
 def testHeuristicCopula():
     n_rv = 10
-    data = np.random.randn(n_rv, 40)
+    data = np.random.randn(n_rv, 10)
     alpha=0.95
     n_scenario=200
-    HeuristicCopula(data, alpha, n_scenario, K=2)
+    HeuristicCopula(data, alpha, n_scenario, K=1)
 
 
 
