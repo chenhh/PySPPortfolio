@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import time
 
 
-
 def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=100):
     '''
     pure python version
