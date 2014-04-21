@@ -30,7 +30,17 @@ void nextstep(double invhk[N][N],double gk[N],double xk[N]);
 double norminf(double vecteur[N]);
 int spofa(double mat[N][N]);
 
+
+/* row[0]: current moments of point x
+ * row[1]: moments of x of momF1
+ * row[2]: moments of x of momF2
+ * row[3]: moments of x of momF3
+ * row[4]: moments of x of momF4
+ * why n_column is 7 ?
+ */
 double moment[5][7]={{0}};
+
+
 
 // function that implements the newton method
 double cubic_solve(double *xk){
@@ -50,12 +60,22 @@ double cubic_solve(double *xk){
 		xk[j]=x_ini[j];
 	}
 
+	//以目前的的point xk, 求出相對於objective的gradient gk與Hessian matrix hessk
 	gradhessian(gk,hessk,xk);
+
+	//infinity norm of gradient
 	ni=norminf(gk);
+
+	//solve until infinity norm < EPSILON(1E-12))
 	etiq1:
 	if (ni>=EPSILON){
+
+		//RMSE(current moments, target moments)
 		error1=sqrt(objval(xk));
+
+		//compute inverse Hessian matrix
 		if (migs(hessk,invhk,indx)>0) return(error1); // ERROR
+
 		for (i=nb_iter;i<NBITMAX;i++){
 			nextstep(invhk,gk,xk);//compute the current step dk giving by Hk*dk=-gk
 			gradhessian(gk,hessk,xk);
@@ -186,9 +206,10 @@ static double momF4(double *xk)
 return value;
 }
 
-/* Function objval(x) computes and returns obj(x). */
-double objval( double *xk)
-{
+double objval( double *xk) {
+	/* Function objval(x) computes and returns obj(x).
+	 * square different sum of moments of current point x and target moments
+	 */
 	double value = 0;
 	int i;
 
@@ -197,9 +218,18 @@ double objval( double *xk)
 	return value;
 }
 
-/* Function gradhessian computes the gradient and the Hessian of obj(x) at the current point xk */
+
 void gradhessian( double c[N],double Q[N][N],double *xk)
-{	int i,j,k;
+{
+	/*
+	 * Function gradhessian computes the gradient and the Hessian of obj(x) at the current point xk
+	 * N=4
+	 *c[N]: gradient w.r.t. objective function given current point xk
+	 *Q[N][N]: Hessian matrix  w.r.t. objective function given current point xk
+	 *xk: current point (size 4)
+	 */
+
+	int i,j,k;
 
 	//first row initialisation
 	for(i=0;i<7;i++){
@@ -385,8 +415,11 @@ void nextstep(double invhk[N][N],double gk[N],double xk[N]){
 	}
 }
 
-//norminf computes the infinite norm of an array
+
 double norminf(double vecteur[N]){
+	/* the infinite norm of an array
+	 *
+	 */
 	double val=0;
 	int i;
 	for(i=0;i<N;i++){
