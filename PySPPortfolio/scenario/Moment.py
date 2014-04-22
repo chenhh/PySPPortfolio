@@ -40,9 +40,10 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     EX = np.empty(12)
     
     #origin moments, size: (n_rv * 4)
-#     Moms[:, 1] = 1
-#     Moms[:, 2] = tgtMoms[:, 2]/(tgtMoms[:, 1]**3)    #skew/(std**3)
-#     Moms[:, 3] = tgtMoms[:, 2]/(tgtMoms[:, 1]**4)    #skew/(std**4)
+    Moms[:, 0] = tgtMoms[:, 0]
+    Moms[:, 1] = tgtMoms[:, 1]**2
+    Moms[:, 2] = tgtMoms[:, 2]/(tgtMoms[:, 1]**3)    #skew/(std**3)
+    Moms[:, 3] = tgtMoms[:, 2]/(tgtMoms[:, 1]**4)    #skew/(std**4)
 
     #find good start matrix outMtx   
     for rv in xrange(n_rv):
@@ -55,26 +56,25 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
        
             #loop until ErrCubic transform converge
             for cubiter in xrange(MaxCubIter):
-                EY = tgtMoms[rv, :]
+                EY = Moms[rv, :]
                 EX = np.fromiter(((tmpOut**(idx+1)).mean() for idx in xrange(12)), np.float)
-#                 X_init = np.array([0, 1, 0, 0])
-                X_init = np.random.rand(4)
+                X_init = np.array([0, 1, 0, 0])
                 out = spopt.leastsq(cubicTransform, X_init, 
-                                               args=(EX, EY), full_output=True, ftol=1E-12)
+                                               args=(EX, EY), full_output=True, ftol=1E-12, xtol=1E-12)
+                
                 cubParams = out[0] 
                 lsq = np.sum(out[2]['fvec']**2)
                 print out[2]['fvec']
                 print "LSQ:", lsq
-#                 print "EY:", EY
+                
                 tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
                     cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
-                tmpMom = np.zeros(4)
-                tmpMom[0] = tmpOut.mean() 
-                tmpMom[1] = tmpOut.std()
-                tmpMom[2] = spstats.skew(tmpOut)
-                tmpMom[3] = spstats.kurtosis(tmpOut)
+                tmpMom = np.fromiter(((tmpOut**(idx+1)).mean() for idx in xrange(4)), np.float)
+
                 
 #                 print "trans EX:", tmpMom
+                print "EY:", EY
+                print "EX:", tmpMom
                 print "RMSE(EX, EY):", RMSE(EY, tmpMom)
                 
                 if lsq < EPS:
