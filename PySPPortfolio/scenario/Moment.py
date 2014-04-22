@@ -6,12 +6,28 @@
 Høyland, K.; Kaut, M. & Wallace, S. W., "A heuristic for 
 moment-matching scenario generation," Computational optimization 
 and applications, vol. 24, pp 169-185, 2003.
+
+
+goal: 產生符合tgtMoms與tgtCorrs的樣本Z
+
+Z = a*Y+b
+
+a = sqrt(tgtMoms[1])
+b = tgtMoms[0]
+Y Mom[0] = 0
+Y Mom[1] = 1
+Y Mom[2] = tgtMoms[2]/tgtMoms[1]**3
+Y Mom[3] = tgtMoms[3]/tgtMoms[1]**4
+
+
+
 '''
 from __future__ import division
 import numpy as np
 import numpy.linalg as la
 import scipy.optimize as spopt
 import scipy.stats as spstats
+import time 
 
 def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     '''
@@ -21,89 +37,115 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     '''
     assert n_scenario >= 0
     assert tgtMoms.shape[0] == tgtCorrs.shape[0] == tgtCorrs.shape[1]
+    t0 = time.time()
     
     #parameters
     n_rv = tgtMoms.shape[0]
-    EPS= 1e-5
+    ErrMomEPS= 1e-5
     MaxErrMom = 1e-3
     MaxErrCorr = 1e-3
     
     MaxCubIter = 1
     MaxMainIter = 20
-    MaxStartTrial = 20
+    MaxStartTrial = 5
     
-    #mtx
+    #out mtx
     outMtx = np.empty((n_rv, n_scenario))
-    Moms =  np.zeros((n_rv, 4)) 
-    tmpOut = np.empty(n_scenario) 
-    EY = np.empty(4)
-    EX = np.empty(12)
     
     #origin moments, size: (n_rv * 4)
-    Moms[:, 0] = tgtMoms[:, 0]
-    Moms[:, 1] = tgtMoms[:, 1]**2
-    Moms[:, 2] = tgtMoms[:, 2]/(tgtMoms[:, 1]**3)    #skew/(std**3)
-    Moms[:, 3] = tgtMoms[:, 2]/(tgtMoms[:, 1]**4)    #skew/(std**4)
+    tgtOrigMoms = central2OrigMom(tgtMoms)
+    
+    #to generate samples Y with zero mean, and unit variance
+    YMoms = np.zeros((n_rv, 4))
+    YMoms[:, 1] = 1
+    YMoms[:, 2] = tgtOrigMoms[:, 2]/tgtOrigMoms[:, 1]**3
+    YMoms[:, 3] = tgtOrigMoms[:, 3]/tgtOrigMoms[:, 1]**4 
+    
 
-    #find good start matrix outMtx   
+    #find good start matrix outMtx (with errMom converge)   
     for rv in xrange(n_rv):
-        cubErr = float('inf')
-        bestCubErr = float('inf')
+        cubErr, bestCubErr = float('inf'), float('inf')
 
-        #loop until errMom and errCorr converge
+        #loop until errMom converge, but the errCorr is unreleated
         for _ in xrange(MaxStartTrial):
-            tmpOut = np.random.rand(n_scenario)
+            #random sample
+            tmpOut = np.random.randn(n_scenario)
+            EY = YMoms[rv, :]
        
             #loop until ErrCubic transform converge
             for cubiter in xrange(MaxCubIter):
-                EY = Moms[rv, :]
-                EX = np.fromiter(((tmpOut**(idx+1)).mean() for idx in xrange(12)), np.float)
+                EX = np.fromiter(((tmpOut**(idx+1)).mean() 
+                                  for idx in xrange(12)), np.float)
                 X_init = np.array([0, 1, 0, 0])
-                out = spopt.leastsq(cubicTransform, X_init, 
-                                               args=(EX, EY), full_output=True, ftol=1E-12, xtol=1E-12)
-                
+                out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
+                                    full_output=True, ftol=1E-12, xtol=1E-12)
                 cubParams = out[0] 
-                lsq = np.sum(out[2]['fvec']**2)
-                print out[2]['fvec']
-                print "LSQ:", lsq
-                
+                cubErr = np.sum(out[2]['fvec']**2)
+       
                 tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
-                    cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
-                tmpMom = np.fromiter(((tmpOut**(idx+1)).mean() for idx in xrange(4)), np.float)
-
-                
-#                 print "trans EX:", tmpMom
-                print "EY:", EY
-                print "EX:", tmpMom
-                print "RMSE(EX, EY):", RMSE(EY, tmpMom)
-                
-                if lsq < EPS:
-                    print "cubiter:%s, LSQ: %s, converge, early stop"%(cubiter, lsq)
+                          cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
+               
+                if cubErr < ErrMomEPS:
                     break
                 else:
-                    #update random sample(a+bx+cx^2+dx^3)
-                    print "cubiter:%s, LSQ: %s, not converge"%(cubiter, lsq)
-                    tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
-                    cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3)) 
-#         
+                    print "rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+         
             #accept current samples
             if cubErr < bestCubErr:
                 bestCubErr = cubErr
-            
-            outMtx[rv,:] = tmpOut 
+                outMtx[rv,:] = tmpOut 
             
     #computing starting properties and error
-    outMoms = np.empty((n_rv, 4))
-    outMoms[:, 0] = outMtx.mean(axis=1) 
-    outMoms[:, 1] = outMtx.std(axis=1)
-    outMoms[:, 2] = spstats.skew(outMtx, axis=1)
-    outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
-    outCorrMtx = np.corrcoef(outMtx)
-    
-    errMoms = RMSE(outMoms, tgtMoms)
-    errCorrs = RMSE(outCorrMtx, tgtCorrs)
-    print 'start errMoments:%s, errCorr:%s'%(errMoms, errCorrs)
+    errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+    print 'start mtx errMom:%s, errCorr:%s'%(errMoms, errCorrs)
 
+    #Cholesky decomp of target corr mtx
+    outCorrs = np.corrcoef(outMtx)
+    C = la.cholesky(tgtCorrs)
+    
+    #main iteration of HKW
+    for mainIter in xrange(MaxMainIter):
+        if errMoms < MaxErrMom and errCorrs < MaxErrCorr:
+            break
+        
+        #transfer mtx
+        CO_inv = la.inv(la.cholesky(outCorrs))
+        L = np.dot(C, CO_inv)
+        outMtx = np.dot(L, outMtx)
+        
+        errMoms, errCorrs = errorStatistics(outMtx, tgtMoms, tgtCorrs)
+        print 'mainIter:%s errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+    
+        #cubic transform
+        for rv in xrange(n_rv):
+            cubErr, bestCubErr = float('inf'), float('inf')
+            
+            tmpOut = outMtx[rv, :]
+            EY = tgtOrigMoms[rv, :]
+            
+            #loop until ErrCubic transform converge
+            for cubiter in xrange(MaxCubIter):
+                EX = np.fromiter(((tmpOut**(idx+1)).mean() 
+                                  for idx in xrange(12)), np.float)
+                X_init = np.array([0, 1, 0, 0])
+                out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
+                                    full_output=True, ftol=1E-12, xtol=1E-12)
+                cubParams = out[0] 
+                cubErr = np.sum(out[2]['fvec']**2)
+       
+                tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
+                          cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
+               
+                if cubErr < ErrMomEPS:
+                    outMtx[rv, :] = tmpOut
+                    break
+                else:
+                    print "mainIter, rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+                
+        errMoms, errCorrs = errorStatistics(outMtx, tgtMoms, tgtCorrs)
+        print 'mainIter cubicTransform: %s errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+        
+        print "elapsed %.3f secs"%(time.time()-t0)
 
 def cubicSolve(samples, probs, tgtMoms):
     '''
@@ -122,16 +164,14 @@ def cubicSolve(samples, probs, tgtMoms):
     X_init = np.array([0, 1, 0, 0])
     
     #If ier is equal to 1, 2, 3 or 4, the solution was found.
-    out = spopt.leastsq(cubicTransform, X_init, args=(sampleMoms, tgtMoms), full_output=True, ftol=1E-12)
+    out = spopt.leastsq(cubicFunction, X_init, args=(sampleMoms, tgtMoms), full_output=True, ftol=1E-12)
     cubParam = out[0]
     msg = out[2]
     lsq = sum(msg['fvec'])
     return cubParam, lsq
     
 
-
-
-def cubicTransform(cubParams, sampleMoms, tgtMoms):
+def cubicFunction(cubParams, sampleMoms, tgtMoms):
     '''
     cubParams: (a,b,c,d)
     EY: 4 moments of target
@@ -164,6 +204,23 @@ def cubicTransform(cubParams, sampleMoms, tgtMoms):
     
     return v1, v2, v3, v4
 
+def errorStatistics(outMtx, tgtMoms, tgtCorrs):
+    n_rv = outMtx.shape[0]
+    outMoms = np.empty((n_rv, 4))
+    outMoms[:, 0] = outMtx.mean(axis=1) 
+#     outMoms[:, 1] = outMtx.std(axis=1)
+#     outMoms[:, 2] = spstats.skew(outMtx, axis=1)
+#     outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outMoms[:, 1] = (outMtx**2).mean(axis=1)
+    
+  
+    outCorrMtx = np.corrcoef(outMtx)
+    
+    errMoms = RMSE(outMoms, tgtMoms)
+    errCorrs = RMSE(outCorrMtx, tgtCorrs)
+    return errMoms, errCorrs
+
+
 def RMSE(srcArr, tgtArr):
     '''
     srcArr, numpy.array
@@ -175,20 +232,21 @@ def RMSE(srcArr, tgtArr):
 
 def central2OrigMom(centralMoms):
     '''
-    E[X] = mean()
+    E[X] = samples.mean()
     var = E[X**2] - E[X]*E[X]
     skew =  np.mean((samples - samples.mean())**3)/Moms[1]**3
     kurt =  np.mean((samples - samples.mean())**4)/Moms[1]**4 -3 
          = (E[X**4] - 4*u*E[X**3] + 6*u**2*E[X**4] - 4*u**3*E[X]+u**4)/std**4-3
     '''
-    
-    origMoms = np.empty(4)
-    origMoms[0] = centralMoms[0]
-    origMoms[1] = centralMoms[1] ** 2  + centralMoms[0]**2 
-    origMoms[2] = centralMoms[2]*centralMoms[1]**3+centralMoms[0]**3+3*centralMoms[0]*centralMoms[1]**2
-    origMoms[3] = ((centralMoms[3] + 3) * centralMoms[1]**4  - centralMoms[0]**4 + 
-                   4*centralMoms[0]**4 - 6*centralMoms[0]**2*origMoms[1] + 4*centralMoms[0]*origMoms[2])  
-    print "transfered origMom:", origMoms
+    n_rv = centralMoms.shape[0]
+    origMoms = np.empty((n_rv, 4))
+    origMoms[:, 0] = centralMoms[:, 0]
+    origMoms[:, 1] = centralMoms[:, 1] ** 2  + centralMoms[:, 0]**2 
+    origMoms[:, 2] = (centralMoms[:, 2]*centralMoms[:, 1]**3+
+                      centralMoms[:, 0]**3+3*centralMoms[:, 0]*centralMoms[:, 1]**2)
+    origMoms[:, 3] = ((centralMoms[:, 3] + 3) * centralMoms[:, 1]**4  - centralMoms[:, 0]**4 + 
+                   4*centralMoms[:, 0]**4 - 6*centralMoms[:, 0]**2*origMoms[:, 1] + 4*centralMoms[:, 0]*origMoms[:, 2])  
+#     print "origMom:", origMoms
     return origMoms
     
 
@@ -335,27 +393,19 @@ def testHMM():
     HeuristicMomentMatching(Moms, corrMtx, n_scenario=200)
 
 
-def testCentral2OrigMom():
-    n_scenario = 100
-    samples = np.random.randn(n_scenario)
-    origMoms = np.fromiter( ((samples**(idx+1)).mean() 
-                            for idx in xrange(4)), dtype=np.float)
-    Moms =  np.zeros(4)    
-    Moms[0] = samples.mean()
-    Moms[1] = samples.std()
-    Moms[2] = spstats.skew(samples)
-    Moms[3] = spstats.kurtosis(samples)
-
-    print "origMoms:", origMoms
-    print "central Moms:", Moms
-    skew =  np.mean((samples - samples.mean())**3)/Moms[1]**3
-    kurt =  np.mean((samples - samples.mean())**4)/Moms[1]**4 -3 
-   
-    #skew*Moms[1]**3+Moms[0]**3+3*Moms[0]*Moms[1]**2
-    
-
-    central2OrigMom(Moms, n_scenario)
+# def testCentral2OrigMom():
+#     n_scenario = 100
+#     samples = np.random.randn(n_scenario)
+#     origMoms = np.fromiter( ((samples**(idx+1)).mean() 
+#                             for idx in xrange(4)), dtype=np.float)
+#    
+#    
+#     #skew*Moms[1]**3+Moms[0]**3+3*Moms[0]*Moms[1]**2
+#     
+# 
+#     central2OrigMom(Moms, n_scenario)
 
 if __name__ == '__main__':
-    testCentral2OrigMom()
+#     testCentral2OrigMom()
+    testHMM()
    
