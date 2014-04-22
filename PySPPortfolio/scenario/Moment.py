@@ -405,7 +405,35 @@ def testHMM():
 # 
 #     central2OrigMom(Moms, n_scenario)
 
+
+def testScale():
+    a = np.random.randn(100)
+    print "a mean:", a.mean()
+    print "a std:", a.std()
+    print "a skew:", spstats.skew(a)
+    print "a kurt:", spstats.kurtosis(a)
+    
+    b = (a - a.mean())/a.std()
+    print "b mean:", b.mean()
+    print "b std:", b.std()
+    print "b skew:", spstats.skew(b)
+    print "b kurt:", spstats.kurtosis(b)
+    
+    c = b*8
+    print "c mean:", c.mean()
+    print "c std:", c.std()
+    print "c skew:", spstats.skew(c)
+    print "c kurt:", spstats.kurtosis(c)
+    
+    
+    d = b*8 + 10
+    print "d mean:", d.mean()
+    print "d std:", d.std()
+    print "d skew:", spstats.skew(d)
+    print "d kurt:", spstats.kurtosis(d)
+    
 if __name__ == '__main__':
 #     testCentral2OrigMom()
-    testHMM()
+#    testHMM()
+    testScale()
    
