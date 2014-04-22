@@ -173,6 +173,25 @@ def RMSE(srcArr, tgtArr):
     error = np.sqrt(((srcArr - tgtArr)**2).sum())
     return error  
 
+def central2OrigMom(centralMoms):
+    '''
+    E[X] = mean()
+    var = E[X**2] - E[X]*E[X]
+    skew =  np.mean((samples - samples.mean())**3)/Moms[1]**3
+    kurt =  np.mean((samples - samples.mean())**4)/Moms[1]**4 -3 
+         = (E[X**4] - 4*u*E[X**3] + 6*u**2*E[X**4] - 4*u**3*E[X]+u**4)/std**4-3
+    '''
+    
+    origMoms = np.empty(4)
+    origMoms[0] = centralMoms[0]
+    origMoms[1] = centralMoms[1] ** 2  + centralMoms[0]**2 
+    origMoms[2] = centralMoms[2]*centralMoms[1]**3+centralMoms[0]**3+3*centralMoms[0]*centralMoms[1]**2
+    origMoms[3] = ((centralMoms[3] + 3) * centralMoms[1]**4  - centralMoms[0]**4 + 
+                   4*centralMoms[0]**4 - 6*centralMoms[0]**2*origMoms[1] + 4*centralMoms[0]*origMoms[2])  
+    print "transfered origMom:", origMoms
+    return origMoms
+    
+
 # def cubicSolve(samples, probs, tgtMoms):
 #     '''
 #     function that implements the Newton method
@@ -301,9 +320,8 @@ def RMSE(srcArr, tgtArr):
 #     assert mat.shape[0] == mat.shape[1]
 #     return np.all(la.eigvals(mat) > 0)
                 
-  
 
-if __name__ == '__main__':
+def testHMM():
     n_rv = 3
     n_scenario = 200
     data = np.random.randn(n_rv, 100)
@@ -314,5 +332,30 @@ if __name__ == '__main__':
     Moms[:, 2] = spstats.skew(data, axis=1)
     Moms[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
-
     HeuristicMomentMatching(Moms, corrMtx, n_scenario=200)
+
+
+def testCentral2OrigMom():
+    n_scenario = 100
+    samples = np.random.randn(n_scenario)
+    origMoms = np.fromiter( ((samples**(idx+1)).mean() 
+                            for idx in xrange(4)), dtype=np.float)
+    Moms =  np.zeros(4)    
+    Moms[0] = samples.mean()
+    Moms[1] = samples.std()
+    Moms[2] = spstats.skew(samples)
+    Moms[3] = spstats.kurtosis(samples)
+
+    print "origMoms:", origMoms
+    print "central Moms:", Moms
+    skew =  np.mean((samples - samples.mean())**3)/Moms[1]**3
+    kurt =  np.mean((samples - samples.mean())**4)/Moms[1]**4 -3 
+   
+    #skew*Moms[1]**3+Moms[0]**3+3*Moms[0]*Moms[1]**2
+    
+
+    central2OrigMom(Moms, n_scenario)
+
+if __name__ == '__main__':
+    testCentral2OrigMom()
+   
