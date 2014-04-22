@@ -224,9 +224,9 @@ void gradhessian( double c[N],double Q[N][N],double *xk)
 	/*
 	 * Function gradhessian computes the gradient and the Hessian of obj(x) at the current point xk
 	 * N=4
-	 *c[N]: gradient w.r.t. objective function given current point xk
-	 *Q[N][N]: Hessian matrix  w.r.t. objective function given current point xk
-	 *xk: current point (size 4)
+	 * c[N]: gradient w.r.t. objective function given current point xk
+	 * Q[N][N]: Hessian matrix  w.r.t. objective function given current point xk
+	 * xk: current point (size 4)
 	 */
 
 	int i,j,k;
@@ -248,14 +248,14 @@ void gradhessian( double c[N],double Q[N][N],double *xk)
 	for(i=0;i<N;i++){
 		c[i]=0;
 	}
-	//value
+	//gradient value
 	for(i=0;i<N;i++){
 		for(j=0;j<N;j++){
 		c[i]+=2*(j+1)*moment[j][i]*(moment[j+1][0]-TgMom[j]);
 		}
 	}
 
-	// hessian - no initialization needed, done for k=0
+	// Hessian - no initialization needed, done for k=0
 	for(i=0;i<N;i++){
 		for (j=0; j<=i; j++){
 			// updated on 2010-06-17 - gcc complained about indexing error for k=0
