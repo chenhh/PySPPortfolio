@@ -167,6 +167,7 @@ int HKW_ScenGen(int const FormatOfMoms, TMatrix const * const p_TarMoms,
 
 					start_trial = 0;
 					bestError = 1e10;
+					//generating random samples of a r.v.
 					do { // trials - different starting distributions
 						start_trial++;
 
