@@ -19,7 +19,7 @@ Y Mom[1] = 1
 Y Mom[2] = tgtMoms[2]/tgtMoms[1]**3
 Y Mom[3] = tgtMoms[3]/tgtMoms[1]**4
 
-skewness, kurtosis不受平移與縮放的影響.
+correlation, skewness, kurtosis不受平移與縮放的影響.
 '''
 from __future__ import division
 import numpy as np
@@ -58,8 +58,8 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     #to generate samples Y with zero mean, and unit variance
     YMoms = np.zeros((n_rv, 4))
     YMoms[:, 1] = 1
-    YMoms[:, 2] = tgtOrigMoms[:, 2]
-    YMoms[:, 3] = tgtOrigMoms[:, 3] 
+    YMoms[:, 2] = tgtOrigMoms[:, 2]/tgtOrigMoms[:, 1]**3
+    YMoms[:, 3] = tgtOrigMoms[:, 3]/tgtOrigMoms[:, 1]**4 
     
 
     #find good start matrix outMtx (with errMom converge)   
@@ -153,7 +153,9 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     outMoms[:, 1] = outMtx.std(axis=1)
     outMoms[:, 2] = spstats.skew(outMtx, axis=1)
     outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outCorrs = np.corrcoef(outMtx)
     print "before rescaleMoms:\n", outMoms
+    print "before rescaleCorrs:\n", outCorrs
     #Re-scale the outcomes to the original moments
     #outMtx = n_rv * n_scenario
     #tgtOrigMoms = n_rv * 4
@@ -164,9 +166,11 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     outMoms[:, 1] = outMtx.std(axis=1)
     outMoms[:, 2] = spstats.skew(outMtx, axis=1)
     outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outCorrs = np.corrcoef(outMtx)
     print "rescaleMoms:\n", outMoms
+    print "rescaleCorrs:\n", outCorrs
     print "tgtMoms:\n", tgtMoms
-    outCorrs = np.corrcoef(outMoms)
+    print "tgtCorrs:\n", tgtCorrs
     errMoms, errCorrs = RMSE(outMoms, tgtMoms), RMSE(outCorrs, tgtCorrs)
     print 'final errMom:%s, errCorr:%s'%(errMoms, errCorrs)
     
@@ -213,10 +217,10 @@ def errorStatistics(outMtx, tgtMoms, tgtCorrs):
     for idx in xrange(4):
         outMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
     
-    outCorrMtx = np.corrcoef(outMtx)
+    outCorrs = np.corrcoef(outMtx)
     
     errMoms = RMSE(outMoms, tgtMoms)
-    errCorrs = RMSE(outCorrMtx, tgtCorrs)
+    errCorrs = RMSE(outCorrs, tgtCorrs)
     return errMoms, errCorrs
 
 
