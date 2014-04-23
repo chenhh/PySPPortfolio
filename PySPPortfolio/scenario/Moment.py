@@ -47,19 +47,22 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     
     MaxCubIter = 1
     MaxMainIter = 20
-    MaxStartTrial = 5
+    MaxStartIter = 5
     
     #out mtx
     outMtx = np.empty((n_rv, n_scenario))
     
     #origin moments, size: (n_rv * 4)
+    # columns of tgtOrigMoms =(E[X], E[X**2], E[X**3], E[X**4])
     tgtOrigMoms = central2OrigMom(tgtMoms)
     
     #to generate samples Y with zero mean, and unit variance
+    #如果將E[X], E[X**2] = 0, 1時,E[X**3], E[X**4]會縮放但不收平移的影響
+    #E[(aX)**3] = a**3*E[X**3], E[(aX)**4] = a**4*E[X**4]
     YMoms = np.zeros((n_rv, 4))
     YMoms[:, 1] = 1
-    YMoms[:, 2] = tgtOrigMoms[:, 2]/tgtOrigMoms[:, 1]**3
-    YMoms[:, 3] = tgtOrigMoms[:, 3]/tgtOrigMoms[:, 1]**4 
+    YMoms[:, 2] = tgtOrigMoms[:, 2]/(tgtOrigMoms[:, 1]**3)
+    YMoms[:, 3] = tgtOrigMoms[:, 3]/(tgtOrigMoms[:, 1]**4) 
     
 
     #find good start matrix outMtx (with errMom converge)   
@@ -67,9 +70,9 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
         cubErr, bestCubErr = float('inf'), float('inf')
 
         #loop until errMom converge, but the errCorr is unreleated
-        for _ in xrange(MaxStartTrial):
+        for _ in xrange(MaxStartIter):
             #random sample
-            tmpOut = np.random.randn(n_scenario)
+            tmpOut = np.random.rand(n_scenario)
             EY = YMoms[rv, :]
        
             #loop until ErrCubic transform converge
@@ -98,7 +101,7 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     #computing starting properties and error
     #correct moment, wrong correlation
     errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
-    print 'start mtx  errMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    print 'start mtx (orig) errMom:%s, errCorr:%s'%(errMoms, errCorrs)
 
     #Cholesky decomp of target corr mtx
     C = la.cholesky(tgtCorrs)
@@ -117,7 +120,7 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
         
         errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
         #wrong moment, correct correlation
-        print 'mainIter:%s errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+        print 'mainIter:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
         #cubic transform
         for rv in xrange(n_rv):
@@ -136,43 +139,53 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
                 cubParams = out[0] 
                 cubErr = np.sum(out[2]['fvec']**2)
        
-                tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
+                tmpOut = (cubParams[0] + cubParams[1]*tmpOut +
                           cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
                
                 if cubErr < ErrMomEPS:
                     outMtx[rv, :] = tmpOut
                     break
                 else:
-                    print "mainIter, rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+                    print "mainIter, rv:%s,(orig) cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
                 
         errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
-        print 'mainIter cubicTransform: %s errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+        print 'mainIter cubicTransform:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
-    outMoms = np.empty((n_rv, 4))
-    outMoms[:, 0] = outMtx.mean(axis=1)
-    outMoms[:, 1] = outMtx.std(axis=1)
-    outMoms[:, 2] = spstats.skew(outMtx, axis=1)
-    outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
-    outCorrs = np.corrcoef(outMtx)
-    print "before rescaleMoms:\n", outMoms
-    print "before rescaleCorrs:\n", outCorrs
+#     outMoms = np.empty((n_rv, 4))
+#     outMoms[:, 0] = outMtx.mean(axis=1)
+#     outMoms[:, 1] = outMtx.std(axis=1)
+#     outMoms[:, 2] = spstats.skew(outMtx, axis=1)
+#     outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+#     outCorrs = np.corrcoef(outMtx)
+#     print "before rescaleMoms:\n", outMoms
+#     print "before rescaleCorrs:\n", outCorrs
     #Re-scale the outcomes to the original moments
     #outMtx = n_rv * n_scenario
     #tgtOrigMoms = n_rv * 4
     outMtx = outMtx* tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
     
-    outMoms = np.empty((n_rv, 4))
-    outMoms[:, 0] = outMtx.mean(axis=1)
-    outMoms[:, 1] = outMtx.std(axis=1)
-    outMoms[:, 2] = spstats.skew(outMtx, axis=1)
-    outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outCentralMoms = np.empty((n_rv, 4))
+    outCentralMoms[:, 0] = outMtx.mean(axis=1)
+    outCentralMoms[:, 1] = outMtx.std(axis=1)
+    outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
+    outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
     outCorrs = np.corrcoef(outMtx)
-    print "rescaleMoms:\n", outMoms
-    print "rescaleCorrs:\n", outCorrs
-    print "tgtMoms:\n", tgtMoms
-    print "tgtCorrs:\n", tgtCorrs
-    errMoms, errCorrs = RMSE(outMoms, tgtMoms), RMSE(outCorrs, tgtCorrs)
-    print 'final errMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    
+    outOrigMoms = np.empty((n_rv, 4))
+    for idx in xrange(4):
+        outOrigMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
+    
+    print "tgtMoms(central):\n", tgtMoms
+    print "tgtOrigMoms(orig):\n",tgtOrigMoms
+    print "YMoms(orig):\n",YMoms
+    print "rescaleMoms(central):\n", outCentralMoms
+    print "rescaleMoms(orig):\n", outOrigMoms
+    
+#     print "rescaleCorrs:\n", outCorrs
+#     print "tgtCorrs:\n", tgtCorrs
+    errMoms = RMSE(outCentralMoms, tgtMoms) 
+    errCorrs = RMSE(outCorrs, tgtCorrs)
+    print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
     
     print "elapsed %.3f secs"%(time.time()-t0)
 
@@ -218,7 +231,6 @@ def errorStatistics(outMtx, tgtMoms, tgtCorrs):
         outMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
     
     outCorrs = np.corrcoef(outMtx)
-    
     errMoms = RMSE(outMoms, tgtMoms)
     errCorrs = RMSE(outCorrs, tgtCorrs)
     return errMoms, errCorrs
@@ -235,8 +247,9 @@ def RMSE(srcArr, tgtArr):
 
 def central2OrigMom(centralMoms):
     '''
+    central moments to original moments
     E[X] = samples.mean()
-    var = E[X**2] - E[X]*E[X]
+    std**2 = var = E[X**2] - E[X]*E[X]
     skew =  np.mean((samples - samples.mean())**3)/Moms[1]**3
     kurt =  np.mean((samples - samples.mean())**4)/Moms[1]**4 -3 
          = (E[X**4] - 4*u*E[X**3] + 6*u**2*E[X**4] - 4*u**3*E[X]+u**4)/std**4-3
