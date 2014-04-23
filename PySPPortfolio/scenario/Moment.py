@@ -41,11 +41,7 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, verbose=False):
     
     #out mtx
     outMtx = np.empty((n_rv, n_scenario))
-    
-    #origin moments, size: (n_rv * 4)
-    # columns of tgtOrigMoms =(E[X], E[X**2], E[X**3], E[X**4])
-    tgtOrigMoms = central2OrigMom(tgtMoms)
-    
+       
     #to generate samples Y with zero mean, and unit variance
     YMoms = np.zeros((n_rv, 4))
     YMoms[:, 1] = 1
