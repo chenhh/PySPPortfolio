@@ -9,17 +9,10 @@ and applications, vol. 24, pp 169-185, 2003.
 
 
 goal: 產生符合tgtMoms與tgtCorrs的樣本Z
-
-Z = a*Y+b
-
-a = sqrt(tgtMoms[1])
-b = tgtMoms[0]
-Y Mom[0] = 0
-Y Mom[1] = 1
-Y Mom[2] = tgtMoms[2]/tgtMoms[1]**3
-Y Mom[3] = tgtMoms[3]/tgtMoms[1]**4
-
 correlation, skewness, kurtosis不受平移與縮放的影響.
+
+
+
 '''
 from __future__ import division
 import numpy as np
@@ -57,13 +50,20 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     tgtOrigMoms = central2OrigMom(tgtMoms)
     
     #to generate samples Y with zero mean, and unit variance
-    #如果將E[X], E[X**2] = 0, 1時,E[X**3], E[X**4]會縮放但不收平移的影響
-    #E[(aX)**3] = a**3*E[X**3], E[(aX)**4] = a**4*E[X**4]
+    #Y = (X-E[X])/E[X**2]
+    #所以E[Y], E[Y**2] = 0, 1時,E[Y**3], E[Y**4]要修正
     YMoms = np.zeros((n_rv, 4))
     YMoms[:, 1] = 1
-    YMoms[:, 2] = tgtOrigMoms[:, 2]/(tgtOrigMoms[:, 1]**3)
-    YMoms[:, 3] = tgtOrigMoms[:, 3]/(tgtOrigMoms[:, 1]**4) 
-    
+    YMoms[:, 2] = tgtMoms[:, 2]#/(tgtOrigMoms[:, 1]**3)
+    YMoms[:, 3] = tgtMoms[:, 3]+3#/(tgtOrigMoms[:, 1]**4)
+#     YMoms[:, 2] = (tgtOrigMoms[:, 2] -
+#                    3*tgtOrigMoms[:, 0]*tgtOrigMoms[:, 2] + 
+#                    2*tgtOrigMoms[:, 0]**3 )/(tgtOrigMoms[:, 1]**3)
+#     YMoms[:, 3] = (tgtOrigMoms[:, 3] -
+#                    4*tgtOrigMoms[:, 0]*tgtOrigMoms[:, 2] +
+#                    6*tgtOrigMoms[:, 0]**2*tgtOrigMoms[:, 1] -
+#                    3*tgtOrigMoms[:, 0]**4)/(tgtOrigMoms[:, 1]**4)
+#    
 
     #find good start matrix outMtx (with errMom converge)   
     for rv in xrange(n_rv):
@@ -151,18 +151,18 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
         errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
         print 'mainIter cubicTransform:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
-#     outMoms = np.empty((n_rv, 4))
-#     outMoms[:, 0] = outMtx.mean(axis=1)
-#     outMoms[:, 1] = outMtx.std(axis=1)
-#     outMoms[:, 2] = spstats.skew(outMtx, axis=1)
-#     outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
-#     outCorrs = np.corrcoef(outMtx)
-#     print "before rescaleMoms:\n", outMoms
+    outMoms = np.empty((n_rv, 4))
+    for idx in xrange(4):
+        outMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
+    outCorrs = np.corrcoef(outMtx)
+    print "before rescaleMoms:\n", outMoms
 #     print "before rescaleCorrs:\n", outCorrs
     #Re-scale the outcomes to the original moments
     #outMtx = n_rv * n_scenario
     #tgtOrigMoms = n_rv * 4
-    outMtx = outMtx* tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
+    outMtx = (outMtx* tgtMoms[:, 1][:, np.newaxis] + 
+              tgtMoms[:, 0][:, np.newaxis])  
+#     outMtx = outMtx*tgtMoms[:, 1][:, np.newaxis] 
     
     outCentralMoms = np.empty((n_rv, 4))
     outCentralMoms[:, 0] = outMtx.mean(axis=1)
@@ -175,16 +175,19 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     for idx in xrange(4):
         outOrigMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
     
+    print "YMoms(orig):\n",YMoms
     print "tgtMoms(central):\n", tgtMoms
     print "tgtOrigMoms(orig):\n",tgtOrigMoms
-    print "YMoms(orig):\n",YMoms
+    
+#     print "rescaleMoms(orig):\n", outOrigMoms
     print "rescaleMoms(central):\n", outCentralMoms
-    print "rescaleMoms(orig):\n", outOrigMoms
     
 #     print "rescaleCorrs:\n", outCorrs
 #     print "tgtCorrs:\n", tgtCorrs
     errMoms = RMSE(outCentralMoms, tgtMoms) 
     errCorrs = RMSE(outCorrs, tgtCorrs)
+    errOrigMoms, errOrigCorrs = errorStatistics(outMtx, tgtOrigMoms, tgtCorrs)
+    print 'final (orig) tgtErrMom:%s, errCorr:%s'%(errOrigMoms, errOrigCorrs)
     print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
     
     print "elapsed %.3f secs"%(time.time()-t0)
@@ -250,9 +253,13 @@ def central2OrigMom(centralMoms):
     central moments to original moments
     E[X] = samples.mean()
     std**2 = var = E[X**2] - E[X]*E[X]
-    skew =  np.mean((samples - samples.mean())**3)/Moms[1]**3
-    kurt =  np.mean((samples - samples.mean())**4)/Moms[1]**4 -3 
-         = (E[X**4] - 4*u*E[X**3] + 6*u**2*E[X**4] - 4*u**3*E[X]+u**4)/std**4-3
+    
+    scipy.stats.skew, scipy.stats.kurtosis公式如下：
+    m2 = np.mean((d - d.mean())**2)
+    m3 = np.mean((d - d.mean())**3)
+    m4 = np.mean((d - d.mean())**4)
+    skew =  m3/np.sqrt(m2)**3
+    kurt = m4/m2**2 -3
     '''
     n_rv = centralMoms.shape[0]
     origMoms = np.empty((n_rv, 4))
@@ -262,7 +269,7 @@ def central2OrigMom(centralMoms):
                       centralMoms[:, 0]**3+3*centralMoms[:, 0]*centralMoms[:, 1]**2)
     origMoms[:, 3] = ((centralMoms[:, 3] + 3) * centralMoms[:, 1]**4  - centralMoms[:, 0]**4 + 
                    4*centralMoms[:, 0]**4 - 6*centralMoms[:, 0]**2*origMoms[:, 1] + 4*centralMoms[:, 0]*origMoms[:, 2])  
-#     print "origMom:", origMoms
+
     return origMoms
     
 
@@ -423,31 +430,48 @@ def testHMM():
 
 
 def testScale():
-    a = np.random.randn(100)
-    print "a mean:", a.mean()
-    print "a std:", a.std()
-    print "a skew:", spstats.skew(a)
-    print "a kurt:", spstats.kurtosis(a)
+    n_rv = 2
+    a = np.random.rand(n_rv,100)
     
-    b = (a - a.mean())/a.std()
-    print "b mean:", b.mean()
-    print "b std:", b.std()
-    print "b skew:", spstats.skew(b)
-    print "b kurt:", spstats.kurtosis(b)
+    moms = np.empty([2, 4])
+    moms[:, 0] = a.mean(1)
+    moms[:, 1] = a.std(1)
+    moms[:, 2] = spstats.skew(a, 1)
+    moms[:, 3] = spstats.kurtosis(a, 1)
+    print "a central moms:\n", moms
     
-    c = b*8
-    print "c mean:", c.mean()
-    print "c std:", c.std()
-    print "c skew:", spstats.skew(c)
-    print "c kurt:", spstats.kurtosis(c)
+    origMoms= central2OrigMom(moms)
+    print "a orig moms:\n", origMoms
     
+#     outOrigMoms = np.empty((n_rv, 4))
+#     for idx in xrange(4):
+#         outOrigMoms[:, idx] = (a**(idx+1)).mean(axis=1)
+#     print "a orig moms2:\n", outOrigMoms
+  
+    b = a[:]
+    b = (b - b.mean(1)[:, np.newaxis])/b.std(1)[:, np.newaxis]
+    moms2 = np.empty([2, 4])
+    moms2[:, 0] = b.mean(1)
+    moms2[:, 1] = b.std(1)
+    moms2[:, 2] = spstats.skew(b, 1)
+    moms2[:, 3] = spstats.kurtosis(b, 1)
+    print "b central moms:\n", moms2
     
-    d = b*8 + 10
-    print "d mean:", d.mean()
-    print "d std:", d.std()
-    print "d skew:", spstats.skew(d)
-    print "d kurt:", spstats.kurtosis(d)
+    origMoms2= central2OrigMom(moms2)
+    print "b orig moms:\n", origMoms2
     
+    c = b[:] 
+    c= c * a.std(1)[:, np.newaxis] + a.mean(1)[:, np.newaxis]
+    moms = np.empty([2, 4])
+    moms[:, 0] = c.mean(1)
+    moms[:, 1] = c.std(1)
+    moms[:, 2] = spstats.skew(c, 1)
+    moms[:, 3] = spstats.kurtosis(c, 1)
+    print "c central moms:\n", moms
+    
+    origMoms= central2OrigMom(moms)
+    print "c orig moms:\n", origMoms
+  
 if __name__ == '__main__':
 #     testCentral2OrigMom()
     testHMM()
