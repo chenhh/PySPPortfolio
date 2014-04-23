@@ -19,8 +19,7 @@ Y Mom[1] = 1
 Y Mom[2] = tgtMoms[2]/tgtMoms[1]**3
 Y Mom[3] = tgtMoms[3]/tgtMoms[1]**4
 
-
-
+skewness, kurtosis不受平移與縮放的影響.
 '''
 from __future__ import division
 import numpy as np
@@ -28,6 +27,7 @@ import numpy.linalg as la
 import scipy.optimize as spopt
 import scipy.stats as spstats
 import time 
+
 
 def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     '''
@@ -58,8 +58,8 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     #to generate samples Y with zero mean, and unit variance
     YMoms = np.zeros((n_rv, 4))
     YMoms[:, 1] = 1
-    YMoms[:, 2] = tgtOrigMoms[:, 2]/tgtOrigMoms[:, 1]**3
-    YMoms[:, 3] = tgtOrigMoms[:, 3]/tgtOrigMoms[:, 1]**4 
+    YMoms[:, 2] = tgtOrigMoms[:, 2]
+    YMoms[:, 3] = tgtOrigMoms[:, 3] 
     
 
     #find good start matrix outMtx (with errMom converge)   
@@ -96,32 +96,35 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
                 outMtx[rv,:] = tmpOut 
             
     #computing starting properties and error
+    #correct moment, wrong correlation
     errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
-    print 'start mtx errMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    print 'start mtx  errMom:%s, errCorr:%s'%(errMoms, errCorrs)
 
     #Cholesky decomp of target corr mtx
-    outCorrs = np.corrcoef(outMtx)
     C = la.cholesky(tgtCorrs)
     
     #main iteration of HKW
     for mainIter in xrange(MaxMainIter):
         if errMoms < MaxErrMom and errCorrs < MaxErrCorr:
+            #break when converge
             break
-        
+
         #transfer mtx
+        outCorrs = np.corrcoef(outMtx)
         CO_inv = la.inv(la.cholesky(outCorrs))
         L = np.dot(C, CO_inv)
         outMtx = np.dot(L, outMtx)
         
-        errMoms, errCorrs = errorStatistics(outMtx, tgtMoms, tgtCorrs)
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+        #wrong moment, correct correlation
         print 'mainIter:%s errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
         #cubic transform
         for rv in xrange(n_rv):
-            cubErr, bestCubErr = float('inf'), float('inf')
+            cubErr = float('inf')
             
             tmpOut = outMtx[rv, :]
-            EY = tgtOrigMoms[rv, :]
+            EY = YMoms[rv, :]
             
             #loop until ErrCubic transform converge
             for cubiter in xrange(MaxCubIter):
@@ -142,34 +145,34 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
                 else:
                     print "mainIter, rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
                 
-        errMoms, errCorrs = errorStatistics(outMtx, tgtMoms, tgtCorrs)
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
         print 'mainIter cubicTransform: %s errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
-        
-        print "elapsed %.3f secs"%(time.time()-t0)
+    
+    outMoms = np.empty((n_rv, 4))
+    outMoms[:, 0] = outMtx.mean(axis=1)
+    outMoms[:, 1] = outMtx.std(axis=1)
+    outMoms[:, 2] = spstats.skew(outMtx, axis=1)
+    outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    print "before rescaleMoms:\n", outMoms
+    #Re-scale the outcomes to the original moments
+    #outMtx = n_rv * n_scenario
+    #tgtOrigMoms = n_rv * 4
+    outMtx = outMtx* tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
+    
+    outMoms = np.empty((n_rv, 4))
+    outMoms[:, 0] = outMtx.mean(axis=1)
+    outMoms[:, 1] = outMtx.std(axis=1)
+    outMoms[:, 2] = spstats.skew(outMtx, axis=1)
+    outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    print "rescaleMoms:\n", outMoms
+    print "tgtMoms:\n", tgtMoms
+    outCorrs = np.corrcoef(outMoms)
+    errMoms, errCorrs = RMSE(outMoms, tgtMoms), RMSE(outCorrs, tgtCorrs)
+    print 'final errMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    
+    print "elapsed %.3f secs"%(time.time()-t0)
 
-def cubicSolve(samples, probs, tgtMoms):
-    '''
-    http://docs.scipy.org/doc/scipy-0.13.0/reference/generated/scipy.optimize.leastsq.html
-    using scipy sum of square function to get cubicParam
-    
-    '''
-    assert tgtMoms.size == 4
-    n_origMom = 12  
-    sampleMoms = np.zeros(n_origMom)
-    
-    #計算samples的12階原始動差E[X]~E[X^12]
-    sampleMoms = np.fromiter( (np.sum(probs* samples**(idx+1) 
-                            for idx in xrange(n_origMom))), dtype=np.float)
-    # initial guess 
-    X_init = np.array([0, 1, 0, 0])
-    
-    #If ier is equal to 1, 2, 3 or 4, the solution was found.
-    out = spopt.leastsq(cubicFunction, X_init, args=(sampleMoms, tgtMoms), full_output=True, ftol=1E-12)
-    cubParam = out[0]
-    msg = out[2]
-    lsq = sum(msg['fvec'])
-    return cubParam, lsq
-    
+
 
 def cubicFunction(cubParams, sampleMoms, tgtMoms):
     '''
@@ -207,13 +210,9 @@ def cubicFunction(cubParams, sampleMoms, tgtMoms):
 def errorStatistics(outMtx, tgtMoms, tgtCorrs):
     n_rv = outMtx.shape[0]
     outMoms = np.empty((n_rv, 4))
-    outMoms[:, 0] = outMtx.mean(axis=1) 
-#     outMoms[:, 1] = outMtx.std(axis=1)
-#     outMoms[:, 2] = spstats.skew(outMtx, axis=1)
-#     outMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
-    outMoms[:, 1] = (outMtx**2).mean(axis=1)
+    for idx in xrange(4):
+        outMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
     
-  
     outCorrMtx = np.corrcoef(outMtx)
     
     errMoms = RMSE(outMoms, tgtMoms)
@@ -434,6 +433,6 @@ def testScale():
     
 if __name__ == '__main__':
 #     testCentral2OrigMom()
-#    testHMM()
-    testScale()
+    testHMM()
+#     testScale()
    
