@@ -10,9 +10,6 @@ and applications, vol. 24, pp 169-185, 2003.
 
 goal: 產生符合tgtMoms與tgtCorrs的樣本Z
 correlation, skewness, kurtosis不受平移與縮放的影響.
-
-
-
 '''
 from __future__ import division
 import numpy as np
@@ -22,7 +19,7 @@ import scipy.stats as spstats
 import time 
 
 
-def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
+def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, verbose=False):
     '''
     tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
     tgtCorrs, numpy.array, size: n_rv * n_rv
@@ -50,20 +47,11 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
     tgtOrigMoms = central2OrigMom(tgtMoms)
     
     #to generate samples Y with zero mean, and unit variance
-    #Y = (X-E[X])/E[X**2]
-    #所以E[Y], E[Y**2] = 0, 1時,E[Y**3], E[Y**4]要修正
     YMoms = np.zeros((n_rv, 4))
     YMoms[:, 1] = 1
-    YMoms[:, 2] = tgtMoms[:, 2]#/(tgtOrigMoms[:, 1]**3)
-    YMoms[:, 3] = tgtMoms[:, 3]+3#/(tgtOrigMoms[:, 1]**4)
-#     YMoms[:, 2] = (tgtOrigMoms[:, 2] -
-#                    3*tgtOrigMoms[:, 0]*tgtOrigMoms[:, 2] + 
-#                    2*tgtOrigMoms[:, 0]**3 )/(tgtOrigMoms[:, 1]**3)
-#     YMoms[:, 3] = (tgtOrigMoms[:, 3] -
-#                    4*tgtOrigMoms[:, 0]*tgtOrigMoms[:, 2] +
-#                    6*tgtOrigMoms[:, 0]**2*tgtOrigMoms[:, 1] -
-#                    3*tgtOrigMoms[:, 0]**4)/(tgtOrigMoms[:, 1]**4)
-#    
+    YMoms[:, 2] = tgtMoms[:, 2]
+    YMoms[:, 3] = tgtMoms[:, 3] + 3
+
 
     #find good start matrix outMtx (with errMom converge)   
     for rv in xrange(n_rv):
@@ -100,8 +88,9 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
             
     #computing starting properties and error
     #correct moment, wrong correlation
-    errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
-    print 'start mtx (orig) errMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    if verbose:
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+        print 'start mtx (orig) errMom:%s, errCorr:%s'%(errMoms, errCorrs)
 
     #Cholesky decomp of target corr mtx
     C = la.cholesky(tgtCorrs)
@@ -118,9 +107,10 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
         L = np.dot(C, CO_inv)
         outMtx = np.dot(L, outMtx)
         
-        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
         #wrong moment, correct correlation
-        print 'mainIter:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+        if verbose:
+            errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+            print 'mainIter:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
         #cubic transform
         for rv in xrange(n_rv):
@@ -146,52 +136,30 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200):
                     outMtx[rv, :] = tmpOut
                     break
                 else:
-                    print "mainIter, rv:%s,(orig) cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
-                
-        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
-        print 'mainIter cubicTransform:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+                    if verbose:
+                        print "mainIter, rv:%s,(orig) cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+        
+        if verbose:
+            errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+            print 'mainIter cubicTransform:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
-    outMoms = np.empty((n_rv, 4))
-    for idx in xrange(4):
-        outMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
-    outCorrs = np.corrcoef(outMtx)
-    print "before rescaleMoms:\n", outMoms
-#     print "before rescaleCorrs:\n", outCorrs
-    #Re-scale the outcomes to the original moments
-    #outMtx = n_rv * n_scenario
-    #tgtOrigMoms = n_rv * 4
-    outMtx = (outMtx* tgtMoms[:, 1][:, np.newaxis] + 
-              tgtMoms[:, 0][:, np.newaxis])  
-#     outMtx = outMtx*tgtMoms[:, 1][:, np.newaxis] 
+    #rescale
+    outMtx = outMtx * tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
     
-    outCentralMoms = np.empty((n_rv, 4))
-    outCentralMoms[:, 0] = outMtx.mean(axis=1)
-    outCentralMoms[:, 1] = outMtx.std(axis=1)
-    outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
-    outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
-    outCorrs = np.corrcoef(outMtx)
+    if verbose:
+        outCentralMoms = np.empty((n_rv, 4))
+        outCentralMoms[:, 0] = outMtx.mean(axis=1)
+        outCentralMoms[:, 1] = outMtx.std(axis=1)
+        outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
+        outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+        outCorrs = np.corrcoef(outMtx)
+        print "rescaleMoms(central):\n", outCentralMoms
+        errMoms = RMSE(outCentralMoms, tgtMoms) 
+        errCorrs = RMSE(outCorrs, tgtCorrs)
+        print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
     
-    outOrigMoms = np.empty((n_rv, 4))
-    for idx in xrange(4):
-        outOrigMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
-    
-    print "YMoms(orig):\n",YMoms
-    print "tgtMoms(central):\n", tgtMoms
-    print "tgtOrigMoms(orig):\n",tgtOrigMoms
-    
-#     print "rescaleMoms(orig):\n", outOrigMoms
-    print "rescaleMoms(central):\n", outCentralMoms
-    
-#     print "rescaleCorrs:\n", outCorrs
-#     print "tgtCorrs:\n", tgtCorrs
-    errMoms = RMSE(outCentralMoms, tgtMoms) 
-    errCorrs = RMSE(outCorrs, tgtCorrs)
-    errOrigMoms, errOrigCorrs = errorStatistics(outMtx, tgtOrigMoms, tgtCorrs)
-    print 'final (orig) tgtErrMom:%s, errCorr:%s'%(errOrigMoms, errOrigCorrs)
-    print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
-    
-    print "elapsed %.3f secs"%(time.time()-t0)
-
+    print "HeuristicMomentMatching elapsed %.3f secs"%(time.time()-t0)
+    return outMtx
 
 
 def cubicFunction(cubParams, sampleMoms, tgtMoms):
@@ -403,9 +371,9 @@ def central2OrigMom(centralMoms):
                 
 
 def testHMM():
-    n_rv = 3
+    n_rv = 10
     n_scenario = 200
-    data = np.random.randn(n_rv, 100)
+    data = np.random.randn(n_rv, 1000)
 
     Moms =  np.zeros((n_rv, 4))    
     Moms[:, 0] = data.mean(axis=1)
@@ -413,7 +381,7 @@ def testHMM():
     Moms[:, 2] = spstats.skew(data, axis=1)
     Moms[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
-    HeuristicMomentMatching(Moms, corrMtx, n_scenario=200)
+    HeuristicMomentMatching(Moms, corrMtx, n_scenario=500, verbose=True)
 
 
 # def testCentral2OrigMom():
