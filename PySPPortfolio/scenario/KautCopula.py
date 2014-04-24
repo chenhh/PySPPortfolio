@@ -9,7 +9,9 @@ anagement Science, pp. 1-14, 2013.
 
 from __future__ import division
 import numpy as np
+import time
 from coopr.pyomo import *
+
 
 def optimal2DCopulaSampling(data, n_scenario = 20):
     '''
@@ -85,7 +87,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     display(instance)
     
 
-def empirical2DCopulaCDF(data):
+def empiricalCopula(data):
     '''
     empirical cumulative distribution function
     @data, numpy.array, size: n_rv * n_dim (N*D)
@@ -93,28 +95,49 @@ def empirical2DCopulaCDF(data):
     '''
     #dominating sort
     n_rv, n_dim = data.shape
-    assert n_dim == 2
     
     #computing copula indices 
-        
-#     copula = np.zeros((n_rv, n_rv))
-#     for idx in xrange(n_rv):
-#         dominated = 1
-#         for jdx in xrange(idx+1, n_rv):
-#             if np.all(data[idx] <= data[jdx]):
-#                 dominated += 1
-#         copula[idx] = dominated    
-#     
-#     copula = copula.astype(np.float)/n_rv 
+    #[:, :n_dim]為rank index, [:, n_dim]為dominating values 
+    copula = np.ones((n_rv, n_dim +1))
+    rankIdx = np.empty(n_rv)
+    for col in xrange(n_dim):
+        rankIdx[data[:, col].argsort()] = np.arange(n_rv)
+        copula[:, col] = rankIdx
+   
+    #computing empirical copula
+    for idx in xrange(n_rv):
+        for jdx in xrange(idx+1 ,n_rv):
+            if np.all(copula[idx, :n_dim] >= copula[jdx, :n_dim]): 
+                copula[idx, n_dim] += 1
+    copula[:, n_dim] = copula[:, n_dim].astype(np.float)/n_rv 
     print copula
-    return copula
+  
 
 
-def testEmpiricalCopulaCDF():
-    n_rv, n_dim = 10, 2
+def getCopulaValue(copula, indices):
+    '''
+    @copula, numpy.arrary, size: n_rv * (n_dim+1)
+             the first n_dim columns are integer,
+             and the last column is the copula value
+    @indices, numpy.array, size: n_dim
+    '''
+    indices = np.asarray(indices)
+    n_dim = copula.shape[1] - 1
+    row, _ = np.where(copula[:, :n_dim] == indices)
+    mask = np.ones(n_dim)*row[0]
+    if row.size != indices.size or not (row == mask).all() :
+        #1. some indices are not in the copula
+        #2. not all indices are in the same row
+        return 0
+    else:
+        return copula[row[0], n_dim]
+
+def testEmpiricalCopula():
+    n_rv, n_dim = 5, 2
     data = np.random.rand(n_rv, n_dim)
     print "data:\n", data
-    empirical2DCopulaCDF(data)
+    empiricalCopula(data)
+
 
 if __name__ == '__main__':
-    testEmpiricalCopulaCDF()
+    testEmpiricalCopula()
