@@ -5,6 +5,12 @@
 
 M. Kaut，"A copula-based heuristic for scenario generation," Computational M
 anagement Science, pp. 1-14, 2013.
+
+the dimension of data is n_rv * n_dim
+copula data structure:
+    2D numpy.array, size n_rv * (n_dim +1)
+    the first n_dim columns store the rank (ascending of each column) of each record
+    the last column store the copula value of the record
 '''
 
 from __future__ import division
@@ -110,7 +116,7 @@ def empiricalCopula(data):
             if np.all(copula[idx, :n_dim] >= copula[jdx, :n_dim]): 
                 copula[idx, n_dim] += 1
     copula[:, n_dim] = copula[:, n_dim].astype(np.float)/n_rv 
-    print copula
+    return copula
   
 
 
