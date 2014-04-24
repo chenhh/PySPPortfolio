@@ -49,7 +49,8 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, verbose=False):
     YMoms[:, 3] = tgtMoms[:, 3] + 3
 
 
-    #find good start matrix outMtx (with errMom converge)   
+    #find good start matrix outMtx (with errMom converge)
+    #the iteration can be done parallelly. 
     for rv in xrange(n_rv):
         cubErr, bestCubErr = float('inf'), float('inf')
 
