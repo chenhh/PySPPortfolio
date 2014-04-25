@@ -6,6 +6,7 @@
 Strelen, Johann Christoph, and Feras Nassaj. "Analysis and generation of 
 random vectors with copulas." Proceedings of the 39th conference on 
 Winter simulation: 40 years! The best is yet to come. IEEE Press, 2007.
+
 '''
 from __future__ import division
 import math
@@ -15,8 +16,10 @@ import time
 import copy
 
 
-def HeuristicCopula(data, alpha=0.95, n_scenario=200, K=2):
+
+def StrlenHeuristicCopulaSampling(data, alpha=0.95, n_scenario=200, K=2):
     '''
+    Strelen algorithm
     pure python version
     @data, numpy.array, size: N*D, N is number of data, D is the dimensions
     @alpha, float, confidence level of CVaR (0.5 <=alpha <=1)
@@ -118,8 +121,6 @@ def get_down_ud(ud_arr, f, u, K):
     return down_ud, upper_ud, sum_f
 
 
-
-    
 def SparseArray(arr, f, d, D, inc):
     '''
     d: current dimension
@@ -166,16 +167,18 @@ def getSumSparseArrayValue(arr, f, upperID, d=0):
             raise ValueError('%dth element of arr is %s, not in f'%(d, arr[d]))
 
 
-def testHeuristicCopula():
+def testStrlenHeuristicCopulaSampling():
     n_rv = 10
     data = np.random.randn(n_rv, 10)
     alpha=0.95
     n_scenario=200
-    HeuristicCopula(data, alpha, n_scenario, K=1)
+    StrlenHeuristicCopulaSampling(data, alpha, n_scenario, K=1)
+
 
 
 if __name__ == '__main__':
-    testHeuristicCopula()
+#     testStrlenHeuristicCopulaSampling()
+    testEmpiricalCopulaCDF()
 #     CubicScatter()
     
 #     arr = np.array([1,3,5,7,9])

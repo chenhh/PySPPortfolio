@@ -95,7 +95,8 @@ def empirical2DCopulaCDF(data):
     n_rv, n_dim = data.shape
     assert n_dim == 2
     
-    #computing copula indices 
+    #computing copula indices
+     
         
 #     copula = np.zeros((n_rv, n_rv))
 #     for idx in xrange(n_rv):
