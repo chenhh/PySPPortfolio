@@ -116,15 +116,17 @@ def buildEmpiricalCopula(data):
         for jdx in xrange(idx+1 ,n_rv):
             if np.all(copula[idx, :n_dim] >= copula[jdx, :n_dim]): 
                 copula[idx, n_dim] += 1
+            if np.all(copula[idx, :n_dim] <= copula[jdx, :n_dim]):
+                copula[jdx, n_dim] += 1
                 
     copula = copula.astype(np.float)/n_rv
     print copula
-    print getCopulaValue(copula, copula[3, :n_dim])
+    print getCopulaValue(copula, [10, 20], 20)
     return copula
   
 
 
-def getCopulaValue(copula, probs):
+def getCopulaValue(copula, indices, maxVal):
     '''
     @copula, numpy.arrary, size: n_rv * (n_dim+1)
              the first n_dim columns are integer,
@@ -133,17 +135,14 @@ def getCopulaValue(copula, probs):
     
     check how many copula points are dominated by the probs
     '''
-    assert len(probs) == copula.shape[1] - 1    
-    probs = np.asarray(probs)
-    print probs
+    assert len(indices) == copula.shape[1] - 1    
+    probs = np.asarray(indices, dtype=np.float)/maxVal
+
     n_rv, n_dim =copula.shape[0],  copula.shape[1] - 1
     
-    dominating = 0
-    for row in xrange(n_rv):
-        if np.all(probs > copula[row, :n_dim]):
-            dominating += 1
-        if np.all(probs ==  copula[row, :n_dim]):
-            dominating += 1
+    dominating = sum(1 for row in xrange(n_rv) 
+                     if np.all(probs >= copula[row, :n_dim]))   
+       
     return float(dominating)/n_rv 
 
 def testEmpiricalCopula():
