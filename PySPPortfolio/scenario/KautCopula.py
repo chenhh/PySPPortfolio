@@ -93,7 +93,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     display(instance)
     
 
-def empiricalCopula(data):
+def buildEmpiricalCopula(data):
     '''
     empirical cumulative distribution function
     @data, numpy.array, size: n_rv * n_dim (N*D)
@@ -109,41 +109,48 @@ def empiricalCopula(data):
     rankIdx = np.empty(n_rv)
     for col in xrange(n_dim):
         rankIdx[data[:, col].argsort()] = np.arange(n_rv)
-        copula[:, col] = rankIdx
+        copula[:, col] = rankIdx + 1
    
     #computing empirical copula
     for idx in xrange(n_rv):
         for jdx in xrange(idx+1 ,n_rv):
             if np.all(copula[idx, :n_dim] >= copula[jdx, :n_dim]): 
                 copula[idx, n_dim] += 1
-    copula[:, n_dim] = copula[:, n_dim].astype(np.float)/n_rv 
+                
+    copula = copula.astype(np.float)/n_rv
+    print copula
+    print getCopulaValue(copula, copula[3, :n_dim])
     return copula
   
 
 
-def getCopulaValue(copula, indices):
+def getCopulaValue(copula, probs):
     '''
     @copula, numpy.arrary, size: n_rv * (n_dim+1)
              the first n_dim columns are integer,
              and the last column is the copula value
-    @indices, numpy.array, size: n_dim
+    @probs, numpy.array, size: n_dim
+    
+    check how many copula points are dominated by the probs
     '''
-    indices = np.asarray(indices)
-    n_dim = copula.shape[1] - 1
-    row, _ = np.where(copula[:, :n_dim] == indices)
-    mask = np.ones(n_dim)*row[0]
-    if row.size != indices.size or not (row == mask).all() :
-        #1. some indices are not in the copula
-        #2. not all indices are in the same row
-        return 0
-    else:
-        return copula[row[0], n_dim]
+    assert len(probs) == copula.shape[1] - 1    
+    probs = np.asarray(probs)
+    print probs
+    n_rv, n_dim =copula.shape[0],  copula.shape[1] - 1
+    
+    dominating = 0
+    for row in xrange(n_rv):
+        if np.all(probs > copula[row, :n_dim]):
+            dominating += 1
+        if np.all(probs ==  copula[row, :n_dim]):
+            dominating += 1
+    return float(dominating)/n_rv 
 
 def testEmpiricalCopula():
     n_rv, n_dim = 5, 2
     data = np.random.rand(n_rv, n_dim)
     print "data:\n", data
-    empiricalCopula(data)
+    buildEmpiricalCopula(data)
 
 
 if __name__ == '__main__':
