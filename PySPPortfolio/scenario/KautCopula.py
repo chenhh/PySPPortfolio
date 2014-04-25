@@ -17,7 +17,7 @@ from __future__ import division
 import numpy as np
 import time
 from coopr.pyomo import *
-
+from coopr.opt import  SolverFactory
 
 def optimal2DCopulaSampling(data, n_scenario = 20):
     '''
@@ -29,7 +29,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     assert data.shape[1] == 2
     n_rv = data.shape[0]
     
-    tgt_copula = empiricalCopulaCDF(data)
+    tgt_copula = buildEmpiricalCopula(data)
     
     # Model
     model = ConcreteModel()
@@ -46,7 +46,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     #constraint
     def rowConstraint_rule(model, x):
         '''to ensuring that each rank is used only once in each row'''
-        val = sum( model.X[x][j] for j in model.y)
+        val = sum( model.X[x, j] for j in model.y)
         return val == 1
         
     model.rowConstraint = Constraint(model.x)
@@ -54,20 +54,20 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     
     def columnConstraint_rule(model, y):
         '''to ensuring that each rank is used only once in each column'''
-        val = sum( model.X[i][y] for i in model.x)
+        val = sum( model.X[i, y] for i in model.x)
         return val == 1
       
     model.columnConstraint = Constraint(model.y)
     
     
     def copulaConstraint_rule(model, i, j):
-        '''approximate constraint '''
+        '''bias constraint '''
         val = 0
         for kdx in xrange(i):
             for ldx in xrange(j):
-                val += model.X[kdx][ldx]
+                val += model.X[kdx, ldx]
         val = val - model.yp[i, j] + model.yn[i, j]
-        return val == n_rv *  tgt_copula[i, j] 
+        return val == n_rv *  getCopulaValue(tgt_copula, [i, j], n_rv) 
             
     model.copulaConstraint = Constraint(model.x, model.y)
     
@@ -77,15 +77,16 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
         val = 0
         for idx in model.x:
             for jdx in model.y:
-                val += model.yp[idx][jdx] + model.yn[idx][jdx]
+                val += model.yp[idx, jdx] + model.yn[idx, jdx]
         return val
         
     model.minimizeBias = Objective()
     
-    
     # Create a solver
-    solver = "cplex"
+#     solver = "glpk"#"cplex"
+    solver= "cplex"
     opt = SolverFactory(solver)
+    opt.options["threads"]=4
     
     instance = model.create()
     results = opt.solve(instance)  
@@ -120,8 +121,8 @@ def buildEmpiricalCopula(data):
                 copula[jdx, n_dim] += 1
                 
     copula = copula.astype(np.float)/n_rv
-    print copula
-    print getCopulaValue(copula, [10, 20], 20)
+#     print copula
+#     print getCopulaValue(copula, [10, 20], 20)
     return copula
   
 
@@ -152,5 +153,14 @@ def testEmpiricalCopula():
     buildEmpiricalCopula(data)
 
 
+def testOptimal2DCopulaSampling():
+    n_rv, n_dim = 50, 2
+    data = np.random.rand(n_rv, n_dim)
+    t0 = time.time()
+    optimal2DCopulaSampling(data, n_scenario = 10)
+    print "elapsed %.3f secs"%(time.time()-t0)
+
 if __name__ == '__main__':
-    testEmpiricalCopula()
+#     testEmpiricalCopula()
+    testOptimal2DCopulaSampling()
+    
