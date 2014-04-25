@@ -35,8 +35,8 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     model = ConcreteModel()
     
     #Set, dimension 1 and 2
-    model.x = range(n_rv)
-    model.y = range(n_rv)
+    model.x = range(n_scenario)
+    model.y = range(n_scenario)
     
     #decision variables
     model.X = Var(model.x, model.y, within=Binary)
@@ -67,7 +67,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
             for ldx in xrange(j):
                 val += model.X[kdx, ldx]
         val = val - model.yp[i, j] + model.yn[i, j]
-        return val == n_rv *  getCopulaValue(tgt_copula, [i, j], n_rv) 
+        return val == n_rv *  getCopulaValue(tgt_copula, [i, j], n_scenario) 
             
     model.copulaConstraint = Constraint(model.x, model.y)
     
@@ -83,15 +83,37 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     model.minimizeBias = Objective()
     
     # Create a solver
-#     solver = "glpk"#"cplex"
-    solver= "cplex"
+    solver = "glpk"
+#     solver= "cplex"
     opt = SolverFactory(solver)
-    opt.options["threads"]=4
+#     opt.options["threads"]=4
     
     instance = model.create()
     results = opt.solve(instance)  
     instance.load(results)
-    display(instance)
+#     display(instance)  
+    
+    
+    results = {}
+    
+    for v in instance.active_components(Var):
+        varobject = getattr(instance, v)
+        if v == "X":
+            results[v] = np.fromiter((varobject[idx, jdx].value 
+                                    for jdx in np.arange(n_scenario) 
+                                    for idx in np.arange(n_scenario)), np.float)
+            results[v] = results[v].reshape((n_scenario, n_scenario))
+        elif v == "yp":
+            results[v] = np.fromiter((varobject[idx, jdx].value 
+                                      for jdx in np.arange(n_scenario) 
+                                      for idx in np.arange(n_scenario)), np.float)
+            results[v] = results[v].reshape((n_scenario, n_scenario))
+        elif v == "yn":
+            results[v] = np.fromiter((varobject[idx, jdx].value 
+                                      for jdx in np.arange(n_scenario) 
+                                      for idx in np.arange(n_scenario)), np.float)
+            results[v] = results[v].reshape((n_scenario, n_scenario))
+    print results
     
 
 def buildEmpiricalCopula(data):
@@ -154,7 +176,7 @@ def testEmpiricalCopula():
 
 
 def testOptimal2DCopulaSampling():
-    n_rv, n_dim = 50, 2
+    n_rv, n_dim = 10, 2
     data = np.random.rand(n_rv, n_dim)
     t0 = time.time()
     optimal2DCopulaSampling(data, n_scenario = 10)
