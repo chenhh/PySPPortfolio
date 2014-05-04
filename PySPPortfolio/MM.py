@@ -68,7 +68,7 @@ def plotDistribution(dfs, today, histPeriods = 20, n_scenario = 200):
     Moms[:, 2] = spstats.skew(data, axis=1)
     Moms[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
-    outMtx = mom.HeuristicMomentMatching(Moms, corrMtx, n_scenario=500, verbose=True)
+    outMtx = mom.HeuristicMomentMatching(Moms, corrMtx, n_scenario, verbose=True)
     print outMtx
     
     for idx in xrange(n_rv):
@@ -95,5 +95,5 @@ def plotDistribution(dfs, today, histPeriods = 20, n_scenario = 200):
 
 if __name__ == '__main__':
     dfs = readDF(symbols)
-    plotDistribution(dfs, date(2005,12,12), 20, 1000)
+    plotDistribution(dfs, date(2013,1,9), 10, 10)
     
