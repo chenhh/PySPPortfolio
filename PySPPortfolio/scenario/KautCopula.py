@@ -18,6 +18,7 @@ import numpy as np
 import time
 from coopr.pyomo import *
 from coopr.opt import  SolverFactory
+import matplotlib.pyplot as plt
 
 def optimal2DCopulaSampling(data, n_scenario = 20):
     '''
@@ -83,8 +84,8 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
     model.minimizeBias = Objective()
     
     # Create a solver
-    solver = "glpk"
-#     solver= "cplex"
+#     solver = "glpk"
+    solver= "cplex"
     opt = SolverFactory(solver)
 #     opt.options["threads"]=4
     
@@ -103,6 +104,15 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
                                     for jdx in np.arange(n_scenario) 
                                     for idx in np.arange(n_scenario)), np.float)
             results[v] = results[v].reshape((n_scenario, n_scenario))
+            parsed = []
+            for row in xrange(n_scenario):
+                for col in xrange(n_scenario):
+                    if results[v][row][col] >=0.9:
+                        parsed.append((row, col))
+            parsed = (np.asarray(parsed) + 1)/n_scenario
+    
+            results["parsed"] = parsed
+            
         elif v == "yp":
             results[v] = np.fromiter((varobject[idx, jdx].value 
                                       for jdx in np.arange(n_scenario) 
@@ -114,6 +124,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
                                       for idx in np.arange(n_scenario)), np.float)
             results[v] = results[v].reshape((n_scenario, n_scenario))
     print results
+    return results
     
 
 def buildEmpiricalCopula(data):
@@ -172,14 +183,36 @@ def testEmpiricalCopula():
     n_rv, n_dim = 5, 2
     data = np.random.rand(n_rv, n_dim)
     print "data:\n", data
-    buildEmpiricalCopula(data)
+    subplot = plt.subplot(2,1, 1)
+    subplot.set_title('data')
+    subplot.scatter(data[:, 0], data[:, 1])
+    copula = buildEmpiricalCopula(data)
+    print copula
+    subplot = plt.subplot(2,1, 2)
+    subplot.set_title('rank')
+    subplot.scatter(copula[:, 0], copula[:, 1], color="green")
+    plt.show()
 
 
 def testOptimal2DCopulaSampling():
     n_rv, n_dim = 10, 2
     data = np.random.rand(n_rv, n_dim)
     t0 = time.time()
-    optimal2DCopulaSampling(data, n_scenario = 10)
+    copula = buildEmpiricalCopula(data)
+    results = optimal2DCopulaSampling(data, n_scenario = 10)
+    subplot = plt.subplot(3,1, 1)
+    subplot.set_title('data')
+    subplot.scatter(data[:, 0], data[:, 1])
+    
+    subplot = plt.subplot(3,1, 2)
+    subplot.set_title('rank')
+    subplot.scatter(copula[:, 0], copula[:, 1], color="pink")
+    
+    samples = results['parsed']
+    subplot = plt.subplot(3,1, 3)
+    subplot.set_title('samples')
+    subplot.scatter(samples[:, 0], samples[:, 1], color="green")
+    plt.show()
     print "elapsed %.3f secs"%(time.time()-t0)
 
 if __name__ == '__main__':

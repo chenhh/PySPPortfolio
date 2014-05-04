@@ -29,8 +29,6 @@ def readDF(symbols):
 def plotDistribution(dfs, today, histPeriods = 20, n_scenario = 200):
     '''Histograms'''
     assert len(dfs) == 2
-    plt.xlabel("ROI") 
-    plt.ylabel("Frequency")
     plt.suptitle("today:%s, h:%s, scenario:%s"%(today, histPeriods, n_scenario))
 
 #     n_bin = histPeriods/2.
