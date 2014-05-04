@@ -68,7 +68,10 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
             for ldx in xrange(j):
                 val += model.X[kdx, ldx]
         val = val - model.yp[i, j] + model.yn[i, j]
-        return val == n_rv *  getCopulaValue(tgt_copula, [i, j], n_scenario) 
+        copula_val = getCopulaValue(tgt_copula, [i, j], n_scenario)
+#         print "get copula (%s, %s) value:%s"%(i/n_rv,j/n_rv, copula_val )
+        return val == n_scenario * copula_val 
+    
             
     model.copulaConstraint = Constraint(model.x, model.y)
     
@@ -78,7 +81,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
         val = 0
         for idx in model.x:
             for jdx in model.y:
-                val += model.yp[idx, jdx] + model.yn[idx, jdx]
+                val += (model.yp[idx, jdx] + model.yn[idx, jdx])
         return val
         
     model.minimizeBias = Objective()
@@ -110,7 +113,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
                     if results[v][row][col] >=0.9:
                         parsed.append((row, col))
             parsed = (np.asarray(parsed) + 1)/n_scenario
-    
+
             results["parsed"] = parsed
             
         elif v == "yp":
@@ -123,7 +126,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20):
                                       for jdx in np.arange(n_scenario) 
                                       for idx in np.arange(n_scenario)), np.float)
             results[v] = results[v].reshape((n_scenario, n_scenario))
-    print results
+#     print results
     return results
     
 
@@ -169,8 +172,9 @@ def getCopulaValue(copula, indices, maxVal):
     
     check how many copula points are dominated by the probs
     '''
-    assert len(indices) == copula.shape[1] - 1    
-    probs = np.asarray(indices, dtype=np.float)/maxVal
+    assert len(indices) == copula.shape[1] - 1
+    rank = np.asarray(indices, dtype=np.float) + 1    
+    probs = rank/maxVal
 
     n_rv, n_dim =copula.shape[0],  copula.shape[1] - 1
     
@@ -187,7 +191,7 @@ def testEmpiricalCopula():
     subplot.set_title('data')
     subplot.scatter(data[:, 0], data[:, 1])
     copula = buildEmpiricalCopula(data)
-    print copula
+    print "copula:\n", copula
     subplot = plt.subplot(2,1, 2)
     subplot.set_title('rank')
     subplot.scatter(copula[:, 0], copula[:, 1], color="green")
@@ -195,15 +199,18 @@ def testEmpiricalCopula():
 
 
 def testOptimal2DCopulaSampling():
-    n_rv, n_dim = 10, 2
+    n_rv, n_dim = 5, 2
     data = np.random.rand(n_rv, n_dim)
+    print "data:\n", data
     t0 = time.time()
-    copula = buildEmpiricalCopula(data)
-    results = optimal2DCopulaSampling(data, n_scenario = 10)
+   
+    results = optimal2DCopulaSampling(data, n_scenario = n_rv)
     subplot = plt.subplot(3,1, 1)
     subplot.set_title('data')
     subplot.scatter(data[:, 0], data[:, 1])
-    
+   
+    copula = buildEmpiricalCopula(data) 
+    print "empirical copula:\n", copula
     subplot = plt.subplot(3,1, 2)
     subplot.set_title('rank')
     subplot.scatter(copula[:, 0], copula[:, 1], color="pink")
@@ -212,8 +219,26 @@ def testOptimal2DCopulaSampling():
     subplot = plt.subplot(3,1, 3)
     subplot.set_title('samples')
     subplot.scatter(samples[:, 0], samples[:, 1], color="green")
-    plt.show()
+    print "samples:\n", samples
+    sample_copula = buildEmpiricalCopula(samples)
+    print "sample_copula:\n", sample_copula 
+    
+    print "objective:", results['yp'].sum() + results['yn'].sum() 
+    
     print "elapsed %.3f secs"%(time.time()-t0)
+    
+#     plot3DCopula(copula)
+    
+    plt.show()
+    
+
+def plot3DCopula(copula):
+    n_rv = copula.shape[0]
+    step = 1./n_rv
+    x = np.arange(0, 1+step, step)
+    y = np.arange(0, 1+step, step)
+    x, y = np.meshgrid(x, y)
+    print x
 
 if __name__ == '__main__':
 #     testEmpiricalCopula()
