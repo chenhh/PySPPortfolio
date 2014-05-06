@@ -3,6 +3,11 @@
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
 start from 2005/1/1 to 2013/12/31
+
+given some stocks n, hist. period h and a confidence level alpha,
+there are three parameters (n, h, alpha)
+computing the final wealth
+the same model as published in ITOAI14
 '''
 
 from __future__ import division
@@ -15,25 +20,17 @@ import numpy as np
 import numpy.linalg as la 
 import scipy.stats as spstats
 import pandas as pd
-from HKW_wrapper import HKW_wrapper
+from scenario.Moment import HeuristicMomentMatching
 from MinCVaRPortfolioSP import MinCVaRPortfolioSP
+from PySPPortfolio import (FileDir, PklBasicFeaturesDir,  ExpResultsDir)
 import simplejson as json 
 
-FileDir = os.path.abspath(os.path.curdir)
-PklBasicFeaturesDir = os.path.join(FileDir,'pkl', 'BasicFeatures')
-if platform.uname()[0] == 'Linux':
-    ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
-                                  'financial_experiment', 'PySPPortfolio')
-    
-elif platform.uname()[0] =='Windows':
-    ExpResultsDir= os.path.join('C:\\', 'Dropbox', 'financial_experiment', 
-                                'PySPPortfolio')    
     
 def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
                       money=1e6, hist_period=60, buyTransFee=0.001425, 
                       sellTransFee=0.004425, alpha = 0.95, debug=False):
     '''
-    -注意因為最後一期只結算不買賣
+    -注意最後一期只結算不買賣
     -DataFrame以Date取資料時，有包含last day, 即df[startDate: endDate]
     -包含了endDate的資料，但是使用index取資料時，如df[2:10]，則不包含df.ix[10]的資料
     @param symbols, list
@@ -56,10 +53,11 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
         endIdx =  df.index.get_loc(tmp.index[-1])
         if startIdx < (hist_period-1):
             raise ValueError('%s do not have enough data'%(symbol))
+        
         #index from [0, hist_period-1] for estimating statistics
         data = df[startIdx-hist_period+1: endIdx+1]
        
-        #check all data have the same transDate
+        #check all data have the same transDates
         if transDates is None:
             transDates = data.index.values
         if not np.all(transDates == data.index.values):
@@ -73,6 +71,8 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
     #最後一期只結算不買賣, 所以要減一期 
     n_rv, T = len(symbols), len(transDates) - 1
     allRiskyRetMtx = np.empty((n_rv, hist_period+T))
+    
+    #fixed the return
     for idx, df in enumerate(dfs):
         allRiskyRetMtx[idx, :] = df['adjROI'].values/100.
     
@@ -99,7 +99,7 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
     return {
         "n_rv": n_rv,
         "T": T,
-        "allRiskyRetMtx": allRiskyRetMtx, #size: n_rv * (hist_period+T)
+        "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
         "riskFreeRetVec": riskFreeRetVec,   #size: T+1
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
         "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
@@ -107,14 +107,14 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
         "depositWealth": depositWealth,     #size: 1 
         "transDates": transDates,           #size: (T+1)
         "fullTransDates": fullTransDates,   #size: (hist_period+T)
-        "alpha": alpha                      #size：１
+        "alpha": alpha                      #size：1
         }
 
 
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=1000,
                            buyTransFee=0.001425, sellTransFee=0.004425,
-                           alpha=0.95, scenFunc="Moment", solver="glpk", 
+                           alpha=0.95, scenFunc="Moment", solver="cplex", 
                            debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
@@ -184,25 +184,19 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
             moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
             corrMtx = np.corrcoef(subRiskyRetMtx)
-            MaxTrial = 50
-            HKW_MaxIter =50
-            MaxErrMom = 1e-1
-            MaxErrCorr = 1e-1
-            
-            print "mom:", moments
-            print "corr:", corrMtx
-            for kdx in xrange(3):
-                MaxErrMom, MaxErrCorr = 1e-3 * (10**kdx), 1e-3 * (10**kdx)
-                print "kdx: %s, momErr: %s, corrErr:%s"%(kdx, MaxErrMom, MaxErrCorr)
-                scenMtx, rc = HKW_wrapper.HeuristicMomentMatching(moments, corrMtx, n_scenario,
-                                            MaxTrial, HKW_MaxIter, MaxErrMom, MaxErrCorr)
+            try:
+                scenMtx = HeuristicMomentMatching(moments, corrMtx, n_scenario)
+                converged = True
+            except ValueError as e:
+                print e
+                converged = False
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
         print "%s-%s - generate scen. mtx, %.3f secs"%(transDate, scenFunc, time.time()-t)
         
-        if rc == 0:
-            #solve SP
+        if converged:
+            #successful generating scenarios, solve SP
             t = time.time()
             riskyRet = allRiskyRetMtx[:, hist_period+tdx]
             riskFreeRet = riskFreeRetVec[tdx]
@@ -216,6 +210,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            probs=None, solver=solver)
             print "%s - %s solve SP, %.3f secs"%(transDate, solver, time.time()-t)
         else:
+            #failed generating scenarios
             genScenErrDates.append(transDate)
             results = None
         
@@ -223,7 +218,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         allocatedWealth = allocatedWealth * (1+allRiskyRetMtx[:, hist_period+tdx])
         depositWealth =  depositWealth * (1+riskFreeRetVec[tdx])
         
-        if rc == 0 and results is not None:
+        if converged and results is not None:
             #buy action
             for idx, value in enumerate(results['buys']):
                 allocatedWealth[idx] += value
@@ -232,7 +227,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 depositWealth -= buy
             
             #sell action
-            for jdx, value in enumerate(results['sells']):
+            for idx, value in enumerate(results['sells']):
                 allocatedWealth[idx] -= value
                 sell = (1 - sellTransFeeMtx[idx, tdx]) * value
                 sellProcess[idx, tdx] = sell
@@ -249,6 +244,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                 len(genScenErrDates),  transDate,  allocatedWealth.sum() + depositWealth,
                 time.time()-tloop)
         print '*'*75
+        #end of for
     
     #最後一期只結算不買賣
     wealthProcess[:, -1] = allocatedWealth * (1+allRiskyRetMtx[:, -1])

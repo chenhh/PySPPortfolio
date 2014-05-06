@@ -98,7 +98,7 @@ def optimal2DCopulaSampling(data, n_scenario = 20, solver="cplex"):
     instance = model.create()
     results = opt.solve(instance)  
     instance.load(results)
-#     display(instance)  
+    display(instance)  
     
     results = {}
     
@@ -200,15 +200,15 @@ def testEmpiricalCopula():
 
 
 def testOptimal2DCopulaSampling():
-    n_rv, n_dim = 5, 2
-    data = np.random.rand(n_rv, n_dim)
+    n_rv, n_dim = 4, 2
+    data = np.random.randn(n_rv, n_dim)
     print "data:\n", data
     t0 = time.time()
     
     copula = buildEmpiricalCopula(data) 
     print "empirical copula:\n", copula
    
-    results = optimal2DCopulaSampling(data, n_scenario = n_rv)
+    results = optimal2DCopulaSampling(data, n_scenario = n_rv*2)
     subplot = plt.subplot(3,1, 1)
     subplot.set_title('data')
     subplot.scatter(data[:, 0], data[:, 1])
@@ -223,7 +223,8 @@ def testOptimal2DCopulaSampling():
     subplot.set_title('samples')
     subplot.scatter(samples[:, 0], samples[:, 1], color="green")
     print "samples:\n", samples
-    sample_copula = buildEmpiricalCopula(samples)
+#     sample_copula = buildEmpiricalCopula(samples)
+    sample_copula = [getCopula(copula, pt) for pt in samples]
     print "sample_copula:\n", sample_copula 
     
     print "objective:", results['yp'].sum() + results['yn'].sum() 

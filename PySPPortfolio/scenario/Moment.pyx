@@ -19,7 +19,7 @@ ctypedef np.float_t DTYPE_t
 # @cython.boundscheck(False)
 cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms, 
                                np.ndarray[DTYPE_t, ndim=2]  tgtCorrs, 
-                               int n_scenario):
+                               int n_scenario, bool verbose):
     '''
     tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
     tgtCorrs, numpy.array, size: n_rv * n_rv
@@ -27,32 +27,32 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
     assert tgtMoms.shape[1] == 4
     assert tgtCorrs.shape[0] ==  tgtCorrs.shape[1] == tgtMoms.shape[0]
     cdef:
-        unsigned int n_rv = tgtMoms.shape[0]
-        double EPS= 1e-3
-        double MaxErrMoment = 1e-3
+        double ErrMomEPS= 1e-5
+        double MaxErrMom = 1e-3
         double MaxErrCorr = 1e-3
-        unsigned int MaxCubIter = 2
-        unsigned int MaxMainIter = 20
-        unsigned int MaxStartTrial = 20
-        np.ndarray[DTYPE_t, ndim=2] outMtx = np.empty((n_rv, n_scenario))
-        np.ndarray[DTYPE_t, ndim=2] MOM =  np.zeros((n_rv, 4)) 
-        double cubErr
-        double bestErr
-        np.ndarray[DTYPE_t, ndim=1] tmpOut = np.empty(n_scenario) 
+        double cubErr, bestErr
+        int n_rv = tgtMoms.shape[0]
+        int MaxCubIter = 1
+        int MaxMainIter = 20
+        int MaxStartIter = 5
+        np.ndarray[DTYPE_t, ndim=2] outMtx = np.empty((n_rv, n_scenario)) 
+        np.ndarray[DTYPE_t, ndim=2] YMoms = np.zeros((n_rv, 4))
+        np.ndarray[DTYPE_t, ndim=1] tmpOut = np.empty(n_scenario)
         np.ndarray[DTYPE_t, ndim=1] EY = np.empty(4)
         np.ndarray[DTYPE_t, ndim=1] EX = np.empty(12)
         
-    #origin moments, size: (n_rv * 4)
-    MOM[:, 1] = 1
-    MOM[:, 2] = tgtMoms[:, 2]/(tgtMoms[:, 1]**3)    #skew/(std**3)
-    MOM[:, 3] = tgtMoms[:, 2]/(tgtMoms[:, 1]**4)    #skew/(std**4)
+    #to generate samples Y with zero mean, and unit variance
+    YMoms[:, 1] = 1
+    YMoms[:, 2] = tgtMoms[:, 2]
+    YMoms[:, 3] = tgtMoms[:, 3] + 3
     
     for rv in xrange(n_rv):
-        cubErr = float('inf')
-        bestErr = float('inf')
+        cubErr = 1e40
+        bestErr = 1e40
 
         for _ in xrange(MaxStartTrial):
             tmpOut = np.random.rand(n_scenario)
+            EY = YMoms[rv, :]
        
             for _ in xrange(MaxCubIter):
                 EY = MOM[rv, :]

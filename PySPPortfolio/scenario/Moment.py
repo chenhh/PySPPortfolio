@@ -19,7 +19,8 @@ import scipy.stats as spstats
 import time 
 
 
-def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, verbose=False):
+def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, 
+                             MaxErrMom=1e-3, MaxErrCorr=1e-3, verbose=False):
     '''
     tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
     tgtCorrs, numpy.array, size: n_rv * n_rv
@@ -32,9 +33,7 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, verbose=False):
     #parameters
     n_rv = tgtMoms.shape[0]
     ErrMomEPS= 1e-5
-    MaxErrMom = 1e-3
-    MaxErrCorr = 1e-3
-    
+       
     MaxCubIter = 1
     MaxMainIter = 20
     MaxStartIter = 5
@@ -142,18 +141,20 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, verbose=False):
     
     #rescale
     outMtx = outMtx * tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
+   
+    outCentralMoms = np.empty((n_rv, 4))
+    outCentralMoms[:, 0] = outMtx.mean(axis=1)
+    outCentralMoms[:, 1] = outMtx.std(axis=1)
+    outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
+    outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outCorrs = np.corrcoef(outMtx)
+    print "rescaleMoms(central):\n", outCentralMoms
+    errMoms = RMSE(outCentralMoms, tgtMoms) 
+    errCorrs = RMSE(outCorrs, tgtCorrs)
+    print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
     
-    if verbose:
-        outCentralMoms = np.empty((n_rv, 4))
-        outCentralMoms[:, 0] = outMtx.mean(axis=1)
-        outCentralMoms[:, 1] = outMtx.std(axis=1)
-        outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
-        outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
-        outCorrs = np.corrcoef(outMtx)
-        print "rescaleMoms(central):\n", outCentralMoms
-        errMoms = RMSE(outCentralMoms, tgtMoms) 
-        errCorrs = RMSE(outCorrs, tgtCorrs)
-        print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    if errMoms > MaxErrCorr or errCorrs  > MaxErrCorr:
+        raise ValueError("out mtx not converge, errMom: %s, errCorr:%s"%(errMoms, errCorrs))
     
     print "HeuristicMomentMatching elapsed %.3f secs"%(time.time()-t0)
     return outMtx
