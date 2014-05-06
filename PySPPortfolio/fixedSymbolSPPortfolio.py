@@ -365,8 +365,8 @@ if __name__ == '__main__':
     symbols = symbols[:args.symbols]
     
     if args.year:
-        startDate = date(args.year, 3, 1)
-        endDate = date(args.year, 3, 10)
+        startDate = date(args.year, 1, 1)
+        endDate = date(args.year, 12, 31)
         
     money = 1e6
     hist_period = args.histPeriod
