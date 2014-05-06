@@ -20,7 +20,7 @@ import numpy as np
  
 import scipy.stats as spstats
 import pandas as pd
-from scenario.Moment import HeuristicMomentMatching
+from scenario.CMoment import HeuristicMomentMatching
 from MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 import simplejson as json 
@@ -192,7 +192,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
             corrMtx = np.corrcoef(subRiskyRetMtx)
             try:
-                scenMtx = HeuristicMomentMatching(moments, corrMtx, n_scenario)
+                scenMtx = HeuristicMomentMatching(moments, corrMtx, n_scenario, False)
                 converged = True
             except ValueError as e:
                 print e

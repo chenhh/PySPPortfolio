@@ -39,7 +39,6 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
         double MaxErrCorr = 1e-3
         double cubErr, bestErr
         int n_rv = tgtMoms.shape[0]
-        int rv
         int MaxCubIter = 1
         int MaxMainIter = 20
         int MaxStartIter = 5
@@ -48,6 +47,8 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
         np.ndarray[DTYPE_t, ndim=1] tmpOut = np.empty(n_scenario)
         np.ndarray[DTYPE_t, ndim=1] EY = np.empty(4)
         np.ndarray[DTYPE_t, ndim=1] EX = np.empty(12)
+        np.ndarray[DTYPE_t, ndim=1] X_init
+        np.ndarray[DTYPE_t, ndim=2] C,  outCorrs, CO_inv, L
         
     
     #to generate samples Y with zero mean, and unit variance
@@ -72,7 +73,7 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
 #                                   for idx in xrange(12)), np.float)
                 EX = np.array([(tmpOut**(idx+1)).mean() 
                                   for idx in xrange(12)])
-                X_init = np.array([0, 1, 0, 0])
+                X_init = np.array([0, 1, 0, 0], dtype=np.float)
                 out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
                                     full_output=True, ftol=1E-12, xtol=1E-12)
                 cubParams = out[0] 
@@ -132,7 +133,7 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
 #                                   for idx in xrange(12)), np.float)
                 EX = np.array([(tmpOut**(idx+1)).mean() 
                                   for idx in xrange(12)])
-                X_init = np.array([0, 1, 0, 0])
+                X_init = np.array([0, 1, 0, 0], dtype=np.float)
                 out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
                                     full_output=True, ftol=1E-12, xtol=1E-12)
                 cubParams = out[0] 
@@ -178,12 +179,19 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-cpdef cubicFunction(cubParams, sampleMoms, tgtMoms):
+cpdef cubicFunction(np.ndarray[DTYPE_t, ndim=1]cubParams, 
+                    np.ndarray[DTYPE_t, ndim=1] sampleMoms, 
+                    np.ndarray[DTYPE_t, ndim=1] tgtMoms):
     '''
     cubParams: (a,b,c,d)
     EY: 4 moments of target
     EX: 12 moments of samples
     '''
+    cdef:
+        np.ndarray[DTYPE_t, ndim=1] EX
+        np.ndarray[DTYPE_t, ndim=1] EY
+        double a, b, c, d
+    
     a, b, c, d = cubParams
     EX = sampleMoms
     EY = tgtMoms
@@ -233,12 +241,17 @@ cpdef errorStatistics(np.ndarray[DTYPE_t, ndim=2] outMtx,
     errCorrs = RMSE(outCorrs, tgtCorrs)
     return errMoms, errCorrs
 
-def RMSE(srcArr, tgtArr):
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+cpdef RMSE(np.ndarray[DTYPE_t, ndim=2] srcArr, 
+         np.ndarray[DTYPE_t, ndim=2] tgtArr):
     '''
     srcArr, numpy.array
     tgtArr, numpy.array
     '''
-    assert srcArr.shape == tgtArr.shape
+    cdef double error
     error = np.sqrt(((srcArr - tgtArr)**2).sum())
     return error  
 
@@ -301,8 +314,9 @@ cpdef central2OrigMom(np.ndarray[DTYPE_t, ndim=2] centralMoms):
     skew =  m3/np.sqrt(m2)**3
     kurt = m4/m2**2 -3
     '''
-    cdef int n_rv = centralMoms.shape[0]
-    cdef np.ndarray[DTYPE_t, ndim=2] origMoms = np.empty((n_rv, 4))
+    cdef:
+        int n_rv = centralMoms.shape[0]
+        np.ndarray[DTYPE_t, ndim=2] origMoms = np.empty((n_rv, 4))
     
     origMoms[:, 0] = centralMoms[:, 0]
     origMoms[:, 1] = centralMoms[:, 1] ** 2  + centralMoms[:, 0]**2 

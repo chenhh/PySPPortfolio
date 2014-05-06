@@ -22,7 +22,7 @@ def testHeuristicMomentMatching():
     corrMtx = np.corrcoef(data )
     
     Moment.HeuristicMomentMatching(moments, corrMtx, n_scenario)
-    CMoment.HeuristicMomentMatching(moments, corrMtx, n_scenario, 1)
+    CMoment.HeuristicMomentMatching(moments, corrMtx, n_scenario, 0)
 
 
 
