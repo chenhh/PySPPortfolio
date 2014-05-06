@@ -251,23 +251,25 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     model.CVaRConstraint = Constraint(model.scenarios)
     
     #objective
-    def TotalCostObjective_rule(model):
+    def CVaRObjective_rule(model):
         return model.Z - 1/(1-alpha)* sum(model.Ys[s] * probs[s] 
                                           for s in xrange(n_scenario))
         
-    model.TotalCostObjective = Objective(sense=maximize)
+    model.CVaRObjective = Objective(sense=maximize)
     
     # Create a solver
     opt = SolverFactory(solver)
-#     print "opt options:", opt.option
+    
+    if solver =="cplex":
+        opt.options["threads"] = 4
     
     instance = model.create()
     results = opt.solve(instance)  
     instance.load(results)
-    
+    CVaR = results.Solution.Objective.__default_objective__['value']
 #     display(instance)
     M = len(symbols)
-    results = {}
+    results = {"CVaR": CVaR}
     
     for v in instance.active_components(Var):
 #         print "Variable",v
@@ -277,9 +279,10 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         elif v == "sells":
             results[v] = np.fromiter((varobject[index].value for index in varobject), np.float)
         elif v == "Z":
-            results[v] = varobject.value
+            results["VaR"] = varobject.value
 #     print results
     
+    print "CVaR:", CVaR 
     print "MinCVaRPortfolioSP elapsed %.3f secs"%(time.time()-t)
     return  results
 

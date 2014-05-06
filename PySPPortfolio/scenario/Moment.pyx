@@ -101,9 +101,15 @@ cdef np.ndarray MomentCorrStats (np.ndarray outMoms, np.ndarray outCorrs,
                                  np.ndarray tgtMoms, np.ndarray tgtCorrs):
     pass
 
-def RMSE(predictions, targets):
-    return np.sqrt(((predictions - targets) ** 2).mean())
 
+def RMSE(np.ndarray[DTYPE_t] srcArr, np.ndarray[DTYPE_t] tgtArr):
+    '''
+    srcArr, numpy.array
+    tgtArr, numpy.array
+    '''
+    assert srcArr.shape == tgtArr.shape
+    error = np.sqrt(((srcArr - tgtArr)**2).sum())
+    return error 
 
 # @cython.boundscheck(False)
 def cubicTransform(np.ndarray[DTYPE_t, ndim=1] cubParams, 

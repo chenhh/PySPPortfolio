@@ -157,7 +157,7 @@ def concretePharmacy():
     model.moneyConstraint = Constraint(rule=money_constraint_rule)
     
     # Create a solver
-    opt = SolverFactory('glpk')
+    opt = SolverFactory('cplex')
     print "opt options:", opt.options
 #     opt.options["threads"] = 4
     instance = model.create()
@@ -166,20 +166,20 @@ def concretePharmacy():
     print dir(instance)
     print results
     print 
-    print results.Solution.Objective.x1.Value
-    print results.Solver.Status
-    print results.Solution.Status
+#     print results.Solution.Objective.x1.Value
+#     print results.Solver.Status
+#     print results.Solution.Status
 #     print type(results)
 #     print dir(results)
     
     instance.load(results)
     
     #print variable method 1
-#     print instance.D[1].value
-#     print instance.D[2].value
-#     print instance.R[1].value
-#     print instance.R[2].value
-#     print instance.Obj.value
+    print instance.D[1].value
+    print instance.D[2].value
+    print instance.R[1].value
+    print instance.R[2].value
+    print "obj:", results.Solution.Objective.__default_objective__['value']
     
     #print variable method 2
 #     for var in instance.active_components(Var):

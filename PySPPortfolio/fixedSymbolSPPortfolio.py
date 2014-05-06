@@ -17,14 +17,18 @@ import platform
 import time
 from datetime import date
 import numpy as np
-import numpy.linalg as la 
+ 
 import scipy.stats as spstats
 import pandas as pd
 from scenario.Moment import HeuristicMomentMatching
 from MinCVaRPortfolioSP import MinCVaRPortfolioSP
-from PySPPortfolio import (FileDir, PklBasicFeaturesDir,  ExpResultsDir)
-import simplejson as json 
 
+import simplejson as json 
+import sys
+ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
+sys.path.insert(0, ProjectDir)
+
+from PySPPortfolio import (PklBasicFeaturesDir,  ExpResultsDir)
     
 def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
                       money=1e6, hist_period=60, buyTransFee=0.001425, 
@@ -134,6 +138,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         "n_rv": n_rv,
         "T": T,
         "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
+        
         #[0:hist_period]用於估計moments與corrMtx
         "riskFreeRetVec": riskFreeRetVec,   #size: T+1
         "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
@@ -167,16 +172,18 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     wealthProcess = np.zeros((n_rv, T+1))
     depositProcess = np.zeros(T+1)
     VaRProcess = np.zeros(T)
+    CVaRProcess = np.zeros(T)
     
     genScenErrDates = []
     for tdx in xrange(T):
         tloop = time.time()
-        transDate = pd.to_datetime(transDates[tdx])
+        transDate = pd.to_datetime(transDates[tdx]).strftime("%Y%m%d")
          
         #投資時已知當日的ret(即已經知道當日收盤價)
         t = time.time()
         subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
-
+        assert subRiskyRetMtx.shape[1] == hist_period
+        
         if scenFunc == "Moment":
             moments = np.empty((n_rv, 4))
             moments[:, 0] = subRiskyRetMtx.mean(axis=1)
@@ -208,6 +215,9 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            depositWealth, buyTransFee, sellTransFee, alpha,
                            predictRiskyRet, predictRiskFreeRet, n_scenario, 
                            probs=None, solver=solver)
+            
+            VaRProcess[tdx] = results['VaR']
+            CVaRProcess[tdx] = results['CVaR']
             print "%s - %s solve SP, %.3f secs"%(transDate, solver, time.time()-t)
         else:
             #failed generating scenarios
@@ -237,13 +247,18 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         wealthProcess[:, tdx] = allocatedWealth
         depositProcess[tdx] = depositWealth
                                     
-        print '*'*75
-        print '''%s-%s n%s-h%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]
-                  transDate %s fixed CVaR SP OK, current wealth %s, %.3f secs
-               '''%( startDate, endDate, n_rv, hist_period, n_scenario, alpha, scenFunc, solver, 
-                len(genScenErrDates),  transDate,  allocatedWealth.sum() + depositWealth,
-                time.time()-tloop)
-        print '*'*75
+        print '*'*80
+        trainDates = [pd.to_datetime(fullTransDates[tdx]).strftime("%Y%m%d"), 
+                      pd.to_datetime(fullTransDates[hist_period+tdx-1]).strftime("%Y%m%d")]
+        
+        print '%s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
+            startDate, endDate, n_rv, hist_period, n_scenario, alpha, 
+            scenFunc, solver, len(genScenErrDates))
+        
+        print 'transDate %s (train:%s-%s) fixed CVaR SP OK, current wealth %s, %.3f secs'%(
+                transDate, trainDates[0], trainDates[1], 
+                allocatedWealth.sum() + depositWealth, time.time()-tloop)
+        print '*'*80
         #end of for
     
     #最後一期只結算不買賣
@@ -258,7 +273,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
     t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
     rnd = time.strftime("%y%m%d%H%M%S")
-    layer1Dir =  "%s_n%s_h%s_s%s_a%s"%(fixedSymbolSPPortfolio.__name__, n_rv, 
+    layer1Dir =  "%s_n%s_p%s_s%s_a%s"%(fixedSymbolSPPortfolio.__name__, n_rv, 
                                        hist_period, n_scenario, alpha)
     layer2Dir = "%s-%s_%s"%(t1, t2, rnd)
     resultDir = os.path.join(ExpResultsDir, layer1Dir, layer2Dir)
@@ -266,24 +281,30 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         os.makedirs(resultDir)
     
     #store data in pkl
-    pd_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], columns=symbols)
-    pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], columns=symbols) 
-    pd_wealthProc = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
-    pd_depositProc = pd.Series(depositProcess.T, index=transDates)
-    pd_VaRProc = pd.Series(VaRProcess.T, index=transDates[:-1])
+    pd_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], 
+                              columns=["%s_buy"%(sym) for sym in symbols])
+    pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], 
+                               columns=["%s_sell"%(sym) for sym in symbols])
+    pd_action = pd.merge(pd_buyProc, pd_sellProc, left_index=True, right_index=True) 
     
-    records = {
-        "buyProcess": pd_buyProc, 
-        "sellProcess": pd_sellProc, 
-        "wealthProcess": pd_wealthProc, 
-        "depositProcess": pd_depositProc, 
-        "VaRProcess": pd_VaRProc
+    df_wealth = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
+    deposits = pd.Series(depositProcess.T, index=transDates)
+    df_wealth['deposit'] = deposits 
+   
+    df_risk = pd.DataFrame({"VaR": pd.Series(VaRProcess.T, index=transDates[:-1]),
+                            "CVaR":  pd.Series(CVaRProcess.T, index=transDates[:-1])
+                            }) 
+    
+    records = { 
+        "actionProcess": pd_action,
+        "wealthProcess": df_wealth, 
+        "riskProcess": df_risk
     }
     
-    #save pkl
+    #save pkl and csv
     for name, df in records.items():
         pklFileName = os.path.join(resultDir, "%s.pkl"%(name))
-        df.save(pklFileName)
+        df.to_pickle(pklFileName)
    
         csvFileName = os.path.join(resultDir, "%s.csv"%(name))
         df.to_csv(csvFileName)
@@ -294,38 +315,37 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "scenario": n_scenario,
                "alpha": alpha,
                "symbols":  ",".join(symbols),
-               "transDates": transDates,    #(T+!)
+               "transDates": [pd.to_datetime(t).strftime("%Y%m%d") 
+                              for t in transDates],    #(T+1)
                "hist_period": hist_period,
+               "buyTransFee":buyTransFee[0], 
+               "sellTransFee":sellTransFee[0],
                "final_wealth": finalWealth,
                "scenFunc": scenFunc,
                "scen_err_cnt":len(genScenErrDates),
                "scen_err_dates": genScenErrDates,
-               "buyProcess": buyProcess,
-               "sellProcess": sellProcess,
-               "wealthProcess": wealthProcess,
-               "depositProcess": depositProcess,
-               "VaRProcess": VaRProcess,
                "machine": platform.node(),
                "elapsed": time.time()-t0
                }
     
     fileName = os.path.join(resultDir, 'summary.json')
     with open (fileName, 'w') as fout:
-        json.dump(summary, fout)
+        json.dump(summary, fout, indent=4)
     
-    print "%s-%s n%s-h%s-s%s-a%s --scenFunc %s --solver %s\nsimulation ok, %.3f secs"%(
+    print "%s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s\nsimulation ok, %.3f secs"%(
              startDate, endDate, n_rv, hist_period, n_scenario, alpha,
              scenFunc, solver, time.time()-t0)
 
 
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(description='fixedSymbolSPPortfolio')
 #     parser.parse_args()
     parser.add_argument('-n', '--symbols', type=int, default=5, help="num. of symbols")
     parser.add_argument('-p', '--histPeriod', type=int, default=40, help="historical period")
     parser.add_argument('-s', '--scenario', type=int, default=200, help="num. of scenario")
     parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
-    parser.add_argument('--solver', choices=["glpk", "cplex"], default="glpk", help="solver for SP")
+    parser.add_argument('--solver', choices=["glpk", "cplex"], default="cplex", help="solver for SP")
     parser.add_argument('--scenFunc', choices=["Moment", "Copula"], default="Moment", help="function for generating scenario")
     
     group = parser.add_mutually_exclusive_group()
@@ -345,8 +365,8 @@ if __name__ == '__main__':
     symbols = symbols[:args.symbols]
     
     if args.year:
-        startDate = date(args.year, 2, 1)
-        endDate = date(args.year, 3, 31)
+        startDate = date(args.year, 3, 1)
+        endDate = date(args.year, 3, 10)
         
     money = 1e6
     hist_period = args.histPeriod

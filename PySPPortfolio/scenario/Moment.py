@@ -75,7 +75,8 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
                 if cubErr < ErrMomEPS:
                     break
                 else:
-                    print "rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+                    if verbose:
+                        print "rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
          
             #accept current samples
             if cubErr < bestCubErr:
@@ -84,8 +85,9 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
             
     #computing starting properties and error
     #correct moment, wrong correlation
+    
+    errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
     if verbose:
-        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
         print 'start mtx (orig) errMom:%s, errCorr:%s'%(errMoms, errCorrs)
 
     #Cholesky decomp of target corr mtx
@@ -104,8 +106,8 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
         outMtx = np.dot(L, outMtx)
         
         #wrong moment, correct correlation
-        if verbose:
-            errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+        if verbose:  
             print 'mainIter:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
         #cubic transform
@@ -135,8 +137,8 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
                     if verbose:
                         print "mainIter, rv:%s,(orig) cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
         
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
         if verbose:
-            errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
             print 'mainIter cubicTransform:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
     
     #rescale
@@ -148,10 +150,11 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
     outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
     outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
     outCorrs = np.corrcoef(outMtx)
-    print "rescaleMoms(central):\n", outCentralMoms
+    if verbose:
+        print "rescaleMoms(central):\n", outCentralMoms
     errMoms = RMSE(outCentralMoms, tgtMoms) 
     errCorrs = RMSE(outCorrs, tgtCorrs)
-    print 'final (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    print 'sample (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
     
     if errMoms > MaxErrCorr or errCorrs  > MaxErrCorr:
         raise ValueError("out mtx not converge, errMom: %s, errCorr:%s"%(errMoms, errCorrs))
