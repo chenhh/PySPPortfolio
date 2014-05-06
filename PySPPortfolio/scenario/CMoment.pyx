@@ -11,27 +11,35 @@ from __future__ import division
 cimport cython
 cimport numpy as np
 import numpy as np
+import numpy.linalg as la
 import scipy.stats as spstats
 import scipy.optimize as spopt
+import time
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
-# @cython.boundscheck(False)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
 cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms, 
                                np.ndarray[DTYPE_t, ndim=2]  tgtCorrs, 
-                               int n_scenario, bool verbose):
+                               int n_scenario, int verbose):
     '''
     tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
     tgtCorrs, numpy.array, size: n_rv * n_rv
     '''
     assert tgtMoms.shape[1] == 4
     assert tgtCorrs.shape[0] ==  tgtCorrs.shape[1] == tgtMoms.shape[0]
+    t0 = time.time()
+    
     cdef:
         double ErrMomEPS= 1e-5
         double MaxErrMom = 1e-3
         double MaxErrCorr = 1e-3
         double cubErr, bestErr
         int n_rv = tgtMoms.shape[0]
+        int rv
         int MaxCubIter = 1
         int MaxMainIter = 20
         int MaxStartIter = 5
@@ -41,58 +49,136 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
         np.ndarray[DTYPE_t, ndim=1] EY = np.empty(4)
         np.ndarray[DTYPE_t, ndim=1] EX = np.empty(12)
         
+    
     #to generate samples Y with zero mean, and unit variance
     YMoms[:, 1] = 1
     YMoms[:, 2] = tgtMoms[:, 2]
     YMoms[:, 3] = tgtMoms[:, 3] + 3
     
+    #find good start matrix outMtx (with errMom converge)
+    #the iteration can be done parallelly. 
     for rv in xrange(n_rv):
-        cubErr = 1e40
-        bestErr = 1e40
+        cubErr, bestCubErr = float('inf'), float('inf')
 
-        for _ in xrange(MaxStartTrial):
+        #loop until errMom converge, but the errCorr is unreleated
+        for _ in xrange(MaxStartIter):
+            #random sample
             tmpOut = np.random.rand(n_scenario)
             EY = YMoms[rv, :]
        
-            for _ in xrange(MaxCubIter):
-                EY = MOM[rv, :]
-                EX = np.array([(tmpOut**(order+1)).mean() for order in xrange(12)])
-
-                sol= spopt.root(cubicTransform, np.zeros(4), 
-                                 args=(EY, EX))
-                cubParams = sol.x
-                root = cubicTransform(cubParams, EY, EX)
-                cubErr = np.sum(np.abs(root))
-# 
-                if cubErr < EPS:
-                    print "early stop"
+            #loop until ErrCubic transform converge
+            for cubiter in xrange(MaxCubIter):
+#                 EX = np.fromiter(((tmpOut**(idx+1)).mean() 
+#                                   for idx in xrange(12)), np.float)
+                EX = np.array([(tmpOut**(idx+1)).mean() 
+                                  for idx in xrange(12)])
+                X_init = np.array([0, 1, 0, 0])
+                out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
+                                    full_output=True, ftol=1E-12, xtol=1E-12)
+                cubParams = out[0] 
+                cubErr = np.sum(out[2]['fvec']**2)
+       
+                tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
+                          cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
+               
+                if cubErr < ErrMomEPS:
                     break
                 else:
-                    #update random sample(a+bx+cx^2+dx^3)
-                    tmpOut = (cubParams[0] + 
-                    cubParams[1]*tmpOut +
-                    cubParams[2]*(tmpOut**2)+ 
-                    cubParams[3]*(tmpOut**3)) 
-#         
-            if cubErr < bestErr:
-                bestErr = cubErr
+                    if verbose:
+                        print "rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+         
+            #accept current samples
+            if cubErr < bestCubErr:
+                bestCubErr = cubErr
                 outMtx[rv,:] = tmpOut 
-    
+            
     #computing starting properties and error
-    outMoments = np.empty((n_rv, 4))
-    outMoments[:, 0] = outMtx.mean(axis=1) 
-    outMoments[:, 1] = outMtx.std(axis=1)
-    outMoments[:, 2] = spstats.skew(outMtx, axis=1)
-    outMoments[:, 3] = spstats.kurtosis(outMtx, axis=1)
-    outCorrMtx = np.corrcoef(outMtx)
+    #correct moment, wrong correlation
     
-    errMoms = RMSE(outMoments, tgtMoms)
-    errCorrs = RMSE(outCorrMtx, tgtCorrs)
-    print 'start errMoments:%s, errCorr:%s'%(errMoms, errCorrs)
+    errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+    if verbose:
+        print 'start mtx (orig) errMom:%s, errCorr:%s'%(errMoms, errCorrs)
+
+    #Cholesky decomp of target corr mtx
+    C = la.cholesky(tgtCorrs)
+    
+    #main iteration of HKW
+    for mainIter in xrange(MaxMainIter):
+        if errMoms < MaxErrMom and errCorrs < MaxErrCorr:
+            #break when converge
+            break
+
+        #transfer mtx
+        outCorrs = np.corrcoef(outMtx)
+        CO_inv = la.inv(la.cholesky(outCorrs))
+        L = np.dot(C, CO_inv)
+        outMtx = np.dot(L, outMtx)
+        
+        #wrong moment, correct correlation
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+        if verbose:  
+            print 'mainIter:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+    
+        #cubic transform
+        for rv in xrange(n_rv):
+            cubErr = float('inf')
+            
+            tmpOut = outMtx[rv, :]
+            EY = YMoms[rv, :]
+            
+            #loop until ErrCubic transform converge
+            for cubiter in xrange(MaxCubIter):
+#                 EX = np.fromiter(((tmpOut**(idx+1)).mean() 
+#                                   for idx in xrange(12)), np.float)
+                EX = np.array([(tmpOut**(idx+1)).mean() 
+                                  for idx in xrange(12)])
+                X_init = np.array([0, 1, 0, 0])
+                out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
+                                    full_output=True, ftol=1E-12, xtol=1E-12)
+                cubParams = out[0] 
+                cubErr = np.sum(out[2]['fvec']**2)
+       
+                tmpOut = (cubParams[0] + cubParams[1]*tmpOut +
+                          cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
+               
+                if cubErr < ErrMomEPS:
+                    outMtx[rv, :] = tmpOut
+                    break
+                else:
+                    if verbose:
+                        print "mainIter, rv:%s,(orig) cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+        
+        errMoms, errCorrs = errorStatistics(outMtx, YMoms, tgtCorrs)
+        if verbose:
+            print 'mainIter cubicTransform:%s (orig) errMom:%s, errCorr:%s'%(mainIter, errMoms, errCorrs)
+    
+    #rescale
+    outMtx = outMtx * tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
+   
+    outCentralMoms = np.empty((n_rv, 4))
+    outCentralMoms[:, 0] = outMtx.mean(axis=1)
+    outCentralMoms[:, 1] = outMtx.std(axis=1)
+    outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
+    outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+    outCorrs = np.corrcoef(outMtx)
+    if verbose:
+        print "rescaleMoms(central):\n", outCentralMoms
+    errMoms = RMSE(outCentralMoms, tgtMoms) 
+    errCorrs = RMSE(outCorrs, tgtCorrs)
+    print 'sample (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
+    
+    if errMoms > MaxErrCorr or errCorrs  > MaxErrCorr:
+        raise ValueError("out mtx not converge, errMom: %s, errCorr:%s"%(errMoms, errCorrs))
+    
+    print "HeuristicMomentMatching elapsed %.3f secs"%(time.time()-t0)
+    return outMtx
 
 
 
-def cubicFunction(cubParams, sampleMoms, tgtMoms):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+cpdef cubicFunction(cubParams, sampleMoms, tgtMoms):
     '''
     cubParams: (a,b,c,d)
     EY: 4 moments of target
@@ -126,6 +212,10 @@ def cubicFunction(cubParams, sampleMoms, tgtMoms):
     return v1, v2, v3, v4
 
 
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
 cpdef errorStatistics(np.ndarray[DTYPE_t, ndim=2] outMtx, 
                     np.ndarray[DTYPE_t, ndim=2] tgtMoms, 
                     np.ndarray[DTYPE_t, ndim=2] tgtCorrs):
@@ -143,18 +233,19 @@ cpdef errorStatistics(np.ndarray[DTYPE_t, ndim=2] outMtx,
     errCorrs = RMSE(outCorrs, tgtCorrs)
     return errMoms, errCorrs
 
-
-cpdef RMSE(np.ndarray[DTYPE_t] srcArr, np.ndarray[DTYPE_t] tgtArr):
+def RMSE(srcArr, tgtArr):
     '''
-    srcArr, numpy.array, 1d or 2d
-    tgtArr, numpy.array, 1d or 2d
+    srcArr, numpy.array
+    tgtArr, numpy.array
     '''
     assert srcArr.shape == tgtArr.shape
-    cdef double error = 1e50
     error = np.sqrt(((srcArr - tgtArr)**2).sum())
-    return error 
+    return error  
 
-# @cython.boundscheck(False)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
 cpdef cubicTransform(np.ndarray[DTYPE_t, ndim=1] cubParams, 
                    np.ndarray[DTYPE_t, ndim=1] EY, 
                    np.ndarray[DTYPE_t, ndim=1] EX):
@@ -194,7 +285,9 @@ cpdef cubicTransform(np.ndarray[DTYPE_t, ndim=1] cubParams,
 
 
 
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
 cpdef central2OrigMom(np.ndarray[DTYPE_t, ndim=2] centralMoms):
     '''
     central moments to original moments

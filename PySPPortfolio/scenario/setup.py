@@ -13,18 +13,18 @@ import numpy as np
 
 extensions = [
     Extension(
-              "Moment", 
-              ["Moment.pyx"],
+              "CMoment", 
+              ["CMoment.pyx"],
               libraries=["m"],
               include_dirs = [np.get_include()],
     ),
-    Extension(
-              "Copula", 
-              ["Copula.pyx"],
-              libraries=["m"],
-              include_dirs = [np.get_include()],
-#               library_dirs=[np.get_include()],
-    ),
+#     Extension(
+#               "Copula", 
+#               ["Copula.pyx"],
+#               libraries=["m"],
+#               include_dirs = [np.get_include()],
+# #               library_dirs=[np.get_include()],
+#     ),
 ]
 
 setup(
