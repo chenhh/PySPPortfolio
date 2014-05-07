@@ -117,7 +117,7 @@ def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31
 
 
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
-                           hist_period=20, n_scenario=1000,
+                           hist_period=20, n_scenario=200,
                            buyTransFee=0.001425, sellTransFee=0.004425,
                            alpha=0.95, scenFunc="Moment", solver="cplex", 
                            debug=False):

@@ -24,6 +24,7 @@ def MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                        probs=None, solver="glpk", n_stock=5):
     '''
     two-stage stochastic integer programming
+    given M stocks, choose the best n_stocks to invest
     
     variable: 
         M: num. of symbols,
@@ -143,10 +144,10 @@ def MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     instance = model.create()
     results = opt.solve(instance)  
     instance.load(results)
-    
+    CVaR = results.Solution.Objective.__default_objective__['value']
 #     display(instance)
     M = len(symbols)
-    results = {}
+    results = {"CVaR": CVaR}
     
     for v in instance.active_components(Var):
         varobject = getattr(instance, v)
@@ -155,7 +156,9 @@ def MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
         elif v == "sells":
             results[v] = np.fromiter((varobject[index].value for index in varobject), np.float)
         elif v == "Z":
-            results[v] = varobject.value
+            results["VaR"] = varobject.value
+    
+    print "CVaR:", CVaR 
     print "MinCVaRPortfolioSIP elapsed %.3f secs"%(time.time()-t)
     return results
  
