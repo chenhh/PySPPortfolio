@@ -362,6 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
     parser.add_argument('--solver', choices=["glpk", "cplex"], default="cplex", help="solver for SP")
     parser.add_argument('--scenFunc', choices=["Moment", "Copula"], default="Moment", help="function for generating scenario")
+    parser.add_argument('-m', '--marketvalue', type=int, choices=[200501, 201312], default=201312, help="market value type")
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
@@ -372,11 +373,19 @@ if __name__ == '__main__':
     print args
         
     #market value top 20 (2013/12/31)
-    symbols = ['2330', '2317', '6505', '2412', '2454',
-                '2882', '1303', '1301', '1326', '2881',
-                '2002', '2308', '3045', '2886', '2891',
-                '1216', '2382', '2105', '2311', '2912'
-               ]
+    if args.marketvalue == 201312:
+        symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881'
+                ]
+        ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_201312")
+        
+    elif args.marketvalue == 200501:
+        symbols = [
+                '2330', '2412', '2882', '6505', '2317',
+                '2303', '2002', '1303', '1326', '1301',
+                ]
+        ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_200501")
+        
     symbols = symbols[:args.symbols]
     
     if args.year:
