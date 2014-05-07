@@ -13,7 +13,7 @@ from cStringIO import StringIO
 import numpy as np
 from datetime import date
 import pandas as pd
-import SPATest
+from stats import SPATest
 
 if platform.uname()[0] == 'Linux':
     ExpResultsDir =  os.path.join('/', 'home', 'chenhh' , 'Dropbox', 
@@ -26,12 +26,14 @@ elif platform.uname()[0] =='Windows':
     
 def parseCSV2DataFrame():
     currDir = os.getcwd()
-    srcDir = os.path.join(currDir, 'pkl', 'marketvalue_csv', '*.csv')
+    srcDir = os.path.join(currDir, 'pkl', 'marketvalue_csv', '2303.csv')
     tgtDir = os.path.join(currDir, 'pkl', 'BasicFeatures')
     
     startDate, endDate = date(2004,1,1), date(2013, 12, 31)
     srcFiles = glob.glob(srcDir)
+    print srcFiles
     for src in srcFiles:
+        print src
         symbol = src[src.rfind('/')+1:src.rfind('.')]
         print symbol
 #         if symbol in( "3045", '2412'):
@@ -47,16 +49,17 @@ def parseCSV2DataFrame():
                                 'adjROI': np.float})
 #         mdf =  df[startDate:endDate]
         tgtFile = os.path.join(tgtDir, '%s.pkl'%(symbol))
-        mdf.to_pickle(tgtFile)
+        df.to_pickle(tgtFile)
         print symbol
-        print mdf.head(10)
+        print df.head(10)
         print 
         
 def testCSV():
     import csv
     currDir = os.getcwd()
     srcDir = os.path.join(currDir, 'pkl', 'marketvalue_csv',)
-    srcFiles = [os.path.join(srcDir, name) for name in ('3045.csv', '2412.csv')]
+#     srcFiles = [os.path.join(srcDir, name) for name in ('3045.csv', '2412.csv')]
+    srcFiles = [os.path.join(srcDir, name) for name in ('2303.csv', )]
     
     for name in srcFiles:
         reader = csv.DictReader(open(name), ['date', 'o', 'h', 'l', 'c', 'val', 'vol', 'r'])
@@ -433,24 +436,8 @@ def plotWealthProcess():
 
     
 if __name__ == '__main__':
-#     parseCSV2DataFrame()
+    parseCSV2DataFrame()
 #     testCSV()
 #     readPkl()
-    parseResults()
+#     parseResults()
 #     benchmark()
-<<<<<<< HEAD
-    benchmarkProcess()
-#     runSPATest()
-=======
-#     benchmarkProcess()
-<<<<<<< HEAD
-#     runSPATest()
-=======
-    runSPATest()
-<<<<<<< HEAD
-#     runBenchmarkSPATest()
-=======
->>>>>>> 8e69acd67afa3e862a44eedefdfccfdc60724be1
->>>>>>> f43e3623746ec29e4f7a02f4a8f0499874f52bb7
-#     runBenchmarkSPATest()
->>>>>>> e72bc802f6397e91efeabe260fde1a7e1749b151
