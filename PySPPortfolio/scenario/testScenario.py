@@ -6,6 +6,8 @@ Created on 2014/3/11
 import numpy as np
 import scipy.stats as spstats
 import Moment
+import CMoment
+import time
 
 def testHeuristicMomentMatching():
     n_rv = 10
@@ -20,20 +22,10 @@ def testHeuristicMomentMatching():
     corrMtx = np.corrcoef(data )
     
     Moment.HeuristicMomentMatching(moments, corrMtx, n_scenario)
+    CMoment.HeuristicMomentMatching(moments, corrMtx, n_scenario, 0)
 
-def testCubicSolve():
-    n_scenario = 100
-    data = np.random.randn(n_scenario)
-    
-    moments = np.empty(4)
-    moments[0] = data .mean()
-    moments[1] = data .std()
-    moments[2] = spstats.skew(data)
-    moments[3] = spstats.kurtosis(data)
-    samples = np.random.randn(n_scenario)
-    probs = np.ones(n_scenario)/n_scenario
-    Moment.cubicSolve(samples, probs, moments)
+
 
 if __name__ == '__main__':
-#     testHeuristicMomentMatching()
-    testCubicSolve()
+    testHeuristicMomentMatching()
+    

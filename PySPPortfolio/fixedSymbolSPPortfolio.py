@@ -20,11 +20,12 @@ import numpy as np
  
 import scipy.stats as spstats
 import pandas as pd
-from scenario.Moment import HeuristicMomentMatching
-from MinCVaRPortfolioSP import MinCVaRPortfolioSP
+from scenario.CMoment import HeuristicMomentMatching
+from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 import simplejson as json 
 import sys
+from cStringIO import StringIO
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
 
@@ -175,6 +176,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     CVaRProcess = np.zeros(T)
     
     genScenErrDates = []
+    scenErrStringIO = StringIO()
     for tdx in xrange(T):
         tloop = time.time()
         transDate = pd.to_datetime(transDates[tdx]).strftime("%Y%m%d")
@@ -191,12 +193,19 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
             moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
             corrMtx = np.corrcoef(subRiskyRetMtx)
-            try:
-                scenMtx = HeuristicMomentMatching(moments, corrMtx, n_scenario)
-                converged = True
-            except ValueError as e:
-                print e
-                converged = False
+            
+            converged = False
+            for order in xrange(-3, 0): 
+                MaxErrMom, MaxErrCorr=10**(order), 10**(order)
+                try:
+                    scenMtx = HeuristicMomentMatching(moments, corrMtx, 
+                                    n_scenario, MaxErrMom, MaxErrCorr)                  
+                except ValueError as e:
+                    print e
+                    scenErrStringIO.write("%s: %s\n"%(transDate, e))
+                else:
+                    converged = True
+                    break
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
@@ -309,6 +318,12 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         csvFileName = os.path.join(resultDir, "%s.csv"%(name))
         df.to_csv(csvFileName)
     
+    #write scen error 
+    if len(genScenErrDates):
+        scenErrFile = os.path.join(resultDir, "scenErr.txt")
+        with open(scenErrFile, 'wb') as fout:
+            fout.write(scenErrStringIO.getvalue())
+    
     #generating summary files
     summary = {"n_rv": n_rv,
                "T": T,
@@ -347,26 +362,38 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
     parser.add_argument('--solver', choices=["glpk", "cplex"], default="cplex", help="solver for SP")
     parser.add_argument('--scenFunc', choices=["Moment", "Copula"], default="Moment", help="function for generating scenario")
+    parser.add_argument('-m', '--marketvalue', type=int, choices=[200501, 201312], default=201312, help="market value type")
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
-    group.add_argument('-f', '--full', help="from 2005~2013")
+    group.add_argument('-f', '--full', action='store_true', help="from 2005~2013")
     args = parser.parse_args()
 
     # 把參數 number 的值印出來
     print args
         
     #market value top 20 (2013/12/31)
-    symbols = ['2330', '2317', '6505', '2412', '2454',
-                '2882', '1303', '1301', '1326', '2881',
-                '2002', '2308', '3045', '2886', '2891',
-                '1216', '2382', '2105', '2311', '2912'
-               ]
+    if args.marketvalue == 201312:
+        symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881'
+                ]
+        ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_201312")
+        
+    elif args.marketvalue == 200501:
+        symbols = [
+                '2330', '2412', '2882', '6505', '2317',
+                '2303', '2002', '1303', '1326', '1301',
+                ]
+        ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_200501")
+        
     symbols = symbols[:args.symbols]
     
     if args.year:
-        startDate = date(args.year, 3, 1)
-        endDate = date(args.year, 3, 10)
+        startDate = date(args.year, 1, 1)
+        endDate = date(args.year, 12, 31)
+    elif args.full:
+        startDate = date(2005, 1, 1)
+        endDate = date(2013, 12, 31)
         
     money = 1e6
     hist_period = args.histPeriod
