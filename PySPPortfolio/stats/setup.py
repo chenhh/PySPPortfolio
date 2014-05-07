@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
+
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
 
@@ -13,22 +14,16 @@ import numpy as np
 
 extensions = [
     Extension(
-              "CMoment", 
-              ["CMoment.pyx"],
+              "CPerformance", 
+              ["cPerformance.pyx"],
               libraries=["m"],
               include_dirs = [np.get_include()],
     ),
-#     Extension(
-#               "Copula", 
-#               ["Copula.pyx"],
-#               libraries=["m"],
-#               include_dirs = [np.get_include()],
-# #               library_dirs=[np.get_include()],
-#     ),
+
 ]
 
 setup(
-      name = 'Scenario generation',
+      name = 'statistics',
       author = 'Hung-Hsin Chen',
       author_email = 'chenhh@par.cse.nsysu.edu.tw',
       ext_modules = cythonize(extensions),
