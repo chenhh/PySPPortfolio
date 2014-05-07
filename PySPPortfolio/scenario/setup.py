@@ -28,6 +28,8 @@ extensions = [
 ]
 
 setup(
-  name = 'Scenario generation',
-  ext_modules = cythonize(extensions),
+      name = 'Scenario generation',
+      author = 'Hung-Hsin Chen',
+      author_email = 'chenhh@par.cse.nsysu.edu.tw',
+      ext_modules = cythonize(extensions),
 ) 

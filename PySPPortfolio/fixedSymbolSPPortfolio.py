@@ -21,10 +21,11 @@ import numpy as np
 import scipy.stats as spstats
 import pandas as pd
 from scenario.CMoment import HeuristicMomentMatching
-from MinCVaRPortfolioSP import MinCVaRPortfolioSP
+from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 import simplejson as json 
 import sys
+from cStringIO import StringIO
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
 
@@ -175,6 +176,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     CVaRProcess = np.zeros(T)
     
     genScenErrDates = []
+    scenErrStringIO = StringIO()
     for tdx in xrange(T):
         tloop = time.time()
         transDate = pd.to_datetime(transDates[tdx]).strftime("%Y%m%d")
@@ -191,12 +193,19 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
             moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
             corrMtx = np.corrcoef(subRiskyRetMtx)
-            try:
-                scenMtx = HeuristicMomentMatching(moments, corrMtx, n_scenario, False)
-                converged = True
-            except ValueError as e:
-                print e
-                converged = False
+            
+            converged = False
+            for order in xrange(-3, 0): 
+                MaxErrMom, MaxErrCorr=10**(order), 10**(order)
+                try:
+                    scenMtx = HeuristicMomentMatching(moments, corrMtx, 
+                                    n_scenario, MaxErrMom, MaxErrCorr)                  
+                except ValueError as e:
+                    print e
+                    scenErrStringIO.write("%s: %s\n"%(transDate, e))
+                else:
+                    converged = True
+                    break
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
@@ -309,6 +318,12 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         csvFileName = os.path.join(resultDir, "%s.csv"%(name))
         df.to_csv(csvFileName)
     
+    #write scen error 
+    if len(genScenErrDates):
+        scenErrFile = os.path.join(resultDir, "scenErr.txt")
+        with open(scenErrFile, 'wb') as fout:
+            fout.write(scenErrStringIO.getvalue())
+    
     #generating summary files
     summary = {"n_rv": n_rv,
                "T": T,
@@ -350,7 +365,7 @@ if __name__ == '__main__':
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
-    group.add_argument('-f', '--full', help="from 2005~2013")
+    group.add_argument('-f', '--full', action='store_true', help="from 2005~2013")
     args = parser.parse_args()
 
     # 把參數 number 的值印出來
@@ -367,6 +382,9 @@ if __name__ == '__main__':
     if args.year:
         startDate = date(args.year, 1, 1)
         endDate = date(args.year, 12, 31)
+    elif args.full:
+        startDate = date(2005, 1, 1)
+        endDate = date(2013, 12, 31)
         
     money = 1e6
     hist_period = args.histPeriod

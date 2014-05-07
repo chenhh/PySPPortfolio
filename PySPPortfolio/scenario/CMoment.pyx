@@ -24,7 +24,10 @@ ctypedef np.float_t DTYPE_t
 @cython.nonecheck(False)
 cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms, 
                                np.ndarray[DTYPE_t, ndim=2]  tgtCorrs, 
-                               int n_scenario, int verbose):
+                               int n_scenario=200,
+                               double MaxErrMom=1e-3, 
+                               double MaxErrCorr=1e-3,
+                               int verbose=False):
     '''
     tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
     tgtCorrs, numpy.array, size: n_rv * n_rv
@@ -35,8 +38,8 @@ cpdef HeuristicMomentMatching (np.ndarray[DTYPE_t, ndim=2]  tgtMoms,
     
     cdef:
         double ErrMomEPS= 1e-5
-        double MaxErrMom = 1e-3
-        double MaxErrCorr = 1e-3
+#         double MaxErrMom = 1e-3
+#         double MaxErrCorr = 1e-3
         double cubErr, bestErr
         int n_rv = tgtMoms.shape[0]
         int MaxCubIter = 1
@@ -251,7 +254,7 @@ cpdef RMSE(np.ndarray[DTYPE_t, ndim=2] srcArr,
     srcArr, numpy.array
     tgtArr, numpy.array
     '''
-    cdef double error
+    cdef double error=1e52
     error = np.sqrt(((srcArr - tgtArr)**2).sum())
     return error  
 
