@@ -12,7 +12,8 @@ import pandas as pd
 import numpy as np
 import scipy.stats as spstats
 import matplotlib.pyplot as plt
-import scenario.Moment as mom
+from scenario.Moment import HeuristicMomentMatching
+from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
 symbols = ('2330', '1216')
@@ -66,7 +67,7 @@ def plotDistribution(dfs, today, histPeriods = 20, n_scenario = 200):
     Moms[:, 2] = spstats.skew(data, axis=1)
     Moms[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
-    outMtx = mom.HeuristicMomentMatching(Moms, corrMtx, n_scenario, verbose=True)
+    outMtx = HeuristicMomentMatching(Moms, corrMtx, n_scenario, verbose=True)
     print outMtx
     
     for idx in xrange(n_rv):
@@ -89,9 +90,51 @@ def plotDistribution(dfs, today, histPeriods = 20, n_scenario = 200):
     plt.show()
     
 
+def plotCVaR(symbols, today=date(2013,1,9), alpha=0.95, 
+             n_histPeriod = 100, n_scenario=200):
+    
+    dfs = readDF(symbols)
+    plt.suptitle("CVaR alpha:%s, scenario:%s"%(alpha, n_scenario))
 
+    n_bin = 100
+    rois = []
+    
+    for df in dfs:
+        series = df['adjROI']
+        endIdx = series.index.get_loc(today)
+        startIdx = endIdx - n_histPeriod + 1
+        assert startIdx >= 0
+        roi = series[startIdx: endIdx+1]
+        rois.append(roi)
+        
+    #samples
+    n_rv = len(symbols)
+    data = np.asarray(rois)
+    Moms =  np.zeros((n_rv, 4))    
+    Moms[:, 0] = data.mean(axis=1)
+    Moms[:, 1] = data.std(axis=1)
+    Moms[:, 2] = spstats.skew(data, axis=1)
+    Moms[:, 3] = spstats.kurtosis(data, axis=1)
+    corrMtx = np.corrcoef(data)
+    outMtx = HeuristicMomentMatching(Moms, corrMtx, n_scenario, verbose=True)
+    
+    results = MinCVaRPortfolioSP(symbols, 
+                        riskyRet=data, 
+                        riskFreeRet=0, 
+                        allocatedWealth = np.zeros(n_rv),
+                        depositWealth=1e6, 
+                        buyTransFee=0.001425, 
+                        sellTransFee=0.004425, 
+                        alpha=alpha,
+                        predictRiskyRet=outMtx, 
+                        predictRiskFreeRet=0, 
+                        n_scenario=n_scenario, 
+                        probs=None, solver="cplex")
+    print results
+    
 
 if __name__ == '__main__':
-    dfs = readDF(symbols)
-    plotDistribution(dfs, date(2013,1,9), 10, 10)
-    
+#     dfs = readDF(symbols)
+#     plotDistribution(dfs, date(2013,1,9), 10, 10)
+    plotCVaR(symbols, today=date(2013,1,9), alpha=0.95, 
+             n_histPeriod = 100, n_scenario=200)
