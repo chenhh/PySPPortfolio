@@ -16,7 +16,7 @@ from scenario.CMoment import HeuristicMomentMatching
 from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
-symbols = ['2330', '1216',]
+symbols = ['2330', '1216','2002']
 startDate, endDate = date(2005, 1, 1), date(2013, 12, 31)
 
 def readDF(symbols):
