@@ -120,7 +120,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=200,
                            buyTransFee=0.001425, sellTransFee=0.004425,
                            alpha=0.95, scenFunc="Moment", solver="cplex", 
-                           debug=False):
+                           save_pkl=False, save_csv=True, debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
     -假設symbols有n_rv個，投資期數共T期(最後一期不買賣，只結算)
@@ -290,11 +290,11 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         os.makedirs(resultDir)
     
     #store data in pkl
-    pd_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], 
+    df_buyProc = pd.DataFrame(buyProcess.T, index=transDates[:-1], 
                               columns=["%s_buy"%(sym) for sym in symbols])
-    pd_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], 
+    df_sellProc = pd.DataFrame(sellProcess.T, index=transDates[:-1], 
                                columns=["%s_sell"%(sym) for sym in symbols])
-    pd_action = pd.merge(pd_buyProc, pd_sellProc, left_index=True, right_index=True) 
+    df_action = pd.merge(df_buyProc, df_sellProc, left_index=True, right_index=True) 
     
     df_wealth = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
     deposits = pd.Series(depositProcess.T, index=transDates)
@@ -305,24 +305,26 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                             }) 
     
     records = { 
-        "actionProcess": pd_action,
+        "actionProcess": df_action,
         "wealthProcess": df_wealth, 
         "riskProcess": df_risk
     }
     
     #save pkl and csv
     for name, df in records.items():
-        pklFileName = os.path.join(resultDir, "%s.pkl"%(name))
-        df.to_pickle(pklFileName)
-   
-        csvFileName = os.path.join(resultDir, "%s.csv"%(name))
-        df.to_csv(csvFileName)
+        if save_pkl:
+            pklFileName = os.path.join(resultDir, "%s.pkl"%(name))
+            df.to_pickle(pklFileName)
+        if save_csv:
+            csvFileName = os.path.join(resultDir, "%s.csv"%(name))
+            df.to_csv(csvFileName)
     
     #write scen error 
     if len(genScenErrDates):
         scenErrFile = os.path.join(resultDir, "scenErr.txt")
         with open(scenErrFile, 'wb') as fout:
             fout.write(scenErrStringIO.getvalue())
+    scenErrStringIO.close()
     
     #generating summary files
     summary = {"n_rv": n_rv,
