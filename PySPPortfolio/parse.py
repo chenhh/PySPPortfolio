@@ -26,18 +26,19 @@ elif platform.uname()[0] =='Windows':
     
 def parseCSV2DataFrame():
     currDir = os.getcwd()
-    srcDir = os.path.join(currDir, 'pkl', 'marketvalue_csv', '2303.csv')
+    srcDir = os.path.join(currDir, 'pkl', 'marketvalue_csv', '*.csv')
     tgtDir = os.path.join(currDir, 'pkl', 'BasicFeatures')
     
     startDate, endDate = date(2004,1,1), date(2013, 12, 31)
     srcFiles = glob.glob(srcDir)
     print srcFiles
     for src in srcFiles:
-        print src
         symbol = src[src.rfind('/')+1:src.rfind('.')]
+        tgtFile = os.path.join(tgtDir, '%s.pkl'%(symbol))
+        if os.path.exists(tgtFile):
+            continue
+        
         print symbol
-#         if symbol in( "3045", '2412'):
-#             continue
         df = pd.read_csv(open(src), index_col=("transDate",), parse_dates=True,
                          dtype={'transDate': date,
                                 'openPrice': np.float,
@@ -47,25 +48,24 @@ def parseCSV2DataFrame():
                                 'value': np.float,
                                 'volume': np.float,
                                 'adjROI': np.float})
-#         mdf =  df[startDate:endDate]
-        tgtFile = os.path.join(tgtDir, '%s.pkl'%(symbol))
+        
         df.to_pickle(tgtFile)
         print symbol
-        print df.head(10)
-        print 
+        print df.head(3)
+ 
         
 def testCSV():
     import csv
     currDir = os.getcwd()
     srcDir = os.path.join(currDir, 'pkl', 'marketvalue_csv',)
 #     srcFiles = [os.path.join(srcDir, name) for name in ('3045.csv', '2412.csv')]
-    srcFiles = [os.path.join(srcDir, name) for name in ('2303.csv', )]
+    srcFiles = glob.glob(os.path.join(srcDir, "*.csv"))
     
-    for name in srcFiles:
+    for fdx, name in enumerate(srcFiles):
         reader = csv.DictReader(open(name), ['date', 'o', 'h', 'l', 'c', 'val', 'vol', 'r'])
         reader.next()
         for idx, line in enumerate(reader):
-            print name, idx, float(line['r'])
+            print fdx, name, idx, line['date'], float(line['r'])
     
 def readPkl():
     currDir = os.getcwd()

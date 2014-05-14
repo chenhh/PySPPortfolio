@@ -137,7 +137,7 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
             results = MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                            depositWealth, buyTransFee, sellTransFee, alpha,
                            predictRiskyRet, predictRiskFreeRet, n_scenario, 
-                           probs=None, solver=solver)
+                           probs=None, solver=solver, n_stock=n_stock)
             
             VaRProcess[tdx] = results['VaR']
             CVaRProcess[tdx] = results['CVaR']
@@ -174,8 +174,8 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
         trainDates = [pd.to_datetime(fullTransDates[tdx]).strftime("%Y%m%d"), 
                       pd.to_datetime(fullTransDates[hist_period+tdx-1]).strftime("%Y%m%d")]
         
-        print '%s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
-            startDate, endDate, n_rv, hist_period, n_scenario, alpha, 
+        print ' dynamicSymbolSPPortfolio %s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
+            startDate, endDate, n_stock, hist_period, n_scenario, alpha, 
             scenFunc, solver, len(genScenErrDates))
         
         print 'transDate %s (train:%s-%s) fixed CVaR SP OK, current wealth %s, %.3f secs'%(
@@ -198,7 +198,7 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
     rnd = time.strftime("%y%m%d%H%M%S")
     layer0Dir =  "%s"%(dynamicSymbolSPPortfolio.__name__)
     layer1Dir =  "LargestMarketValue_200501"
-    layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(dynamicSymbolSPPortfolio.__name__, n_rv, 
+    layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(dynamicSymbolSPPortfolio.__name__, n_stock, 
                                        hist_period, n_scenario, alpha)
     layer3Dir = "%s-%s_%s"%(t1, t2, rnd)
     resultDir = os.path.join(ExpResultsDir,  layer0Dir, layer1Dir, 
@@ -248,6 +248,7 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
     
     #generating summary files
     summary = {"n_rv": n_rv,
+               "n_stock": n_stock,
                "T": T,
                "scenario": n_scenario,
                "alpha": alpha,
@@ -270,7 +271,71 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
         json.dump(summary, fout, indent=4)
     
     print "%s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s\nsimulation ok, %.3f secs"%(
-             startDate, endDate, n_rv, hist_period, n_scenario, alpha,
+             startDate, endDate, n_stock, hist_period, n_scenario, alpha,
              scenFunc, solver, time.time()-t0)
 
+
+if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description='dynamicSymbolSPPortfolio')
+#     parser.parse_args()
+    parser.add_argument('-n', '--symbols', type=int, default=5, help="num. of symbols")
+    parser.add_argument('-p', '--histPeriod', type=int, default=40, help="historical period")
+    parser.add_argument('-s', '--scenario', type=int, default=200, help="num. of scenario")
+    parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
+    parser.add_argument('--solver', choices=["glpk", "cplex"], default="cplex", help="solver for SP")
+    parser.add_argument('--scenFunc', choices=["Moment", "Copula"], default="Moment", help="function for generating scenario")
+    parser.add_argument('-m', '--marketvalue', type=int, choices=[200501, 201312], default=201312, help="market value type")
+    
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
+    group.add_argument('-f', '--full', action='store_true', help="from 2005~2013")
+    args = parser.parse_args()
+
+    # 把參數 number 的值印出來
+    print args
+        
+    #market value top 20 (2013/12/31)
+    if args.marketvalue == 201312:
+        symbols = ['2330', '2317', '6505', '2412', '2454',
+                '2882', '1303', '1301', '1326', '2881'
+                ]
+        
+    elif args.marketvalue == 200501:
+        symbols = [
+                '2330', '2412', '2882', '6505', '2317',
+                '2303', '2002', '1303', '1326', '1301',
+                
+#                 '2881', '2886', '2409', '2891', '2357',
+#                 '2382', '3045', '2883', '2454', '2880',
+#                 '2892', '4904', '2887', '2353', '2324',
+#                 '2801', '1402', '2311', '2475', '2888',
+#                 '2408', '2308', '2301', '2352', '2603',
+#                 '2884', '2890', '2609', '9904', '2610',
+#                 '1216', '1101', '2325', '2344', '2323',
+#                 '2371', '2204', '1605', '2615', '2201',
+                ]
+        
+    if args.year:
+        startDate = date(args.year, 1, 1)
+        endDate = date(args.year, 12, 31)
+    elif args.full:
+        startDate = date(2005, 1, 1)
+        endDate = date(2013, 12, 31)
+        
+    money = 1e6
+    hist_period = args.histPeriod
+    n_scenario = args.scenario
+    buyTransFee=0.001425
+    sellTransFee=0.004425
+    alpha = args.alpha
+    scenFunc = args.scenFunc
+    solver = args.solver
+    debug = False
+    dynamicSymbolSPPortfolio(symbols, startDate, endDate,  money,
+                           hist_period, n_scenario,
+                           buyTransFee, sellTransFee,
+                           alpha, scenFunc, solver, 
+                           n_stock=args.symbols, 
+                           save_pkl=False, save_csv=True, debug=debug)
         

@@ -260,7 +260,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
         trainDates = [pd.to_datetime(fullTransDates[tdx]).strftime("%Y%m%d"), 
                       pd.to_datetime(fullTransDates[hist_period+tdx-1]).strftime("%Y%m%d")]
         
-        print '%s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
+        print 'fixedSymbolSPPortfolio %s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
             startDate, endDate, n_rv, hist_period, n_scenario, alpha, 
             scenFunc, solver, len(genScenErrDates))
         
@@ -282,10 +282,14 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
     t1 = pd.to_datetime(transDates[0]).strftime("%Y%m%d")
     t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
     rnd = time.strftime("%y%m%d%H%M%S")
-    layer1Dir =  "%s_n%s_p%s_s%s_a%s"%(fixedSymbolSPPortfolio.__name__, n_rv, 
+    
+    layer0Dir =  "%s"%(fixedSymbolSPPortfolio.__name__)
+    layer1Dir =  "LargestMarketValue_200501"
+    layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(fixedSymbolSPPortfolio.__name__, n_rv, 
                                        hist_period, n_scenario, alpha)
-    layer2Dir = "%s-%s_%s"%(t1, t2, rnd)
-    resultDir = os.path.join(ExpResultsDir, layer1Dir, layer2Dir)
+    layer3Dir = "%s-%s_%s"%(t1, t2, rnd)
+    resultDir = os.path.join(ExpResultsDir,  layer0Dir, layer1Dir, 
+                             layer2Dir, layer3Dir)
     if not os.path.exists(resultDir):
         os.makedirs(resultDir)
     
@@ -379,14 +383,14 @@ if __name__ == '__main__':
         symbols = ['2330', '2317', '6505', '2412', '2454',
                 '2882', '1303', '1301', '1326', '2881'
                 ]
-        ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_201312")
+#         ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_201312")
         
     elif args.marketvalue == 200501:
         symbols = [
                 '2330', '2412', '2882', '6505', '2317',
                 '2303', '2002', '1303', '1326', '1301',
                 ]
-        ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_200501")
+#         ExpResultsDir = os.path.join(ExpResultsDir, "LargestMarketValue_200501")
         
     symbols = symbols[:args.symbols]
     
