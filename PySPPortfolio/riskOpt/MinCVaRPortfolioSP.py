@@ -167,7 +167,7 @@ def MinCVaRPortfolioSIP(symbols, riskyRet, riskFreeRet, allocatedWealth,
 def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                        depositWealth, buyTransFee, sellTransFee, alpha,
                        predictRiskyRet, predictRiskFreeRet, n_scenario, 
-                       probs=None, solver="glpk"):
+                       probs=None, solver="cplex"):
     '''
     two-stage stochastic programming
     

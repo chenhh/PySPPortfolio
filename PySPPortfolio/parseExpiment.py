@@ -75,12 +75,14 @@ def parseDynamicSymbolResults(n_rv=50):
     for n_stock in n_stocks:
         t = time()
         avgIO = StringIO()        
-        avgIO.write('run, n_stock ,n_rv, hist_period, alpha, runtime, wealth, wstd, ROI(%), rstd, scen err\n')
+        avgIO.write('run, n_stock ,n_rv, hist_period, alpha, runtime, wealth, wROI, Sharpe, SortinoFull, SortinoPartial, ROI(%), scen err\n')
         
         for period in hist_periods:
             for alpha in alphas:
                 dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_stock, period, alpha)
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                
+                #multiple runs of a parameter
                 wealths, rois, elapsed, scenerr = [], [], [], []
                 for exp in exps:
                     print exp
