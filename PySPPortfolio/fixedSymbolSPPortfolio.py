@@ -21,7 +21,10 @@ import numpy as np
 import scipy.stats as spstats
 import pandas as pd
 from stats import Performance
-from scenario.CMoment import HeuristicMomentMatching
+if platform.node() == "X220":
+    from scenario.Moment import HeuristicMomentMatching
+else:
+    from scenario.CMoment import HeuristicMomentMatching
 from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSP
 from riskOpt.WorstCVaRPortfolioSP import WorstCVaRPortfolioSP
 
@@ -33,21 +36,8 @@ sys.path.insert(0, ProjectDir)
 
 from PySPPortfolio import (PklBasicFeaturesDir,  ExpResultsDir)
 
-def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
-                      money=1e6, hist_period=60, buyTransFee=0.001425, 
-                      sellTransFee=0.004425, alpha = 0.95, debug=False, version="V1"):
-    if version == "V1":
-        return constructModelMtxV1(symbols, startDate, endDate, 
-                      money, hist_period, buyTransFee, 
-                      sellTransFee, alpha, debug)
-        
-    elif version == "V2":
-        return constructModelMtxV2(symbols, startDate, endDate, 
-                      money, hist_period, buyTransFee, 
-                      sellTransFee, alpha, debug)  
-    
 
-def constructModelMtxV1(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
+def constructModelMtx(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
                       money=1e6, hist_period=60, buyTransFee=0.001425, 
                       sellTransFee=0.004425, alpha = 0.95, debug=False):
     '''
@@ -130,80 +120,6 @@ def constructModelMtxV1(symbols, startDate=date(2005,1,1), endDate=date(2013,12,
         "fullTransDates": fullTransDates,   #size: (hist_period+T)
         "alpha": alpha                      #size：1
         }
-
-def constructModelMtxV2(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31), 
-                      money=1e6, hist_period=60, buyTransFee=0.001425, 
-                      sellTransFee=0.004425, alpha = 0.95, debug=False):
-    '''
-    utilize pandas dataframe instead of numpy 2d array
-    '''
-    #read data
-    series = []
-    transDates = None
-    for symbol in symbols:
-        df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
-        tmp = df[startDate: endDate]
-        startIdx = df.index.get_loc(tmp.index[0])
-        endIdx =  df.index.get_loc(tmp.index[-1])
-        if startIdx < (hist_period-1):
-            raise ValueError('%s do not have enough data'%(symbol))
-        
-        #index from [0, hist_period-1] for estimating statistics
-        data = df[startIdx-hist_period+1: endIdx+1]['adjROI']/100.
-       
-        #check all data have the same transDates
-        if transDates is None:
-            transDates = data.index.values
-        if not np.all(transDates == data.index.values):
-            raise ValueError('symbol %s do not have the same trans. dates'%(symbol))
-        series.append(data)
-    
-    df = pd.DataFrame(data, columns=symbols)
-    
-    #fixed transDate data
-    fullTransDates = transDates             #size: hist_period + (T +1) -1
-    transDates = transDates[hist_period-1:] #size: T+1
-    
-    #最後一期只結算不買賣, 所以要減一期 
-    n_rv, T = len(symbols), len(transDates) - 1
-    allRiskyRetMtx = df
-    
-    riskFreeRetVec = pd.Series(np.zeros(T+1), transDates)
-    buyTransFeeMtx = pd.DataFrame(np.ones((n_rv, T)) * buyTransFee, 
-                                  columns=symbols, index=transDates[:-1])
-    sellTransFeeMtx = pd.DataFrame(np.ones((n_rv, T))* sellTransFee,
-                                   columns=symbols, index=transDates[-1])
-    
-    #allocated 為已配置在risky asset的金額
-    allocatedWealth = np.zeros(n_rv)
-    depositWealth = money
-    
-    if debug:
-        print "n_rv: %s, T: %s, hist_period: %s"%(n_rv, T, hist_period)
-        print "allRiskyRetMtx size (n_rv * hist_period+T): ", allRiskyRetMtx.shape
-        print "riskFreeRetVec size (T+1): ", riskFreeRetVec.shape
-        print "buyTransFeeMtx size (n_rv, T): ",  buyTransFeeMtx.shape
-        print "sellTransFeeMtx size (n_rv, T): ", sellTransFeeMtx.shape
-        print "allocatedWealth size n_rv: ",  allocatedWealth.shape
-        print "depositWealth value:", depositWealth
-        print "transDates size (T+1):", transDates.shape
-        print "full transDates, size(hist+T): ", fullTransDates.shape
-        print "alpha value:", alpha
-    
-    return {
-        "n_rv": n_rv,
-        "T": T,
-        "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
-        "riskFreeRetVec": riskFreeRetVec,   #size: T+1
-        "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
-        "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
-        "allocatedWealth": allocatedWealth, #size: n_rv
-        "depositWealth": depositWealth,     #size: 1 
-        "transDates": transDates,           #size: (T+1)
-        "fullTransDates": fullTransDates,   #size: (hist_period+T)
-        "alpha": alpha                      #size：1
-        }
-    
 
 
 def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
@@ -464,9 +380,37 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            alpha=0.95, scenFunc="Moment", solver="cplex", 
                            save_pkl=False, save_csv=True, debug=False):
     '''
-    the different distributions are estimeated from variant hist_length
+    the different distributions are estimated from variant hist_length
+    
+    @param symbols, list, target assets
+    @param startDate, endDate, datetime.date, 交易的起始，結束日期
+    @param money, positive float, 初使資金
+    @param hist_periods, list, 用於計算moment與corr mtx的歷史資料長度
+    @param n_scenario, positive integer, 每一期產生的scenario個數
+    @param buyTransFee, sellTransFee, float, 買進與賣出手續費
+    @param alpha, float, confidence level of the CVaR
+    @scenFunc, string, 產生scenario的function
+    @solver, string, 解stochastic programming的solver
+    
+    @return {
+        "n_rv": n_rv,
+        "T": T,
+        "allRiskyRetMtx": allRiskyRetMtx,   #size: n_rv * (hist_period+T)
+        
+        #[0:hist_period]用於估計moments與corrMtx
+        "riskFreeRetVec": riskFreeRetVec,   #size: T+1
+        "buyTransFeeMtx": buyTransFeeMtx,   #size: n_rv * T
+        "sellTransFeeMtx": sellTransFeeMtx, #size: n_rv * T
+        "allocatedWealth": allocatedWealth, #size: n_rv
+        "depositWealth": depositWealth,     #size: 1 
+        "transDates": transDates,           #size: (T+1)
+        "fullTransDates": fullTransDates,   #size: (hist_period+T)
+         "alpha": alpha                      #size：１
+        }
+    
     '''
     t0 = time.time()
+    assert len(hist_periods) >= 1
     param = constructModelMtx(symbols, startDate, endDate, money, max(hist_periods),
                               buyTransFee, sellTransFee, alpha, debug)
     print "constructModelMtx %.3f secs"%(time.time()-t0)
@@ -498,32 +442,40 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
          
         #投資時已知當日的ret(即已經知道當日收盤價)
         t = time.time()
-        subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
-        assert subRiskyRetMtx.shape[1] == hist_period
         
         if scenFunc == "Moment":
-            moments = np.empty((n_rv, 4))
-            moments[:, 0] = subRiskyRetMtx.mean(axis=1)
-            moments[:, 1] = subRiskyRetMtx.std(axis=1)
-            moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
-            moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
-            corrMtx = np.corrcoef(subRiskyRetMtx)
+            scenMatrics = []
             
+            #只要有一組hist_period可抽出樣本即可
             converged = False
-            for order in xrange(-3, 0): 
-                MaxErrMom, MaxErrCorr=10**(order), 10**(order)
-                try:
-                    scenMtx = HeuristicMomentMatching(moments, corrMtx, 
-                                    n_scenario, MaxErrMom, MaxErrCorr)                  
-                except ValueError as e:
-                    print e
-                    scenErrStringIO.write("%s: %s\n"%(transDate, e))
-                else:
-                    converged = True
-                    break
+            
+            for hist_period in hist_periods:
+                subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
+                assert subRiskyRetMtx.shape[1] == hist_period
+                
+                moments = np.empty((n_rv, 4))
+                moments[:, 0] = subRiskyRetMtx.mean(axis=1)
+                moments[:, 1] = subRiskyRetMtx.std(axis=1)
+                moments[:, 2] = spstats.skew(subRiskyRetMtx, axis=1)
+                moments[:, 3] = spstats.kurtosis(subRiskyRetMtx, axis=1)
+                corrMtx = np.corrcoef(subRiskyRetMtx)
+                        
+                for order in xrange(-3, 0): 
+                    MaxErrMom, MaxErrCorr=10**(order), 10**(order)
+                    try:
+                        scenMtx = HeuristicMomentMatching(moments, corrMtx, 
+                                        n_scenario, MaxErrMom, MaxErrCorr)
+                        scenMatrics.append(scenMtx)                  
+                    except ValueError as e:
+                        print e
+                        scenErrStringIO.write("%s p%s: %s\n"%(transDate, hist_period, e))
+                    else:
+                        converged = True
+                        break
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
+        scenMatrics = np.array(scenMatrics)
         print "%s-%s - generate scen. mtx, %.3f secs"%(transDate, scenFunc, time.time()-t)
         
         if converged:
@@ -533,15 +485,15 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
             riskFreeRet = riskFreeRetVec[tdx]
             buyTransFee = buyTransFeeMtx[:, tdx]
             sellTransFee =  sellTransFeeMtx[:, tdx]
-            predictRiskyRet = scenMtx
+            predictRiskyRet = scenMatrics
             predictRiskFreeRet = 0
-            results = MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
+            results = WorstCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                            depositWealth, buyTransFee, sellTransFee, alpha,
                            predictRiskyRet, predictRiskFreeRet, n_scenario, 
                            probs=None, solver=solver)
             
             VaRProcess[tdx] = results['VaR']
-            CVaRProcess[tdx] = results['CVaR']
+            WCVaRProcess[tdx] = results['WCVaR']
             print "%s - %s solve SP, %.3f secs"%(transDate, solver, time.time()-t)
         else:
             #failed generating scenarios
@@ -575,11 +527,11 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
         trainDates = [pd.to_datetime(fullTransDates[tdx]).strftime("%Y%m%d"), 
                       pd.to_datetime(fullTransDates[hist_period+tdx-1]).strftime("%Y%m%d")]
         
-        print 'fixedSymbolSPPortfolio %s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
-            startDate, endDate, n_rv, hist_period, n_scenario, alpha, 
+        print 'fixedSymbolWCVaRSPPortfolio %s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s, genscenErr:[%s]'%(
+            startDate, endDate, n_rv, ":".join(str(h) for h in hist_periods), n_scenario, alpha, 
             scenFunc, solver, len(genScenErrDates))
         
-        print 'transDate %s (train:%s-%s) fixed CVaR SP OK, current wealth %s, %.3f secs'%(
+        print 'transDate %s (train:%s-%s) WCVaR SP OK, current wealth %s, %.3f secs'%(
                 transDate, trainDates[0], trainDates[1], 
                 allocatedWealth.sum() + depositWealth, time.time()-tloop)
         print '*'*80
@@ -598,10 +550,11 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
     t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
     rnd = time.strftime("%y%m%d%H%M%S")
     
-    layer0Dir =  "%s"%(fixedSymbolSPPortfolio.__name__)
+    layer0Dir =  "%s"%(fixedSymbolWCVaRSPPortfolio.__name__)
     layer1Dir =  "LargestMarketValue_200501"
-    layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(fixedSymbolSPPortfolio.__name__, n_rv, 
-                                       hist_period, n_scenario, alpha)
+    layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(fixedSymbolWCVaRSPPortfolio.__name__, n_rv, 
+                                       ":".join(str(h) for h in hist_periods), 
+                                       n_scenario, alpha)
     layer3Dir = "%s-%s_%s"%(t1, t2, rnd)
     resultDir = os.path.join(ExpResultsDir,  layer0Dir, layer1Dir, 
                              layer2Dir, layer3Dir)
@@ -625,7 +578,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
     wealthROIs[0] = 0
     
     df_risk = pd.DataFrame({"VaR": pd.Series(VaRProcess.T, index=transDates[:-1]),
-                            "CVaR":  pd.Series(CVaRProcess.T, index=transDates[:-1])
+                            "WCVaR":  pd.Series(WCVaRProcess.T, index=transDates[:-1])
                             }) 
     
     records = { 
@@ -658,7 +611,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "symbols":  ",".join(symbols),
                "transDates": [pd.to_datetime(t).strftime("%Y%m%d") 
                               for t in transDates],    #(T+1)
-               "hist_period": hist_period,
+               "hist_period": ":".join(str(h) for h in hist_periods),
                "buyTransFee":buyTransFee[0], 
                "sellTransFee":sellTransFee[0],
                "final_wealth": finalWealth,
