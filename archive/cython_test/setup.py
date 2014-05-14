@@ -19,6 +19,10 @@ extensions = [
                     libraries=["calcul"],
                     library_dirs=["."],
                     ),
+    Extension("parallel", ["parallel.pyx"],
+                    extra_compile_args=['-fopenmp'],
+                    extra_link_args=['-fopenmp'],
+                    ),
     ]
 setup(
   name = 'Hello world app',
