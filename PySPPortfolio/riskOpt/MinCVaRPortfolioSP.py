@@ -265,7 +265,7 @@ def MinCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     opt = SolverFactory(solver)
     
     if solver =="cplex":
-        opt.options["threads"] = 4
+        opt.options["threads"] = 6
     
     instance = model.create()
     results = opt.solve(instance)  

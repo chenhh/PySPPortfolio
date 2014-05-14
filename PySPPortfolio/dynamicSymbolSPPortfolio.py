@@ -197,7 +197,7 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
     t2 = pd.to_datetime(transDates[-1]).strftime("%Y%m%d")
     rnd = time.strftime("%y%m%d%H%M%S")
     layer0Dir =  "%s"%(dynamicSymbolSPPortfolio.__name__)
-    layer1Dir =  "LargestMarketValue_200501"
+    layer1Dir =  "LargestMarketValue_200501_rv%s"%(n_rv)
     layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(dynamicSymbolSPPortfolio.__name__, n_stock, 
                                        hist_period, n_scenario, alpha)
     layer3Dir = "%s-%s_%s"%(t1, t2, rnd)
@@ -285,7 +285,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--alpha', type=float, default=0.95, help="confidence level of CVaR")
     parser.add_argument('--solver', choices=["glpk", "cplex"], default="cplex", help="solver for SP")
     parser.add_argument('--scenFunc', choices=["Moment", "Copula"], default="Moment", help="function for generating scenario")
-    parser.add_argument('-m', '--marketvalue', type=int, choices=[200501, 201312], default=201312, help="market value type")
+    parser.add_argument('-m', '--marketvalue', type=int, choices=[200501, 201312], default=200501, help="market value type")
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-y', '--year', type=int, choices=range(2005, 2013+1), help="experiment in year")
@@ -296,24 +296,18 @@ if __name__ == '__main__':
     print args
         
     #market value top 20 (2013/12/31)
-    if args.marketvalue == 201312:
-        symbols = ['2330', '2317', '6505', '2412', '2454',
-                '2882', '1303', '1301', '1326', '2881'
-                ]
-        
-    elif args.marketvalue == 200501:
+    if args.marketvalue == 200501:
         symbols = [
                 '2330', '2412', '2882', '6505', '2317',
                 '2303', '2002', '1303', '1326', '1301',
-                
-#                 '2881', '2886', '2409', '2891', '2357',
-#                 '2382', '3045', '2883', '2454', '2880',
-#                 '2892', '4904', '2887', '2353', '2324',
-#                 '2801', '1402', '2311', '2475', '2888',
-#                 '2408', '2308', '2301', '2352', '2603',
-#                 '2884', '2890', '2609', '9904', '2610',
-#                 '1216', '1101', '2325', '2344', '2323',
-#                 '2371', '2204', '1605', '2615', '2201',
+                '2881', '2886', '2409', '2891', '2357',
+                '2382', '3045', '2883', '2454', '2880',
+                '2892', '4904', '2887', '2353', '2324',
+                '2801', '1402', '2311', '2475', '2888',
+                '2408', '2308', '2301', '2352', '2603',
+                '2884', '2890', '2609', '9904', '2610',
+                '1216', '1101', '2325', '2344', '2323',
+                '2371', '2204', '1605', '2615', '2201',
                 ]
         
     if args.year:
