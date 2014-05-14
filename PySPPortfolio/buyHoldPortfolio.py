@@ -10,6 +10,7 @@ import os
 import sys
 from datetime import date
 import time
+from stats import Performance
 
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
@@ -58,16 +59,15 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
     #sell in the last period
     for symbol in symbols[:-1]:
         wealthProcess[symbol][-1] *= (1-sellTransFee)
-        wealthProcess['deposit'][-1] +=  wealthProcess[symbol][-1]
-        wealthProcess[symbol][-1] = 0
     
-    print wealthProcess.tail(5)
-    pROI = (wealthProcess['deposit'][-1]/1e6 -1) * 100
+    wealth = wealthProcess.sum(axis=1)
+    pROI = (wealth[-1]/1e6 -1) * 100
     print "buyhold portfolio %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, 
                                                            pROI, time.time() -t )
 
 if __name__ == '__main__':
-    n_stock = 10
+    n_stocks = [5,]
+    #20050103
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
                 '2303', '2002', '1303', '1326', '1301',
@@ -80,6 +80,8 @@ if __name__ == '__main__':
                 '1216', '1101', '2325', '2344', '2323',
                 '2371', '2204', '1605', '2615', '2201',
                 ]
-    startDate=date(2008,1,1)
-    endDate=date(2008,12,31)
-    buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
+   
+    startDate=date(2005,1,1)
+    endDate=date(2013,12,31)
+    for n_stock in n_stocks:
+        buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
