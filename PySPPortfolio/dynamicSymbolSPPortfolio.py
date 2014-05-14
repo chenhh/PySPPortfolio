@@ -25,6 +25,7 @@ from datetime import date
 import numpy as np
 import scipy.stats as spstats
 import pandas as pd
+from stats import Performance
 from scenario.CMoment import HeuristicMomentMatching
 from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSIP
 import simplejson as json 
@@ -218,6 +219,12 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
     df_wealth = pd.DataFrame(wealthProcess.T, index=transDates, columns=symbols)
     deposits = pd.Series(depositProcess.T, index=transDates)
     df_wealth['deposit'] = deposits 
+    
+    #computing wealth ROI
+    wealths = df_wealth.sum(axis=1)
+    wealthROIs= wealths.pct_change()
+    wealthROIs[0] = 0
+  
    
     df_risk = pd.DataFrame({"VaR": pd.Series(VaRProcess.T, index=transDates[:-1]),
                             "CVaR":  pd.Series(CVaRProcess.T, index=transDates[:-1])
@@ -259,6 +266,12 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
                "buyTransFee":buyTransFee[0], 
                "sellTransFee":sellTransFee[0],
                "final_wealth": finalWealth,
+               "wealth_ROI_mean":   wealthROIs.mean(),
+               "wealth_ROI_std":   wealthROIs.std(),
+               "wealth_ROI_Sharpe": Performance.Sharpe( wealthROIs),
+               "wealth_ROI_SortinoFull": Performance.SortinoFull( wealthROIs),
+               "wealth_ROI_SortinoPartial": Performance.SortinoPartial( wealthROIs),
+               
                "scenFunc": scenFunc,
                "scen_err_cnt":len(genScenErrDates),
                "scen_err_dates": genScenErrDates,
