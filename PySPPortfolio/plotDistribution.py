@@ -12,11 +12,11 @@ import pandas as pd
 import numpy as np
 import scipy.stats as spstats
 import matplotlib.pyplot as plt
-from scenario.Moment import HeuristicMomentMatching
+from scenario.CMoment import HeuristicMomentMatching
 from riskOpt.MinCVaRPortfolioSP import MinCVaRPortfolioSP
 
 PklBasicFeaturesDir = os.path.join(os.getcwd(),'pkl', 'BasicFeatures')
-symbols = ('2330', '1216')
+symbols = ['2330', '1216','2002']
 startDate, endDate = date(2005, 1, 1), date(2013, 12, 31)
 
 def readDF(symbols):
@@ -94,13 +94,13 @@ def plotCVaR(symbols, today=date(2013,1,9), alpha=0.95,
              n_histPeriod = 100, n_scenario=200):
     
     dfs = readDF(symbols)
-    plt.suptitle("CVaR alpha:%s, scenario:%s"%(alpha, n_scenario))
 
-    n_bin = 100
+
+ 
     rois = []
     
     for df in dfs:
-        series = df['adjROI']
+        series = df['adjROI']/100.
         endIdx = series.index.get_loc(today)
         startIdx = endIdx - n_histPeriod + 1
         assert startIdx >= 0
@@ -116,25 +116,38 @@ def plotCVaR(symbols, today=date(2013,1,9), alpha=0.95,
     Moms[:, 2] = spstats.skew(data, axis=1)
     Moms[:, 3] = spstats.kurtosis(data, axis=1)
     corrMtx = np.corrcoef(data)
-    outMtx = HeuristicMomentMatching(Moms, corrMtx, n_scenario, verbose=True)
+    outMtx = HeuristicMomentMatching(Moms, corrMtx, n_scenario, verbose=False)
     
+#     print "scen:", outMtx
+#     print "riskyRet:", data[:, -1]
     results = MinCVaRPortfolioSP(symbols, 
-                        riskyRet=data, 
+                        riskyRet=data[:, -1], 
                         riskFreeRet=0, 
                         allocatedWealth = np.zeros(n_rv),
                         depositWealth=1e6, 
-                        buyTransFee=0.001425, 
-                        sellTransFee=0.004425, 
+                        buyTransFee=np.ones(n_rv)*0.001425, 
+                        sellTransFee=np.ones(n_rv)*0.004425, 
                         alpha=alpha,
                         predictRiskyRet=outMtx, 
                         predictRiskFreeRet=0, 
                         n_scenario=n_scenario, 
                         probs=None, solver="cplex")
     print results
+    weights = results['buys']
+    dist = ((outMtx+1) * weights[:, np.newaxis]).sum(axis=0)
+    dist.sort()
     
+    quantile = int(np.ceil(n_scenario * (1-alpha)))
+    print "VaR:", dist[quantile-1]
+    print "CVaR:", dist[:quantile-1].mean()
+   
+    n_bin = 50
+    plt.title("CVaR alpha:%s, scenario:%s"%(alpha, n_scenario))
+    plt.hist(dist, n_bin, color="green")
+    plt.show()
 
 if __name__ == '__main__':
 #     dfs = readDF(symbols)
 #     plotDistribution(dfs, date(2013,1,9), 10, 10)
-    plotCVaR(symbols, today=date(2013,1,9), alpha=0.95, 
+    plotCVaR(symbols, today=date(2013,1,10), alpha=0.95, 
              n_histPeriod = 100, n_scenario=200)
