@@ -19,7 +19,7 @@ from coopr.opt import  SolverFactory
 def WorstCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
                        depositWealth, buyTransFee, sellTransFee, alpha,
                        predictRiskyRet, predictRiskFreeRet, n_scenario, 
-                       probs=None, solver="glpk"):
+                       probs=None, solver="cplex"):
     '''
     two-stage stochastic programming
     
@@ -142,6 +142,36 @@ def WorstCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     print "MinCVaRPortfolioSP elapsed %.3f secs"%(time.time()-t)
     return  results
 
+
+def testWCVaR():
+    symbols = ('1101', "1102", '1103')
+    M = len(symbols)
+    allocated = np.zeros(M)
+    money = 1e6
+    
+    buyTransFee =  np.ones(M)*0.001425  #買進0.1425%手續費
+    sellTransFee =  np.ones(M)*0.004425  #賣出0.3%手續費+0.1425%交易稅
+    
+    riskyRet = [0.01, 0.02, 0.015]
+    riskFreeRet = 0
+    alpha = 0.95 
+    predictRiskyRet = np.array([[0.1422, 0.0389, 0.0323], 
+                       [0.2582, 0.0266, -0.01234],
+                       [0.01292, 0.0347, 0.0013],
+                       [0.0381, 0.0643, -0.0023],
+                       [0.0473, 0.1013, 0.0012],
+                       ]).T
+#     print predictRiskyRet
+    predictRiskFreeRet = 0.
+    
+    
+    results = WorstCVaRPortfolioSP(symbols, riskyRet, riskFreeRet, allocated,
+                       money, buyTransFee, sellTransFee, alpha,
+                       predictRiskyRet, predictRiskFreeRet, 
+                       n_scenario = 5,
+                       solver="cplex")
+    print results
+    print "*"*80
 
 if __name__ == '__main__':
     pass

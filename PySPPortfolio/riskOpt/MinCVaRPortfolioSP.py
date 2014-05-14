@@ -418,7 +418,7 @@ def MinCVaRPortfolioSP2(symbols, riskyRet, riskFreeRet, allocatedWealth,
     return  results
 
 
-def constructModelData():
+def testCVaR():
     symbols = ('1101', "1102", '1103')
     M = len(symbols)
     allocated = np.zeros(M)
@@ -456,4 +456,4 @@ def constructModelData():
     print results2
  
 if __name__ == '__main__':
-    constructModelData()
+    testCVaR()
