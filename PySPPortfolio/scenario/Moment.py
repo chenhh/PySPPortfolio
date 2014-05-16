@@ -19,12 +19,99 @@ import scipy.stats as spstats
 import time 
 
 
+def HeuristicMomentMatching1D(tgtMoms, n_scenario=200, MaxErrMom=1e-3, verbose=False ):
+    '''
+    one stock moment matching
+    @tgtMoms, numpy.array, size:4
+    '''
+    assert n_scenario >= 0
+    t0 = time.time()
+    
+    #parameters
+    n_rv = 1
+    ErrMomEPS= 1e-5
+       
+    MaxCubIter = 1
+    MaxMainIter = 20
+    MaxStartIter = 5
+    
+    #out mtx
+    outMtx = np.empty((n_rv, n_scenario))
+    
+    #to generate samples Y with zero mean, and unit variance
+    YMoms = np.zeros((n_rv, 4))
+    YMoms[:, 1] = 1
+    YMoms[:, 2] = tgtMoms[:, 2]
+    YMoms[:, 3] = tgtMoms[:, 3] + 3
+    
+    #find good start matrix outMtx (with errMom converge)
+    #the iteration can be done parallelly. 
+    for rv in xrange(n_rv):
+        cubErr, bestCubErr = float('inf'), float('inf')
+
+        #loop until errMom converge, but the errCorr is unreleated
+        for _ in xrange(MaxStartIter):
+            #random sample
+            tmpOut = np.random.rand(n_scenario)
+            EY = YMoms[rv, :]
+       
+            #loop until ErrCubic transform converge
+            for cubiter in xrange(MaxCubIter):
+                EX = np.fromiter(((tmpOut**(idx+1)).mean() 
+                                  for idx in xrange(12)), np.float)
+                X_init = np.array([0, 1, 0, 0])
+                out = spopt.leastsq(cubicFunction, X_init, args=(EX, EY), 
+                                    full_output=True, ftol=1E-12, xtol=1E-12)
+                cubParams = out[0] 
+                cubErr = np.sum(out[2]['fvec']**2)
+       
+                tmpOut = (cubParams[0] +  cubParams[1]*tmpOut +
+                          cubParams[2]*(tmpOut**2) + cubParams[3]*(tmpOut**3))
+               
+                if cubErr < ErrMomEPS:
+                    break
+                else:
+                    if verbose:
+                        print "rv:%s, cubiter:%s, cubErr: %s, not converge"%(rv, cubiter, cubErr)
+         
+            #accept current samples
+            if cubErr < bestCubErr:
+                bestCubErr = cubErr
+                outMtx[rv,:] = tmpOut 
+            
+    #computing starting properties and error
+    #correct moment, wrong correlation
+    
+    errMoms = errorStatistics(outMtx, YMoms)
+    if verbose:
+        print 'start mtx (orig) errMom:%s'%(errMoms)
+    
+    outMtx = outMtx * tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
+    
+    outCentralMoms = np.empty((n_rv, 4))
+    outCentralMoms[:, 0] = outMtx.mean(axis=1)
+    outCentralMoms[:, 1] = outMtx.std(axis=1)
+    outCentralMoms[:, 2] = spstats.skew(outMtx, axis=1)
+    outCentralMoms[:, 3] = spstats.kurtosis(outMtx, axis=1)
+  
+    if verbose:
+        print "rescaleMoms(central):\n", outCentralMoms
+    errMoms = RMSE(outCentralMoms, tgtMoms) 
+    print 'sample (central) tgtErrMom:%s'%(errMoms)
+     
+    if errMoms > MaxErrMom:
+        raise ValueError("out mtx not converge, errMom: %s"%(errMoms))
+    
+    print "HeuristicMomentMatching1D elapsed %.3f secs"%(time.time()-t0)
+    return outMtx
+
+
 def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200, 
                              MaxErrMom=1e-3, MaxErrCorr=1e-3, verbose=False):
     '''
-    tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
-    tgtCorrs, numpy.array, size: n_rv * n_rv
-    n_scenario, positive integer
+    @tgtMoms, numpy.array, 1~4 central moments, size: n_rv * 4
+    @tgtCorrs, numpy.array, size: n_rv * n_rv
+    @n_scenario, positive integer
     '''
     assert n_scenario >= 0
     assert tgtMoms.shape[0] == tgtCorrs.shape[0] == tgtCorrs.shape[1]
@@ -143,7 +230,7 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
     
     #rescale
     outMtx = outMtx * tgtMoms[:, 1][:, np.newaxis] + tgtMoms[:, 0][:, np.newaxis]  
-   
+    
     outCentralMoms = np.empty((n_rv, 4))
     outCentralMoms[:, 0] = outMtx.mean(axis=1)
     outCentralMoms[:, 1] = outMtx.std(axis=1)
@@ -155,12 +242,16 @@ def HeuristicMomentMatching (tgtMoms, tgtCorrs, n_scenario=200,
     errMoms = RMSE(outCentralMoms, tgtMoms) 
     errCorrs = RMSE(outCorrs, tgtCorrs)
     print 'sample (central) tgtErrMom:%s, errCorr:%s'%(errMoms, errCorrs)
-    
-    if errMoms > MaxErrCorr or errCorrs  > MaxErrCorr:
+     
+    if errMoms > MaxErrMom or errCorrs  > MaxErrCorr:
         raise ValueError("out mtx not converge, errMom: %s, errCorr:%s"%(errMoms, errCorrs))
     
     print "HeuristicMomentMatching elapsed %.3f secs"%(time.time()-t0)
     return outMtx
+
+
+
+    
 
 
 def cubicFunction(cubParams, sampleMoms, tgtMoms):
@@ -196,16 +287,20 @@ def cubicFunction(cubParams, sampleMoms, tgtMoms):
     
     return v1, v2, v3, v4
 
-def errorStatistics(outMtx, tgtMoms, tgtCorrs):
+def errorStatistics(outMtx, tgtMoms, tgtCorrs=None):
     n_rv = outMtx.shape[0]
     outMoms = np.empty((n_rv, 4))
     for idx in xrange(4):
         outMoms[:, idx] = (outMtx**(idx+1)).mean(axis=1)
     
-    outCorrs = np.corrcoef(outMtx)
     errMoms = RMSE(outMoms, tgtMoms)
-    errCorrs = RMSE(outCorrs, tgtCorrs)
-    return errMoms, errCorrs
+    
+    if tgtCorrs is None:
+        return errMoms
+    else:
+        outCorrs = np.corrcoef(outMtx)
+        errCorrs = RMSE(outCorrs, tgtCorrs)
+        return errMoms, errCorrs
 
 
 def RMSE(srcArr, tgtArr):

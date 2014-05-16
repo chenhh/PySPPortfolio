@@ -6,12 +6,12 @@ Created on 2014/3/11
 import numpy as np
 import scipy.stats as spstats
 import Moment
-import CMoment
+# import CMoment
 import time
 
 def testHeuristicMomentMatching():
-    n_rv = 10
-    n_scenario = 100
+    n_rv = 1
+    n_scenario = 1000
     data = np.random.randn(n_rv, 100)
     
     moments = np.empty((n_rv, 4))
@@ -21,8 +21,11 @@ def testHeuristicMomentMatching():
     moments[:, 3] = spstats.kurtosis(data , axis=1)
     corrMtx = np.corrcoef(data )
     
-    Moment.HeuristicMomentMatching(moments, corrMtx, n_scenario)
-    CMoment.HeuristicMomentMatching(moments, corrMtx, n_scenario, 0)
+    if n_rv > 1:
+        Moment.HeuristicMomentMatching(moments, corrMtx, n_scenario)
+    else:
+        Moment.HeuristicMomentMatching1D(moments, n_scenario)
+#     CMoment.HeuristicMomentMatching(moments, corrMtx, n_scenario, 0)
 
 
 

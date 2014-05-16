@@ -28,7 +28,7 @@ def readWealthCSV():
 
 
 def parseFixedSymbolResults():
-    n_rvs = (5, 10, 15)
+    n_rvs = (50,)
     hist_periods = range(10, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
@@ -95,7 +95,7 @@ def parseFixedSymbolResults():
 
 
 def parseDynamicSymbolResults(n_rv=50):
-    n_stocks = (5, 10, 15)
+    n_stocks = (5, 10, 15, 20)
     hist_periods = range(70, 130, 10)
     n_scenario = 200
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
@@ -108,7 +108,7 @@ def parseDynamicSymbolResults(n_rv=50):
     for n_stock in n_stocks:
         t = time()
         avgIO = StringIO()        
-        avgIO.write('run, n_stock ,n_rv, hist_period, alpha, runtime, wealth, wROI, dROI, Sharpe, SortinoFull, SortinoPartial, scen err\n')
+        avgIO.write('run, n_stock ,n_rv, hist_period, alpha, runtime, wealth, wROI(%), dROI(%%), Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), scen err\n')
         
         for period in hist_periods:
             for alpha in alphas:
@@ -117,7 +117,7 @@ def parseDynamicSymbolResults(n_rv=50):
                 
                 #multiple runs of a parameter
                 wealths, rois, elapsed, scenerr = [], [], [], []
-                sharpe, sortinof, sortinop = [], [], []
+                sharpe, sortinof, sortinop, dROI = [], [], [], []
                 for exp in exps:
                     print exp
                     summary = json.load(open(os.path.join(exp, "summary.json")))
@@ -126,14 +126,37 @@ def parseDynamicSymbolResults(n_rv=50):
                     rois.append((wealth/1e6-1) * 100.0)
                     elapsed.append(float(summary['elapsed']))
                     scenerr.append(summary['scen_err_cnt'])
+                    try:
+                        sharpe.append(float(summary['wealth_ROI_Sharpe'])*100)
+                        sortinof.append(float(summary['wealth_ROI_SortinoFull'])*100)
+                        sortinop.append(float(summary['wealth_ROI_SortinoPartial'])*100)
+                        dROI.append((float(summary['wealth_ROI_mean']))*100)
+                    except KeyError:
+                        #read wealth process
+                        csvfile = os.path.join(exp, 'wealthProcess.csv')
+                        df = pd.read_csv( csvfile, index_col=0, parse_dates=True)
+                        proc = df.sum(axis=1)
+                        wrois =  proc.pct_change()
+                        wrois[0] = 0
+                            
+                        dROI.append(wrois.mean()*100)
+                        sharpe.append(Performance.Sharpe(wrois)*100)
+                        sortinof.append(Performance.SortinoFull(wrois)*100)
+                        sortinop.append(Performance.SortinoPartial(wrois)*100)
+                    
                 
                 rois = np.asarray(rois)
                 wealths = np.asarray(wealths)
                 elapsed = np.asarray(elapsed)
-                scenerr = np.asarray(scenerr)
-                avgIO.write("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s\n"%(
+                scenerr = np.asarray(scenerr)    
+                sharpe = np.asarray(sharpe)
+                sortinof = np.asarray(sortinof) 
+                sortinop = np.asarray(sortinop)
+                dROI =  np.asarray(dROI) 
+                
+                avgIO.write("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n"%(
                                 len(rois), n_stock, n_rv, period, alpha,  elapsed.mean(),
-                                wealths.mean(), rois.mean(), 0, 0, 0,
+                                wealths.mean(), rois.mean(), dROI.mean(), sharpe.mean(), sortinof.mean(), sortinop.mean(),
                                 scenerr.mean() ))
         
         #write results    
