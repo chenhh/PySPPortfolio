@@ -66,7 +66,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
                                                            pROI, time.time() -t )
 
 if __name__ == '__main__':
-    n_stocks = [5,]
+    n_stocks = [5,10, 15, 20, 25, 30, 45, 40 , 45, 50]
     #20050103
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
