@@ -28,8 +28,8 @@ def readWealthCSV():
 
 
 def parseFixedSymbolResults():
-    n_rvs = (50,)
-    hist_periods = range(10, 130, 10)
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(70, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
@@ -95,7 +95,7 @@ def parseFixedSymbolResults():
 
 
 def parseDynamicSymbolResults(n_rv=50):
-    n_stocks = (5, 10, 15, 20)
+    n_stocks =  range(5, 55, 5)
     hist_periods = range(70, 130, 10)
     n_scenario = 200
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
@@ -170,5 +170,5 @@ def parseDynamicSymbolResults(n_rv=50):
 if __name__ == '__main__':
 #     readWealthCSV()
     parseFixedSymbolResults()
-#     parseDynamicSymbolResults()
+    parseDynamicSymbolResults()
    
