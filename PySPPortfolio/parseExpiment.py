@@ -12,11 +12,12 @@ import sys
 import os
 from glob import glob
 import pandas as pd
+from datetime import date
+import scipy.stats as spstats
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
-
-from PySPPortfolio import ExpResultsDir
-print ExpResultsDir
+from stats import Performance
+from PySPPortfolio import  (PklBasicFeaturesDir,  ExpResultsDir)
 from time import time    
 from stats import Performance
 
@@ -168,8 +169,161 @@ def parseDynamicSymbolResults(n_rv=50):
         avgIO.close()
         print "n_stock:%s OK, elapsed %.3f secs"%(n_stock, time()-t)
 
+def individualSymbolStats():
+    symbols = [
+                '2330', '2412', '2882', '6505', '2317',
+                '2303', '2002', '1303', '1326', '1301',
+                '2881', '2886', '2409', '2891', '2357',
+                '2382', '3045', '2883', '2454', '2880',
+                '2892', '4904', '2887', '2353', '2324',
+                '2801', '1402', '2311', '2475', '2888',
+                '2408', '2308', '2301', '2352', '2603',
+                '2884', '2890', '2609', '9904', '2610',
+                '1216', '1101', '2325', '2344', '2323',
+                '2371', '2204', '1605', '2615', '2201',
+    ]
+    
+    startDate=date(2005,1,3)
+    endDate=date(2013,12,31)
+    
+    statIO = StringIO()        
+    statIO.write('rank & symbol & mean & stdev. & skewness & kurtosis & normality & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    
+    for idx, symbol in enumerate(symbols):
+        df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
+        tmp = df[startDate: endDate]
+        rois = tmp['adjROI'].values
+
+        mean = rois.mean()
+        std = rois.std()
+        skew = spstats.skew(rois)
+        kurt = spstats.kurtosis(rois)
+#         sharpe = Performance.Sharpe(rois)
+#         sortinof = Performance.SortinoFull(rois)
+#         sortinop = Performance.SortinoPartial(rois)
+        print rois
+        k2, pval = spstats.normaltest(rois)
+        
+        rtmp = rois/100 + 1
+        rtmp[1] -= 0.001425 #buy fee
+        rtmp[-1] -= 0.004425 #sell fee
+        R_cum = rtmp[1:].prod() - 1 
+        AR_cum = np.power((R_cum+1), 1./9) -1  
+        
+        statIO.write('%2d & %s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
+                        idx+1, symbol, mean, std, skew, kurt,  pval, R_cum*100, AR_cum*100))
+        print symbol, R_cum, AR_cum
+    
+    resFile =  os.path.join(ExpResultsDir, 'symbol_daily_stats.txt')
+    with open(resFile, 'wb') as fout:
+        fout.write(statIO.getvalue())
+        statIO.close()
+    
+    statIO.close()
+     
+
+def groupSymbolStats():
+    symbols = [
+                '2330', '2412', '2882', '6505', '2317',
+                '2303', '2002', '1303', '1326', '1301',
+                '2881', '2886', '2409', '2891', '2357',
+                '2382', '3045', '2883', '2454', '2880',
+                '2892', '4904', '2887', '2353', '2324',
+                '2801', '1402', '2311', '2475', '2888',
+                '2408', '2308', '2301', '2352', '2603',
+                '2884', '2890', '2609', '9904', '2610',
+                '1216', '1101', '2325', '2344', '2323',
+                '2371', '2204', '1605', '2615', '2201',
+    ]
+    
+    startDate=date(2005,1,3)
+    endDate=date(2013,12,31)
+
+    statIO = StringIO()        
+    statIO.write(' $n$ & mean & stdev. & skewness & kurtosis & normal & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    
+    grois = []
+    for idx, symbol in enumerate(symbols):
+        df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
+        tmp = df[startDate: endDate]
+        rois = tmp['adjROI'].values
+        grois.append(rois)
+    grois = np.asarray(grois)
+    
+    print grois.shape
+    
+    for psize in range(5, 50+5, 5):
+        rois = grois[:psize, :].mean(axis=0)
+        mean = rois.mean()
+        std = rois.std()
+        skew = spstats.skew(rois)
+        kurt = spstats.kurtosis(rois)
+
+        k2, pval = spstats.normaltest(rois)
+        rtmp = rois/100 + 1
+        rtmp[1] -= 0.001425 #buy fee
+        rtmp[-1] -= 0.004425 #sell fee
+        R_cum = rtmp[1:].prod() - 1 
+        AR_cum = np.power((R_cum+1), 1./9) -1  
+     
+        statIO.write('%2d  & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
+                    psize, mean, std, skew, kurt,  pval, R_cum*100, AR_cum*100))
+        print psize, R_cum, AR_cum
+     
+    resFile =  os.path.join(ExpResultsDir, 'group_symbol_daily_stats.txt')
+    with open(resFile, 'wb') as fout:
+        fout.write(statIO.getvalue())
+        statIO.close()
+     
+    statIO.close()
+
+
+def comparisonStats():
+    symbols = [
+        'TAIEX', '0050',
+    ]
+    
+    startDate=date(2005,1,3)
+    endDate=date(2013,12,31)
+    
+    statIO = StringIO()        
+    statIO.write('symbol & mean & stdev. & skewness & kurtosis & normality & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    
+    for idx, symbol in enumerate(symbols):
+        df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
+        print symbol, df.columns
+        tmp = df[startDate: endDate]
+        rois = tmp['adjROI'].values
+
+        mean = rois.mean()
+        std = rois.std()
+        skew = spstats.skew(rois)
+        kurt = spstats.kurtosis(rois)
+        print rois
+        k2, pval = spstats.normaltest(rois)
+        
+        rtmp = rois/100 + 1
+        rtmp[1] -= 0.001425 #buy fee
+        rtmp[-1] -= 0.004425 #sell fee
+        R_cum = rtmp[1:].prod() - 1 
+        AR_cum = np.power((R_cum+1), 1./9) -1  
+        
+        statIO.write('%s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
+                        symbol, mean, std, skew, kurt,  pval, R_cum*100, AR_cum*100))
+        print symbol, R_cum, AR_cum
+    
+    resFile =  os.path.join(ExpResultsDir, 'comparison_daily_stats.txt')
+    with open(resFile, 'wb') as fout:
+        fout.write(statIO.getvalue())
+        statIO.close()
+    
+    statIO.close()
+
 if __name__ == '__main__':
 #     readWealthCSV()
-    parseFixedSymbolResults()
-    parseDynamicSymbolResults()
+#     parseFixedSymbolResults()
+#     parseDynamicSymbolResults()
+#     individualSymbolStats()
+#     groupSymbolStats()
+    comparisonStats()
    
