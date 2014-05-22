@@ -3,7 +3,7 @@
 @author: Hung-Hsin Chen
 @mail: chenhh@par.cse.nsysu.edu.tw
 
-Markowitz mean variance model
+kelly multivariate investment
 '''
 
 from __future__ import division
@@ -17,16 +17,15 @@ import time
 from coopr.opt import  SolverFactory
 
 
-def MeanVariance(symbols, riskyRet, money=1e6, risk_weight=1, solver="cplex"):
+def KellyCriterion(symbols, riskyRet, money=1e6, solver="cplex"):
     '''
     @riskyRet, shape: M*T
-    minimize risk_weight * risk  - (1-risk_weight) * mean
+    
+    maximize W*R - 1/2W^T \simga W
     '''
     t = time.time()
     
-    sigma = np.cov(riskyRet)
     mu = riskyRet.mean(axis=1)
-    print "mu:", mu
     
     model = ConcreteModel()
     
@@ -45,16 +44,16 @@ def MeanVariance(symbols, riskyRet, money=1e6, risk_weight=1, solver="cplex"):
     
     
     #objective
-    def minRiskObjective_rule(model):
+    def KellyObjective_rule(model):
         profit = sum(model.W[idx]*mu[idx] for idx in model.symbols)
         risk = 0
         for idx in model.symbols:
             for jdx in model.symbols:
-                    risk += model.W[idx] * model.W[jdx] * sigma[idx, jdx]
+                    risk += model.W[idx] * model.W[jdx] * mu[idx]* mu[jdx] 
         
-        return 1./2 * risk_weight * risk - (1. - risk_weight) * profit
+        return profit - 1./2 * risk
         
-    model.minRiskObjective = Objective(sense=minimize)
+    model.KellyObjective = Objective(sense=maximize)
     
     # Create a solver
     opt = SolverFactory(solver)
@@ -68,9 +67,9 @@ def MeanVariance(symbols, riskyRet, money=1e6, risk_weight=1, solver="cplex"):
     obj = results.Solution.Objective.__default_objective__['value']
     display(instance)
     
-    print "MeanVariance elapsed %.3f secs"%(time.time()-t)
+    print "Kelly elapsed %.3f secs"%(time.time()-t)
 
-def testMeanVariance():
+def testKelly():
     FileDir = os.path.abspath(os.path.curdir)
     PklBasicFeaturesDir = os.path.join(FileDir, '..', 'pkl', 'BasicFeatures')
     
@@ -82,7 +81,7 @@ def testMeanVariance():
         roi =  df['adjROI'][:n_period]
         ROIs[idx] = roi
         
-    MeanVariance(symbols, ROIs, money=1e6, risk_weight=1, solver="cplex")
+    KellyCriterion(symbols, ROIs, money=1e6, solver="cplex")
 
 if __name__ == '__main__':
-    testMeanVariance()
+    testKelly()
