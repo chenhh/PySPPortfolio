@@ -442,7 +442,6 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
          
         #投資時已知當日的ret(即已經知道當日收盤價)
         t = time.time()
-        
         if scenFunc == "Moment":
             scenMatrics = []
             
