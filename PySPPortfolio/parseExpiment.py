@@ -20,7 +20,9 @@ from stats import Performance
 from PySPPortfolio import  (PklBasicFeaturesDir,  ExpResultsDir)
 from time import time    
 from stats import Performance
-
+import statsmodels.tsa.stattools as sts
+import statsmodels.stats.stattools as sss
+    
 
 def readWealthCSV():
     df = pd.read_csv('test_wealthProcess.csv', index_col=0, parse_dates=True)
@@ -170,6 +172,7 @@ def parseDynamicSymbolResults(n_rv=50):
         print "n_stock:%s OK, elapsed %.3f secs"%(n_stock, time()-t)
 
 def individualSymbolStats():
+  
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
                 '2303', '2002', '1303', '1326', '1301',
@@ -187,7 +190,7 @@ def individualSymbolStats():
     endDate=date(2013,12,31)
     
     statIO = StringIO()        
-    statIO.write('rank & symbol & mean & stdev. & skewness & kurtosis & normality & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO.write('rank & symbol & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
     
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
@@ -202,7 +205,12 @@ def individualSymbolStats():
 #         sortinof = Performance.SortinoFull(rois)
 #         sortinop = Performance.SortinoPartial(rois)
         print rois
-        k2, pval = spstats.normaltest(rois)
+#         k2, pval = spstats.normaltest(rois)
+        ret = sss.jarque_bera(rois)
+        JB = ret[1]
+        
+        ret2 = sts.adfuller(rois)
+        ADF = ret2[1]
         
         rtmp = rois/100 + 1
         rtmp[1] -= 0.001425 #buy fee
@@ -210,8 +218,8 @@ def individualSymbolStats():
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
         
-        statIO.write('%2d & %s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
-                        idx+1, symbol, mean, std, skew, kurt,  pval, R_cum*100, AR_cum*100))
+        statIO.write('%2d & %s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e & %8.4f & %8.4f   \\\ \hline \n'%(
+                        idx+1, symbol, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
         print symbol, R_cum, AR_cum
     
     resFile =  os.path.join(ExpResultsDir, 'symbol_daily_stats.txt')
@@ -240,7 +248,7 @@ def groupSymbolStats():
     endDate=date(2013,12,31)
 
     statIO = StringIO()        
-    statIO.write(' $n$ & mean & stdev. & skewness & kurtosis & normal & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO.write(' $n$ & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
     
     grois = []
     for idx, symbol in enumerate(symbols):
@@ -259,15 +267,21 @@ def groupSymbolStats():
         skew = spstats.skew(rois)
         kurt = spstats.kurtosis(rois)
 
-        k2, pval = spstats.normaltest(rois)
+#         k2, pval = spstats.normaltest(rois)
+        ret = sss.jarque_bera(rois)
+        JB = ret[1]
+        
+        ret2 = sts.adfuller(rois)
+        ADF = ret2[1]
+
         rtmp = rois/100 + 1
         rtmp[1] -= 0.001425 #buy fee
         rtmp[-1] -= 0.004425 #sell fee
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
      
-        statIO.write('%2d  & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
-                    psize, mean, std, skew, kurt,  pval, R_cum*100, AR_cum*100))
+        statIO.write('%2d  & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e  & %8.4f & %8.4f  \\\ \hline \n'%(
+                    psize, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
         print psize, R_cum, AR_cum
      
     resFile =  os.path.join(ExpResultsDir, 'group_symbol_daily_stats.txt')
@@ -287,7 +301,7 @@ def comparisonStats():
     endDate=date(2013,12,31)
     
     statIO = StringIO()        
-    statIO.write('symbol & mean & stdev. & skewness & kurtosis & normality & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO.write('symbol & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
     
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
@@ -300,7 +314,14 @@ def comparisonStats():
         skew = spstats.skew(rois)
         kurt = spstats.kurtosis(rois)
         print rois
-        k2, pval = spstats.normaltest(rois)
+#         k2, pval = spstats.normaltest(rois)
+        
+        ret = sss.jarque_bera(rois)
+        JB = ret[1]
+        
+        ret2 = sts.adfuller(rois)
+        ADF = ret2[1]
+
         
         rtmp = rois/100 + 1
         rtmp[1] -= 0.001425 #buy fee
@@ -308,8 +329,8 @@ def comparisonStats():
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
         
-        statIO.write('%s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
-                        symbol, mean, std, skew, kurt,  pval, R_cum*100, AR_cum*100))
+        statIO.write('%s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
+                        symbol, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
         print symbol, R_cum, AR_cum
     
     resFile =  os.path.join(ExpResultsDir, 'comparison_daily_stats.txt')
@@ -323,7 +344,7 @@ if __name__ == '__main__':
 #     readWealthCSV()
 #     parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
-#     individualSymbolStats()
-#     groupSymbolStats()
+    individualSymbolStats()
+    groupSymbolStats()
     comparisonStats()
    

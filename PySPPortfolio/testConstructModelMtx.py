@@ -42,6 +42,19 @@ def testConstructModelMtx():
         #index from [0, hist_period-1] for estimating statistics
         data = df[startIdx-hist_period+1: endIdx+1]['adjROI']/100.0
         print data
+
+def testADFTest():
+    import statsmodels.tsa.stattools as sts
+    import statsmodels.stats.stattools as sss
+    import numpy as np
+    data =np.random.randn(100)
+    #http://statsmodels.sourceforge.net/stable/generated/statsmodels.tsa.stattools.adfuller.html
+    print sts.adfuller(data)
     
+    #http://statsmodels.sourceforge.net/stable/generated/statsmodels.stats.stattools.jarque_bera.html
+    print sss.jarque_bera(data)
+    
+  
 if __name__ == '__main__':
-    testConstructModelMtx()
+#     testConstructModelMtx()
+    testADFTest()

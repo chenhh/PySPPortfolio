@@ -449,6 +449,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
             #只要有一組hist_period可抽出樣本即可
             converged = False
             
+            #multiple hist_period
             for hist_period in hist_periods:
                 subRiskyRetMtx = allRiskyRetMtx[:, tdx:(hist_period+tdx)]
                 assert subRiskyRetMtx.shape[1] == hist_period
@@ -475,6 +476,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
         else:
             raise ValueError("unknown scenFunc %s"%(scenFunc))
         
+        #scenMatrics, shape, L(may less than L) * M * S
         scenMatrics = np.array(scenMatrics)
         print "%s-%s - generate scen. mtx, %.3f secs"%(transDate, scenFunc, time.time()-t)
         
@@ -694,7 +696,7 @@ if __name__ == '__main__':
     
     elif args.riskType == "WCVaR":
         optFunc = fixedSymbolWCVaRSPPortfolio
-        hist_period = range(20, args.histPeriod, 10)
+        hist_period = range(70, 120+10, 10)
     
     money = 1e6
     n_scenario = args.scenario
