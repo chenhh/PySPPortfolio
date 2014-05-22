@@ -26,7 +26,7 @@ def KellyCriterion(symbols, riskyRet, money=1e6, solver="cplex"):
     t = time.time()
     
     mu = riskyRet.mean(axis=1)
-    
+    print "mu:", mu
     model = ConcreteModel()
     
     #Set
@@ -74,13 +74,28 @@ def testKelly():
     PklBasicFeaturesDir = os.path.join(FileDir, '..', 'pkl', 'BasicFeatures')
     
     symbols = ['2330', '2317', '6505']
-    n_period = 100
-    ROIs = np.empty((len(symbols), n_period))
+#     symbols = [
+#                 '2330', '2412', '2882', '6505', '2317',
+#                 '2303', '2002', '1303', '1326', '1301',
+#                 '2881', '2886', '2409', '2891', '2357',
+#                 '2382', '3045', '2883', '2454', '2880',
+#                 '2892', '4904', '2887', '2353', '2324',
+#                 '2801', '1402', '2311', '2475', '2888',
+#                 '2408', '2308', '2301', '2352', '2603',
+#                 '2884', '2890', '2609', '9904', '2610',
+#                 '1216', '1101', '2325', '2344', '2323',
+#                 '2371', '2204', '1605', '2615', '2201',
+#         ]
+    n_period = 2000
+    ROIs = np.empty((len(symbols)+1, n_period))
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
         roi =  df['adjROI'][:n_period]
         ROIs[idx] = roi
-        
+    
+    ROIs[-1] = np.zeros(n_period)
+    symbols.append('deposit')
+    
     KellyCriterion(symbols, ROIs, money=1e6, solver="cplex")
 
 if __name__ == '__main__':

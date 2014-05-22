@@ -555,7 +555,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
     layer0Dir =  "%s"%(fixedSymbolWCVaRSPPortfolio.__name__)
     layer1Dir =  "LargestMarketValue_200501"
     layer2Dir =  "%s_n%s_p%s_s%s_a%s"%(fixedSymbolWCVaRSPPortfolio.__name__, n_rv, 
-                                       ":".join(str(h) for h in hist_periods), 
+                                       "-".join(str(h) for h in hist_periods), 
                                        n_scenario, alpha)
     layer3Dir = "%s-%s_%s"%(t1, t2, rnd)
     resultDir = os.path.join(ExpResultsDir,  layer0Dir, layer1Dir, 
@@ -613,7 +613,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "symbols":  ",".join(symbols),
                "transDates": [pd.to_datetime(t).strftime("%Y%m%d") 
                               for t in transDates],    #(T+1)
-               "hist_period": ":".join(str(h) for h in hist_periods),
+               "hist_period": "-".join(str(h) for h in hist_periods),
                "buyTransFee":buyTransFee[0], 
                "sellTransFee":sellTransFee[0],
                "final_wealth": finalWealth,
@@ -706,6 +706,7 @@ if __name__ == '__main__':
     scenFunc = args.scenFunc
     solver = args.solver
     debug = False
+    print args
     optFunc (symbols, startDate, endDate,  money,
                            hist_period, n_scenario,
                            buyTransFee, sellTransFee,
