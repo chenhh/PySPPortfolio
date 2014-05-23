@@ -73,11 +73,24 @@ def KellyCriterion(symbols, riskyRet, money=1e6, solver="cplex"):
 
 
 def KellySP(symbols, riskyRet, riskFreeRet, allocatedWealth,
-                    depositWealth, buyTransFee, sellTransFee, alpha,
+                    depositWealth, buyTransFee, sellTransFee,
                     predictRiskyRet, predictRiskFreeRet, n_scenario, 
                    probs=None, solver="cplex"):
     '''
+    M: n_symbol, S: n_scenario
+    
+    @symbols, list, size: M
+    @riskRet: np.array, size: M
+    @riskFreeRet: float
+    @allocatedWealth, np.array, size:M
+    @depositWealth, float
+    @buyTransFee, np.array, size:M
+    @sellTransFee, np.array, size:M
     @riskyRet, shape: M*T
+    @predictRiskyRet, np.array, size: M*S
+    @predictRiskFreeRet, float
+    @n_scneario, int
+    @probs: np.array, size: S
     maximize E(W*R - 1/2W^T \simga W)
     '''
     t = time.time()
@@ -85,8 +98,7 @@ def KellySP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     if not probs:
         probs = np.ones(n_scenario, dtype=np.float)/n_scenario
     
-    mu = riskyRet.mean(axis=1)
-    print "mu:", mu
+
     model = ConcreteModel()
     
     #Set
@@ -141,18 +153,32 @@ def KellySP(symbols, riskyRet, riskFreeRet, allocatedWealth,
     def TotalCostObjective_rule(model):
         '''' E(W*R - 1/2W^T \simga W) '''
         profit = sum(probs[s]* model.riskyWealth[symbol]* predictRiskyRet[symbol, s]
-                  for symbol in symbols
+                  for symbol in model.symbols
                   for s in xrange(n_scenario))
         
         risk = 0
-        for idx in symbols:
-            for jdx in symbols:
+        for idx in model.symbols:
+            for jdx in model.symbols:
                 for s in xrange(n_scenario):
                     risk += (model.riskyWealth[idx] * model.riskyWealth[jdx] *
                               predictRiskyRet[idx, s]*predictRiskyRet[jdx, s])
         return profit - 1./2*risk
     
     model.TotalCostObjective = Objective(sense=maximize)
+    
+    # Create a solver
+    opt = SolverFactory(solver)
+    
+    if solver =="cplex":
+        opt.options["threads"] = 4
+    
+    instance = model.create()
+    results = opt.solve(instance)  
+    instance.load(results)
+    obj = results.Solution.Objective.__default_objective__['value']
+    display(instance)
+    
+    print "KellySP elapsed %.3f secs"%(time.time()-t)
     
 
 def testKelly():
@@ -184,5 +210,38 @@ def testKelly():
     
     KellyCriterion(symbols, ROIs, money=1e6, solver="cplex")
 
+
+def testKellySP():
+    symbols = ('1101', "1102", '1103')
+    M = len(symbols)
+    allocated = np.zeros(M)
+    money = 1e6
+    
+    buyTransFee =  np.ones(M)*0.001425  #買進0.1425%手續費
+    sellTransFee =  np.ones(M)*0.004425  #賣出0.3%手續費+0.1425%交易稅
+    
+    riskyRet = np.array([0.01, 0.02, 0.015])
+    riskFreeRet = 0
+    alpha = 0.95 
+    predictRiskyRet = np.array([[0.1422, 0.0389, 0.0323], 
+                       [0.2582, 0.0266, -0.01234],
+                       [0.01292, 0.0347, 0.0013],
+                       [0.0381, 0.0643, -0.0023],
+                       [0.0473, 0.1013, 0.0012],
+                       ]).T
+#     print predictRiskyRet
+    predictRiskFreeRet = 0.
+    
+    
+    results = KellySP(symbols, riskyRet, riskFreeRet, allocated,
+                       money, buyTransFee, sellTransFee, alpha,
+                       predictRiskyRet, predictRiskFreeRet, 
+                       n_scenario = 5,
+                       solver="cplex")
+    print results
+    print "*"*80
+
+
 if __name__ == '__main__':
-    testKelly()
+#     testKelly()
+    testKellySP()
