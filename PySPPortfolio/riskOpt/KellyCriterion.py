@@ -25,6 +25,8 @@ def KellyCriterion(symbols, riskyRet, money=1e6, solver="cplex"):
     '''
     t = time.time()
     
+    
+    
     mu = riskyRet.mean(axis=1)
     print "mu:", mu
     model = ConcreteModel()
@@ -68,6 +70,90 @@ def KellyCriterion(symbols, riskyRet, money=1e6, solver="cplex"):
     display(instance)
     
     print "Kelly elapsed %.3f secs"%(time.time()-t)
+
+
+def KellySP(symbols, riskyRet, riskFreeRet, allocatedWealth,
+                    depositWealth, buyTransFee, sellTransFee, alpha,
+                    predictRiskyRet, predictRiskFreeRet, n_scenario, 
+                   probs=None, solver="cplex"):
+    '''
+    @riskyRet, shape: M*T
+    maximize E(W*R - 1/2W^T \simga W)
+    '''
+    t = time.time()
+    
+    if not probs:
+        probs = np.ones(n_scenario, dtype=np.float)/n_scenario
+    
+    mu = riskyRet.mean(axis=1)
+    print "mu:", mu
+    model = ConcreteModel()
+    
+    #Set
+    model.symbols = range(len(symbols))
+       
+    model.scenarios = range(n_scenario)
+    
+    #decision variables
+    #stage 1  
+    model.buys = Var(model.symbols, within=NonNegativeReals)        
+    model.sells = Var(model.symbols, within=NonNegativeReals)
+    
+    #stage 2
+    model.riskyWealth = Var(model.symbols, within=NonNegativeReals) 
+    model.riskFreeWealth = Var(within=NonNegativeReals)
+    
+    #constraint
+    def riskyWeathConstraint_rule(model, m):
+        '''
+        riskyWealth is a decision variable depending on both buys and sells.
+        (it means riskyWealth depending on scenario).
+        therefore 
+        buys and sells are fist stage variable,
+        riskywealth is second stage variable
+        '''
+        return (model.riskyWealth[m] == 
+                (1. + riskyRet[m]) * allocatedWealth[m] + 
+                model.buys[m] - model.sells[m])
+    
+    model.riskyWeathConstraint = Constraint(model.symbols)
+    
+    
+    def riskFreeWealthConstraint_rule(model):
+        '''
+        riskFreeWealth is decision variable depending on both buys and sells.
+        therefore 
+        buys and sells are fist stage variable,
+        riskFreewealth is second stage variable
+        '''
+        totalSell = sum((1 - sellTransFee[m]) * model.sells[m] 
+                        for m in model.symbols)
+        totalBuy = sum((1 + buyTransFee[m]) * model.buys[m] 
+                       for m in model.symbols)
+            
+        return (model.riskFreeWealth == 
+                (1. + riskFreeRet)* depositWealth  + 
+                totalSell - totalBuy)
+            
+    model.riskFreeWealthConstraint = Constraint()
+    
+    #objective
+    def TotalCostObjective_rule(model):
+        '''' E(W*R - 1/2W^T \simga W) '''
+        profit = sum(probs[s]* model.riskyWealth[symbol]* predictRiskyRet[symbol, s]
+                  for symbol in symbols
+                  for s in xrange(n_scenario))
+        
+        risk = 0
+        for idx in symbols:
+            for jdx in symbols:
+                for s in xrange(n_scenario):
+                    risk += (model.riskyWealth[idx] * model.riskyWealth[jdx] *
+                              predictRiskyRet[idx, s]*predictRiskyRet[jdx, s])
+        return profit - 1./2*risk
+    
+    model.TotalCostObjective = Objective(sense=maximize)
+    
 
 def testKelly():
     FileDir = os.path.abspath(os.path.curdir)
