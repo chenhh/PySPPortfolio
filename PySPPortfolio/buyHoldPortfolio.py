@@ -21,6 +21,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
                      money=1e6, buyTransFee=0.001425, sellTransFee=0.004425,
                         save_pkl=False, save_csv=True, debug=False):
     t = time.time()
+    
     #read df
     dfs = []
     transDates = None
@@ -44,7 +45,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
     rtmp[1] -= 0.001425 #buy fee
     rtmp[-1] -= 0.004425 #sell fee
     R_cum = rtmp[1:].prod() - 1 
-    print R_cum
+    print "R_cum:",R_cum
     
     #initialize
     n_rv = len(dfs)
@@ -70,8 +71,12 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
     wealth = wealthProcess.sum(axis=1)
     pROI = (wealth[-1]/1e6 -1) * 100
     prois = wealth.pct_change()
-    print prois[:10] + 1
-    print rtmp[:10]
+    print wealthProcess
+    print wealth
+    prois2 = [w/wealth[t] for t, w in enumerate(wealth[1:])]
+    print "prois2:",prois2
+    print prois + 1
+    print rtmp
     print "buyhold portfolio %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, 
                                                            pROI, time.time() -t )
 
@@ -93,6 +98,6 @@ if __name__ == '__main__':
                 ]
    
     startDate=date(2005,1,1)
-    endDate=date(2013,12,31)
+    endDate=date(2005,1,10)
     for n_stock in n_stocks:
         buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
