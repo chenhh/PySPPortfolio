@@ -171,6 +171,75 @@ def parseDynamicSymbolResults(n_rv=50):
         avgIO.close()
         print "n_stock:%s OK, elapsed %.3f secs"%(n_stock, time()-t)
 
+
+def parseWCVaRSymbolResults():
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(70, 130, 10)
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95")
+    global ExpResultsDir
+    
+    myDir = os.path.join(ExpResultsDir, "fixedSymbolWCVaRSPPortfolio", "LargestMarketValue_200501")
+    for n_rv in n_rvs:
+        t = time()
+        avgIO = StringIO()        
+        avgIO.write('run, n_stock ,n_rv, hist_period, alpha, runtime, wealth, wROI(%), dROI(%%), Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), scen err\n')
+        
+        for alpha in alphas:
+            dirName = "fixedSymbolWCVaRSPPortfolio_n%s_p70-80-90-100-110-120_s100_a%s"%(n_rv, alpha)
+            exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+            wealths, rois, elapsed, scenerr = [], [], [], []
+            sharpe, sortinof, sortinop, dROI = [], [], [], []
+            for exp in exps:
+                summary = json.load(open(os.path.join(exp, "summary.json")))
+                wealth = float(summary['final_wealth'])
+                print dirName, wealth
+                wealths.append(wealth)
+                rois.append((wealth/1e6-1) * 100.0)
+                elapsed.append(float(summary['elapsed']))
+                scenerr.append(summary['scen_err_cnt'])
+                try:
+                    sharpe.append(float(summary['wealth_ROI_Sharpe'])*100)
+                    sortinof.append(float(summary['wealth_ROI_SortinoFull'])*100)
+                    sortinop.append(float(summary['wealth_ROI_SortinoPartial'])*100)
+                    dROI.append((float(summary['wealth_ROI_mean']))*100)
+                except KeyError:
+                    #read wealth process
+                    csvfile = os.path.join(exp, 'wealthProcess.csv')
+                    df = pd.read_csv( csvfile, index_col=0, parse_dates=True)
+                    proc = df.sum(axis=1)
+                    wrois =  proc.pct_change()
+                    wrois[0] = 0
+                        
+                    dROI.append(wrois.mean()*100)
+                    sharpe.append(Performance.Sharpe(wrois)*100)
+                    sortinof.append(Performance.SortinoFull(wrois)*100)
+                    sortinop.append(Performance.SortinoPartial(wrois)*100)
+                    
+
+            rois = np.asarray(rois)
+            wealths = np.asarray(wealths)
+            elapsed = np.asarray(elapsed)
+            scenerr = np.asarray(scenerr)
+            sharpe = np.asarray(sharpe)
+            sortinof = np.asarray(sortinof) 
+            sortinop = np.asarray(sortinop)
+            dROI =  np.asarray(dROI) 
+            
+            avgIO.write("%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n"%(
+                            len(rois), n_rv, n_rv, "70-80-90-100-110-120", alpha,  elapsed.mean(),
+                            wealths.mean(), rois.mean(), dROI.mean(), sharpe.mean(), sortinof.mean(), sortinop.mean(),
+                            scenerr.mean() ))
+                
+        resFile =  os.path.join(ExpResultsDir, 'avg_fixedWCVaRSPPortfolio_n%s_result_2005.csv'%(n_rv))
+        with open(resFile, 'wb') as fout:
+            fout.write(avgIO.getvalue())
+        avgIO.close()
+        print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
+
+
+
+
 def individualSymbolStats():
   
     symbols = [
@@ -344,7 +413,8 @@ if __name__ == '__main__':
 #     readWealthCSV()
 #     parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
-    individualSymbolStats()
-    groupSymbolStats()
-    comparisonStats()
+    parseWCVaRSymbolResults()
+#     individualSymbolStats()
+#     groupSymbolStats()
+#     comparisonStats()
    

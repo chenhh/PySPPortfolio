@@ -21,6 +21,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
                      money=1e6, buyTransFee=0.001425, sellTransFee=0.004425,
                         save_pkl=False, save_csv=True, debug=False):
     t = time.time()
+    
     #read df
     dfs = []
     transDates = None
@@ -30,7 +31,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
         startIdx = df.index.get_loc(tmp.index[0])
         endIdx =  df.index.get_loc(tmp.index[-1])
      
-        data = df[startIdx: endIdx+1]
+        data = df[startIdx: endIdx+1]['adjROI']/100.
 
         #check all data have the same transDates
         if transDates is None:
@@ -38,6 +39,13 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
         if not np.all(transDates == data.index.values):
             raise ValueError('symbol %s do not have the same trans. dates'%(symbol))
         dfs.append(data)
+    
+    roiMtx = np.array(dfs)
+    rtmp = roiMtx.mean(axis=0) + 1
+    rtmp[1] -= 0.001425 #buy fee
+    rtmp[-1] -= 0.004425 #sell fee
+    R_cum = rtmp[1:].prod() - 1 
+    print "R_cum:",R_cum
     
     #initialize
     n_rv = len(dfs)
@@ -53,7 +61,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
     for sdx, symbol in enumerate(symbols[:-1]):
         for tdx, transDate in enumerate(transDates[1:]):
             tm1 = transDates[tdx]
-            roi = dfs[sdx]['adjROI'][transDate]/100.0
+            roi = dfs[sdx][transDate]
             wealthProcess[symbol][transDate] = wealthProcess[symbol][tm1] * (1+roi) 
     
     #sell in the last period
@@ -62,11 +70,19 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
     
     wealth = wealthProcess.sum(axis=1)
     pROI = (wealth[-1]/1e6 -1) * 100
+    prois = wealth.pct_change()
+    print wealthProcess
+    print wealth
+    prois2 = [w/wealth[t] for t, w in enumerate(wealth[1:])]
+    print "prois2:",prois2
+    print prois + 1
+    print rtmp
     print "buyhold portfolio %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, 
                                                            pROI, time.time() -t )
 
 if __name__ == '__main__':
-    n_stocks = [5,10, 15, 20, 25, 30, 45, 40 , 45, 50]
+#     n_stocks = [5,10, 15, 20, 25, 30, 45, 40 , 45, 50]
+    n_stocks = [5, ]
     #20050103
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
@@ -82,6 +98,6 @@ if __name__ == '__main__':
                 ]
    
     startDate=date(2005,1,1)
-    endDate=date(2013,12,31)
+    endDate=date(2005,1,10)
     for n_stock in n_stocks:
         buyHoldPortfolio(symbols[:n_stock], startDate, endDate)

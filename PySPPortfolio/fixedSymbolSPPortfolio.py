@@ -632,7 +632,7 @@ def fixedSymbolWCVaRSPPortfolio(symbols, startDate, endDate,  money=1e6,
     with open (fileName, 'w') as fout:
         json.dump(summary, fout, indent=4)
     
-    print "%s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s\nsimulation ok, %.3f secs"%(
+    print "fixedSymbolWCVaRSPPortfolio %s-%s n%s-p%s-s%s-a%s --scenFunc %s --solver %s\nsimulation ok, %.3f secs"%(
              startDate, endDate, n_rv, hist_period, n_scenario, alpha,
              scenFunc, solver, time.time()-t0)
 
