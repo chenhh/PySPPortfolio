@@ -2,7 +2,7 @@
 ns=$1
 for alpha in 0.5 0.55 0.6 0.65 0.7
 do 
-	for p in 70 80 90
+	for p in 70 80 90 100 110 120
 	do
 	   python dynamicSymbolSPPortfolio.py -n $ns -p $p -a $alpha  -f
    	done

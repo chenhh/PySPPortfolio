@@ -234,7 +234,7 @@ def testKellySP():
     
     
     results = KellySP(symbols, riskyRet, riskFreeRet, allocated,
-                       money, buyTransFee, sellTransFee, alpha,
+                       money, buyTransFee, sellTransFee,
                        predictRiskyRet, predictRiskFreeRet, 
                        n_scenario = 5,
                        solver="cplex")
