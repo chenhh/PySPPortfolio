@@ -341,6 +341,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
             fout.write(scenErrStringIO.getvalue())
     scenErrStringIO.close()
     
+    sortinof, _ = Performance.SortinoFull( wealthROIs)
+    sortinop, _ = Performance.SortinoPartial( wealthROIs)
     #generating summary files
     summary = {"n_rv": n_rv,
                "T": T,
@@ -356,8 +358,8 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                "wealth_ROI_mean":   wealthROIs.mean(),
                "wealth_ROI_std":   wealthROIs.std(),
                "wealth_ROI_Sharpe": Performance.Sharpe( wealthROIs),
-               "wealth_ROI_SortinoFull": Performance.SortinoFull( wealthROIs),
-               "wealth_ROI_SortinoPartial": Performance.SortinoPartial( wealthROIs),
+               "wealth_ROI_SortinoFull": sortinof,
+               "wealth_ROI_SortinoPartial": sortinop,
                "scenFunc": scenFunc,
                "scen_err_cnt":len(genScenErrDates),
                "scen_err_dates": genScenErrDates,

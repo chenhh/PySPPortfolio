@@ -9,6 +9,7 @@ from __future__ import division
 import numpy as np
 
 
+
 def Sharpe(series):
     '''ROI series
     the numpy std() function is the population estimator
@@ -32,7 +33,7 @@ def SortinoFull(series, MAR=0):
         val =  mean/semistd
     except FloatingPointError:
         val = 0
-    return val
+    return val, semistd
 
 
 def SortinoPartial(series, MAR=0):
@@ -47,8 +48,8 @@ def SortinoPartial(series, MAR=0):
         semistd = np.sqrt(((s * n_neg_periods)**2).sum()/n_neg_periods)
         val =  mean/semistd
     except FloatingPointError:
-        val = 0
-    return val
+        val, semistd = 0, 0
+    return val, semistd
 
 
 if __name__ == '__main__':
