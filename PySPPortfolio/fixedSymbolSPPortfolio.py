@@ -126,7 +126,7 @@ def fixedSymbolSPPortfolio(symbols, startDate, endDate,  money=1e6,
                            hist_period=20, n_scenario=200,
                            buyTransFee=0.001425, sellTransFee=0.004425,
                            alpha=0.95, scenFunc="Moment", solver="cplex", 
-                           save_pkl=False, save_csv=True, debug=False):
+                           save_pkl=True, save_csv=False, debug=False):
     '''
     -固定投資標的物(symbols)，只考慮buy, sell的交易策略
     -假設symbols有n_rv個，投資期數共T期(最後一期不買賣，只結算)

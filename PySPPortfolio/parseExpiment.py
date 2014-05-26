@@ -505,12 +505,41 @@ def comparisonStats():
     
     statIO.close()
 
+def csv2Pkl():
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(70, 130, 10)
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
+    global ExpResultsDir
+    
+    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+    for n_rv in n_rvs:
+        for period in hist_periods:
+            for alpha in alphas:
+                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                
+                for exp in exps:
+                    
+                    for fileName in ['wealthProcess.csv', 'riskProcess.csv', 'actionProcess.csv']:
+                        csvFile =os.path.join(exp, fileName)
+                        df = pd.read_csv(csvFile, index_col=0, parse_dates=True)
+                        procName = csvFile[csvFile.rfind('/')+1:csvFile.rfind('.')]
+                        dfFile = os.path.join(exp, "%s.pkl"%(procName))
+                        df.save(dfFile)
+                        
+                        #if transform successful
+                        if os.path.exists(csvFile) and os.path.exists(dfFile):
+                            os.remove(csvFile) 
+                    
+                    print exp
+
 if __name__ == '__main__':
 #     readWealthCSV()
-    parseFixedSymbolResults()
+#     parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
 #     groupSymbolStats()
 #     comparisonStats()
-   
+    csv2Pkl()
