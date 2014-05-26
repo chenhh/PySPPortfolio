@@ -503,18 +503,25 @@ def comparisonStats():
     
     statIO.close()
 
-def csv2Pkl():
+def csv2Pkl(modelType="fixed"):
     n_rvs = range(5, 55, 5)
     hist_periods = range(70, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
+    if modelType == "fixed":
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+    elif modelType == "dynamic":
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
     
-    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
     for n_rv in n_rvs:
         for period in hist_periods:
             for alpha in alphas:
-                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                if modelType == "fixed":
+                    dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                elif modelType == "dynamic":
+                    dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                    
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
                 
                 for exp in exps:
@@ -527,24 +534,22 @@ def csv2Pkl():
                         if os.path.exists(dfFile) and not os.path.exists(csvFile):
                             continue
                     
+                        if not os.path.exists(dfFile) and  os.path.exists(csvFile):
+                            df = pd.read_csv(csvFile, index_col=0, parse_dates=True)
+                            df.save(dfFile)
+    
+                        #if transform successful
                         if os.path.exists(csvFile) and os.path.exists(dfFile):
                             os.remove(csvFile) 
-                        
-#                         df = pd.read_csv(csvFile, index_col=0, parse_dates=True)
-#                         df.save(dfFile)
-                        
-                        #if transform successful
-#                         if os.path.exists(csvFile) and os.path.exists(dfFile):
-#                             os.remove(csvFile) 
                     
                     print exp
 
 if __name__ == '__main__':
 #     readWealthCSV()
-    parseFixedSymbolResults()
+#     parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
 #     groupSymbolStats()
 #     comparisonStats()
-#     csv2Pkl()
+    csv2Pkl(modelType="dynamic")
