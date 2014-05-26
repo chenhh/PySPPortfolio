@@ -253,6 +253,9 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
             fout.write(scenErrStringIO.getvalue())
     scenErrStringIO.close()
     
+    sortinof, _ = Performance.SortinoFull( wealthROIs)
+    sortinop, _ = Performance.SortinoPartial( wealthROIs)
+    
     #generating summary files
     summary = {"n_rv": n_rv,
                "n_stock": n_stock,
@@ -269,8 +272,8 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
                "wealth_ROI_mean":   wealthROIs.mean(),
                "wealth_ROI_std":   wealthROIs.std(),
                "wealth_ROI_Sharpe": Performance.Sharpe( wealthROIs),
-               "wealth_ROI_SortinoFull": Performance.SortinoFull( wealthROIs),
-               "wealth_ROI_SortinoPartial": Performance.SortinoPartial( wealthROIs),
+               "wealth_ROI_SortinoFull":sortinof,
+               "wealth_ROI_SortinoPartial": sortinop,
                
                "scenFunc": scenFunc,
                "scen_err_cnt":len(genScenErrDates),
