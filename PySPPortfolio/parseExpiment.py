@@ -60,7 +60,7 @@ def parseFixedSymbolResults():
     for n_rv in n_rvs:
         t = time()
         avgIO = StringIO()        
-        avgIO.write('run, n_stock-n_rv, hist_period, alpha, time, wealth, wealth-std, wROI(%),wROI-std,' )
+        avgIO.write('run, n_stock-n_rv, hist_period, alpha, time, wealth, wealth-std, wROI(%),wROI-std, JB, ADF,' )
         avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoFull-std,')
         avgIO.write('SortinoPartial(%%), SortinoPartial-std, downDevFull, downDevPartial, CVaRfailRate, VaRfailRate, scen err\n')
         
@@ -72,6 +72,7 @@ def parseFixedSymbolResults():
                 sharpe, sortinof, sortinop, dROI = [], [], [], []
                 CVaRFailRates, VaRFailRates = [], []
                 downDevF, downDevP = [], []
+                JBs, ADFs = [], []
                 
                 for exp in exps:
                     summaryFile = os.path.join(exp, "summary.json")
@@ -91,7 +92,10 @@ def parseFixedSymbolResults():
                         dROI.append((float(summary['wealth_ROI_mean']))*100)
                         downDevF.append((float(summary['wealth_ROI_downDevFull']))*100)
                         downDevP.append((float(summary['wealth_ROI_downDevPartial']))*100)
-                    except (KeyError,):
+                        JBs.append(float(summary['wealth_ROI_JBTest']))
+                        ADFs.append(float(summary['wealth_ROI_ADFTest']))
+                        
+                    except (KeyError, TypeError):
                         #read wealth process
                         csvfile = os.path.join(exp, 'wealthProcess.csv')
                         df = pd.read_csv( csvfile, index_col=0, parse_dates=True)
@@ -104,11 +108,20 @@ def parseFixedSymbolResults():
                         sharpeVal = Performance.Sharpe(wrois)
                         sortinofVal, ddf = Performance.SortinoFull(wrois)
                         sortinopVal, ddp = Performance.SortinoPartial(wrois)
+                        ret = sss.jarque_bera(wrois)
+                        JB = ret[1]
+        
+                        ret2 = sts.adfuller(wrois)
+                        ADF = ret2[1]
+                        
                         sharpe.append(sharpeVal*100)
                         sortinof.append(sortinofVal*100)
                         sortinop.append(sortinopVal*100)
                         downDevF.append(ddf*100)
                         downDevP.append(ddp*100)
+                        JBs.append(JB)
+                        ADFs.append(ADF)
+                     
                         
                         summary['wealth_ROI_mean'] = dROIval
                         summary['wealth_ROI_Sharpe'] = sharpeVal 
@@ -116,10 +129,12 @@ def parseFixedSymbolResults():
                         summary['wealth_ROI_SortinoPartial'] = sortinopVal
                         summary['wealth_ROI_downDevFull'] = ddf
                         summary['wealth_ROI_downDevPartial'] = ddp
+                        summary['wealth_ROI_JBTest'] = JB
+                        summary['wealth_ROI_ADFTest'] = ADF
                         
-#                         fileName = os.path.join(exp, 'summary.json')
-#                         with open (fileName, 'w') as fout:
-#                             json.dump(summary, fout, indent=4)
+                        fileName = os.path.join(exp, 'summary.json')
+                        with open (fileName, 'w') as fout:
+                            json.dump(summary, fout, indent=4)
                      
                     try:
                         CVaRFailRate = float(summary['CVaR_failRate']*100)
@@ -127,7 +142,7 @@ def parseFixedSymbolResults():
                         CVaRFailRates.append(CVaRFailRate)
                         VaRFailRates.append(VaRFailRate)
                         
-                    except (KeyError,):
+                    except (KeyError,TypeError):
                         wealthFile = os.path.join(exp, 'wealthProcess.csv')
                         riskFile = os.path.join(exp, 'riskProcess.csv')
                         CVaRFailRate, VaRFailRate = VaRBackTest(wealthFile, riskFile)
@@ -138,6 +153,10 @@ def parseFixedSymbolResults():
                         CVaRFailRates.append(CVaRFailRate*100)
                         VaRFailRates.append(VaRFailRate*100)
                         
+#                         fileName = os.path.join(exp, 'summary.json')
+#                         with open (fileName, 'w') as fout:
+#                             json.dump(summary, fout, indent=4)
+#                         
                     
                         
                 rois = np.asarray(rois)
@@ -152,11 +171,13 @@ def parseFixedSymbolResults():
                 VaRFailRates = np.asarray(VaRFailRates)
                 downDevF = np.asarray(downDevF)
                 downDevP = np.asarray(downDevP)
+                JBs = np.asarray(JBs)
+                ADFs = np.asarray(ADFs)
                                 
-                avgIO.write("%s, %s-%s, %s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %.2f\n"%(
+                avgIO.write("%s, %s-%s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %.2f\n"%(
                                 len(rois), n_rv, n_rv, period, alpha,  elapsed.mean(),
                                 wealths.mean(), wealths.std(), 
-                                rois.mean(), rois.std(), 
+                                rois.mean(), rois.std(), max(JBs), max(ADFs),
                                 dROI.mean(), dROI.std(), 
                                 sharpe.mean(), sharpe.std(), 
                                 sortinof.mean(), sortinof.std(), 

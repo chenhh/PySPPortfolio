@@ -11,13 +11,18 @@ import sys
 from datetime import date
 import time
 from stats import Performance
+from cStringIO import StringIO
 
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
 
 from PySPPortfolio import (PklBasicFeaturesDir,  ExpResultsDir)
+import statsmodels.tsa.stattools as sts
+import statsmodels.stats.stattools as sss
+import statsmodels.stats.diagnostic as ssd
 
-def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31),  
+
+def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31),  
                      money=1e6, buyTransFee=0.001425, sellTransFee=0.004425,
                         save_pkl=False, save_csv=True, debug=False):
     t = time.time()
@@ -40,13 +45,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
             raise ValueError('symbol %s do not have the same trans. dates'%(symbol))
         dfs.append(data)
     
-    roiMtx = np.array(dfs)
-    rtmp = roiMtx.mean(axis=0) + 1
-    rtmp[1] -= 0.001425 #buy fee
-    rtmp[-1] -= 0.004425 #sell fee
-    R_cum = rtmp[1:].prod() - 1 
-    print "R_cum:",R_cum
-    
+     
     #initialize
     n_rv = len(dfs)
     symbols.append('deposit')
@@ -70,19 +69,41 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,1), endDate=date(2013,12,31)
     
     wealth = wealthProcess.sum(axis=1)
     pROI = (wealth[-1]/1e6 -1) * 100
-    prois = wealth.pct_change()
-    print wealthProcess
-    print wealth
-    prois2 = [w/wealth[t] for t, w in enumerate(wealth[1:])]
-    print "prois2:",prois2
-    print prois + 1
-    print rtmp
-    print "buyhold portfolio %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, 
+    prois = wealth.pct_change() * 100
+    prois[0] = 0
+    
+    ret = sss.jarque_bera(prois)
+    JB = ret[1]
+        
+    ret2 = sts.adfuller(prois)
+    ADF = ret2[1]
+    
+      
+    fileName = os.path.join(ExpResultsDir, 'BuyandHold_result_2005.csv')
+    avgIO = StringIO()
+    if not os.path.exists(fileName):
+        avgIO.write('n_rv, wealth, wROI(%), ROI(%%), ROI-std, JB, ADF,')
+        avgIO.write('Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), downDevFull, downDevPartial\n')
+        
+    sharpe = Performance.Sharpe(prois)
+    sortinof, ddf = Performance.SortinoFull(prois)
+    sortinop, ddp = Performance.SortinoPartial(prois)
+    
+    avgIO.write('%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
+                                        prois.mean(), prois.std(),
+                                        JB, ADF))
+    avgIO.write('%s,%s,%s,%s,%s\n'%(sharpe*100, sortinof*100,sortinop*100, ddf*100, ddp*100))
+    
+    with open(fileName, 'ab') as fout:
+        fout.write(avgIO.getvalue())
+    avgIO.close()
+  
+    print "buyhold portfolio %s %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, n_rv,
                                                            pROI, time.time() -t )
 
 if __name__ == '__main__':
-#     n_stocks = [5,10, 15, 20, 25, 30, 45, 40 , 45, 50]
-    n_stocks = [5, ]
+    n_stocks = [5,10, 15, 20, 25, 30, 35, 40 , 45, 50]
+#     n_stocks = [5, ]
     #20050103
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
@@ -97,7 +118,7 @@ if __name__ == '__main__':
                 '2371', '2204', '1605', '2615', '2201',
                 ]
    
-    startDate=date(2005,1,1)
-    endDate=date(2005,1,10)
+    startDate=date(2005,1,3)
+    endDate=date(2013,12,31)
     for n_stock in n_stocks:
         buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
