@@ -39,7 +39,7 @@ def dynamicSymbolSPPortfolio(symbols, startDate=date(2005,1,1),
                         hist_period=20, n_scenario=200,
                         buyTransFee=0.001425, sellTransFee=0.004425,
                         alpha=0.95, scenFunc="Moment", solver="cplex", 
-                        n_stock=3, save_pkl=False, save_csv=True, debug=False):
+                        n_stock=3, save_pkl=True, save_csv=False, debug=False):
     '''
     -在symbols中最多選n_stcok隻股票投資
     

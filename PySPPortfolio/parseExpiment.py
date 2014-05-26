@@ -24,13 +24,11 @@ import statsmodels.tsa.stattools as sts
 import statsmodels.stats.stattools as sss
     
 
-def VaRBackTest(wealthCSV, riskCSV):
+def VaRBackTest(wealth_df, risk_df):
     '''
     @wealth, wealth process
     @CVaR, CVaR process
     '''
-    wealth_df = pd.read_csv(wealthCSV, index_col=0, parse_dates=True)
-    risk_df = pd.read_csv(riskCSV, index_col=0, parse_dates=True)
 
     wealth =  wealth_df.sum(axis=1)[:-1]
     CVaR = risk_df['CVaR']
@@ -97,8 +95,8 @@ def parseFixedSymbolResults():
                         
                     except (KeyError, TypeError):
                         #read wealth process
-                        csvfile = os.path.join(exp, 'wealthProcess.csv')
-                        df = pd.read_csv( csvfile, index_col=0, parse_dates=True)
+
+                        df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
                         proc = df.sum(axis=1)
                         wrois =  proc.pct_change()
                         wrois[0] = 0
@@ -121,7 +119,6 @@ def parseFixedSymbolResults():
                         downDevP.append(ddp*100)
                         JBs.append(JB)
                         ADFs.append(ADF)
-                     
                         
                         summary['wealth_ROI_mean'] = dROIval
                         summary['wealth_ROI_Sharpe'] = sharpeVal 
@@ -143,9 +140,10 @@ def parseFixedSymbolResults():
                         VaRFailRates.append(VaRFailRate)
                         
                     except (KeyError,TypeError):
-                        wealthFile = os.path.join(exp, 'wealthProcess.csv')
-                        riskFile = os.path.join(exp, 'riskProcess.csv')
-                        CVaRFailRate, VaRFailRate = VaRBackTest(wealthFile, riskFile)
+                        wealth_df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
+                        risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
+                        
+                        CVaRFailRate, VaRFailRate = VaRBackTest(wealth_df, risk_df)
                         print "CVaR fail:%s, VaR fail:%s"%(CVaRFailRate, VaRFailRate)
                         summary['CVaR_failRate'] = CVaRFailRate
                         summary['VaR_failRate'] = VaRFailRate
@@ -523,23 +521,30 @@ def csv2Pkl():
                     
                     for fileName in ['wealthProcess.csv', 'riskProcess.csv', 'actionProcess.csv']:
                         csvFile =os.path.join(exp, fileName)
-                        df = pd.read_csv(csvFile, index_col=0, parse_dates=True)
                         procName = csvFile[csvFile.rfind('/')+1:csvFile.rfind('.')]
                         dfFile = os.path.join(exp, "%s.pkl"%(procName))
-                        df.save(dfFile)
                         
-                        #if transform successful
+                        if os.path.exists(dfFile) and not os.path.exists(csvFile):
+                            continue
+                    
                         if os.path.exists(csvFile) and os.path.exists(dfFile):
                             os.remove(csvFile) 
+                        
+#                         df = pd.read_csv(csvFile, index_col=0, parse_dates=True)
+#                         df.save(dfFile)
+                        
+                        #if transform successful
+#                         if os.path.exists(csvFile) and os.path.exists(dfFile):
+#                             os.remove(csvFile) 
                     
                     print exp
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseFixedSymbolResults()
+    parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
 #     groupSymbolStats()
 #     comparisonStats()
-    csv2Pkl()
+#     csv2Pkl()
