@@ -78,8 +78,8 @@ def parseFixedSymbolResults():
                 
                 for exp in exps:
                     summaryFile = os.path.join(exp, "summary.json")
-                    if not os.path.exists(summaryFile):
-                        continue
+#                     if not os.path.exists(summaryFile):
+#                         continue
                     summary = json.load(open(summaryFile))                 
                     wealth = float(summary['final_wealth'])
                     print dirName, wealth
@@ -762,7 +762,7 @@ def y2yDynamicSymbolResults():
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseFixedSymbolResults()
+    parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
@@ -770,4 +770,4 @@ if __name__ == '__main__':
 #     comparisonStats()
 #     csv2Pkl()
 #     y2yFixedSymbolResults()
-    y2yDynamicSymbolResults()
+#     y2yDynamicSymbolResults()
