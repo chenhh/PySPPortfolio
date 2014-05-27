@@ -22,7 +22,7 @@ Journal of Empirical Finance, Vol. 17, pp. 471-484, 2010.
 
 
 '''
-# from numba import autojit
+from __future__ import division
 from time import time
 from multiprocessing import Pool
 import multiprocessing as mp

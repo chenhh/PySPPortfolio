@@ -114,6 +114,54 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
   
     print "buyhold portfolio %s %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, n_rv,
                                                            pROI, time.time() -t )
+    
+    
+def y2yBuyHold():
+    t = time.time()
+    n_rvs = range(5, 50+5, 5)
+    years = range(2005, 2013+1)
+    resultDir = os.path.join(ExpResultsDir, "BuyandHoldPortfolio")
+    
+    avgIO = StringIO()        
+    avgIO.write('startDate, endDate, n_stock, wealth1, wealth2,  wROI(%), JB, ADF,' )
+    avgIO.write('meanROI(%%), Sharpe(%%), SortinoFull(%%), SortinoPartial(%%),')
+    avgIO.write(' downDevFull, downDevPartial\n')
+    
+    for n_rv in n_rvs:
+        df =  pd.read_pickle(os.path.join(resultDir,"wealthSum_n%s.pkl"%(n_rv)))
+        
+        for year in years:
+            startDate = date(year, 1, 1)
+            endDate = date(year, 12, 31)
+            print startDate, endDate
+            wealths = df[startDate:endDate]
+            wrois =  wealths.pct_change()         
+            wrois[0] = 0
+            
+            wealth1 =  wealths[0]
+            wealth2 =  wealths[-1] * (1-0.004425)
+            roi = (wealth2/wealth1 - 1) 
+            
+            ret = sss.jarque_bera(wrois)
+            JB = ret[1]
+            ret2 = sts.adfuller(wrois)
+            ADF = ret2[1]
+
+            sharpe = Performance.Sharpe(wrois)
+            sortinof, ddf = Performance.SortinoFull(wrois)
+            sortinop, ddp = Performance.SortinoPartial(wrois)
+ 
+            
+            avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%( wealths.index[0].strftime("%Y-%m-%d"),
+                 wealths.index[-1].strftime("%Y-%m-%d"), n_rv, wealth1, wealth2, roi*100, JB, ADF))
+            avgIO.write("%s,%s,%s,%s,"%(wrois.mean()*100, sharpe*100, sortinof*100, sortinop*100))
+            avgIO.write("%s,%s\n"%(ddf*100, ddp*100))
+ 
+    resFile =  os.path.join(ExpResultsDir, 'y2yfixedBuyandHold_result_2005.csv')
+    with open(resFile, 'wb') as fout:
+        fout.write(avgIO.getvalue())
+        avgIO.close()
+    print "y2yBuyandHold OK, elapsed %.3f secs"%(time.time()-t)
 
 if __name__ == '__main__':
     n_stocks = [5,10, 15, 20, 25, 30, 35, 40 , 45, 50]
@@ -134,5 +182,6 @@ if __name__ == '__main__':
    
     startDate=date(2005,1,3)
     endDate=date(2013,12,31)
-    for n_stock in n_stocks:
-        buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
+#     for n_stock in n_stocks:
+#         buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
+    y2yBuyHold()
