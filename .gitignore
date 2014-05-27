@@ -36,7 +36,7 @@ nosetests.xml
 .settings
 .directory
 __pycache__
-.log
+*.log
 #*.htm[l]
 #*.xz
 #*.7z

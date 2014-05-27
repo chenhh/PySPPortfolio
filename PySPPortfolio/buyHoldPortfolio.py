@@ -78,8 +78,22 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
     ret2 = sts.adfuller(prois)
     ADF = ret2[1]
     
-      
-    fileName = os.path.join(ExpResultsDir, 'BuyandHold_result_2005.csv')
+    
+    resultDir = os.path.join(ExpResultsDir, "BuyandHoldPortfolio")
+    if not os.path.exists(resultDir):
+        os.makedirs(resultDir)
+    
+    fileName = os.path.join(resultDir, 'BuyandHold_result_2005.csv')
+    
+    df_name = os.path.join(resultDir,"wealthProcess_n%s.pkl"%(len(dfs)))
+    df2_name = os.path.join(resultDir,"wealthSum_n%s.pkl"%(len(dfs)))
+    csv_name = os.path.join(resultDir,"wealthProcess_n%s.csv"%(len(dfs)))
+    csv2_name = os.path.join(resultDir,"wealthSum_n%s.csv"%(len(dfs)))
+    wealthProcess.to_csv(csv_name)
+    wealth.to_csv(csv2_name)
+    wealthProcess.to_pickle(df_name)
+    wealth.to_pickle(df2_name)
+    
     avgIO = StringIO()
     if not os.path.exists(fileName):
         avgIO.write('n_rv, wealth, wROI(%), ROI(%%), ROI-std, JB, ADF,')
