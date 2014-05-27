@@ -657,6 +657,106 @@ def y2yFixedSymbolResults():
         print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
 
 
+def y2yDynamicSymbolResults():
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(70, 130, 10)
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95")
+#     n_rvs = [5,]
+#     hist_periods = [70,]
+#     alphas = ("0.5",)
+
+    global ExpResultsDir
+    
+    myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
+    for n_rv in n_rvs:
+        t = time()
+        avgIO = StringIO()        
+        avgIO.write('run,startDate, endDate, n_stock, hist_period, alpha,wealth1, wealth1_std, wealth2, wealth2_std, wROI(%), wROI-std, JB, ADF,' )
+        avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoF-std,SortinoPartial(%%),SortinoP-std,')
+        avgIO.write(' downDevFull, downDevPartial, CVaRfailRate, VaRfailRate\n')
+        
+        for period in hist_periods:
+            for alpha in alphas:
+                dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                
+                years = range(2005, 2013+1)
+                wealth1, wealth2, rois = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years))),  np.zeros((len(exps), len(years)))
+                sharpes, sortinofs, sortinops, dROIs = np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years)))
+                CVaRFailRates, VaRFailRates = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
+                downDevF, downDevP =  np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
+                JBs, ADFs = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
+                
+                for rdx, exp in enumerate(exps):
+                    wealth_df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
+                    risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
+                    
+                    for ydx, year in enumerate(years):     
+                        startDate = date(year,1,3)
+                        endDate = date(year, 12, 31)
+                        
+                        exp_df =  wealth_df[startDate:endDate]
+                        exp_risk_df = risk_df[startDate:endDate]
+                        
+                        #wealth
+                        wealth = exp_df.sum(axis=1)
+                        wealth[-1] *=  (1-0.004425)
+                                        
+                        roi = (wealth[-1]/wealth[0] - 1)
+                        wrois =  wealth.pct_change()
+                        wrois[0] = 0
+                    
+                        wealth1[rdx,ydx] = wealth[0]
+                        wealth2[rdx,ydx] = wealth[-1]
+                        rois[rdx, ydx] = roi * 100
+                        
+                        #risk
+                        dROI = wrois.mean()
+                        sharpeVal = Performance.Sharpe(wrois)
+                        sortinofVal, ddf = Performance.SortinoFull(wrois)
+                        sortinopVal, ddp = Performance.SortinoPartial(wrois)
+                        ret = sss.jarque_bera(wrois)
+                        JB = ret[1]
+                        ret2 = sts.adfuller(wrois)
+                        ADF = ret2[1]
+                        CVaRFailRate, VaRFailRate = VaRBackTest(exp_df,  exp_risk_df)
+                        
+                        dROIs[rdx, ydx] = dROI * 100
+                        sharpes[rdx, ydx] = sharpeVal * 100
+                        sortinofs[rdx, ydx] = sortinofVal * 100
+                        sortinops[rdx, ydx] = sortinopVal*100
+                        JBs[rdx, ydx] = JB 
+                        ADFs[rdx, ydx] = ADF
+                        downDevF[rdx, ydx] = ddf*100
+                        downDevP[rdx, ydx] = ddp*100
+                        CVaRFailRates[rdx, ydx] = CVaRFailRate*100
+                        VaRFailRates[rdx, ydx] = VaRFailRate*100
+
+
+#                 avgIO.write('run,startDate, endDate, n_stock, hist_period, alpha, wealth, wealth_std, wROI(%), wROI-std, JB, ADF,' )
+#                 avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoF-std,SortinoPartial(%%),SortinoP-std,')
+#                 avgIO.write(' downDevFull, downDevPartial, CVaRfailRate, VaRfailRate\n')
+
+                for ydx, year in enumerate(years):
+                    startDate = date(year,1,3)
+                    endDate = date(year, 12, 31)
+                        
+                    exp_df =  wealth_df[startDate:endDate]
+                    
+                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, %s,%s,"%(len(exps),exp_df.index[0].strftime("%Y-%m-%d"), exp_df.index[-1].strftime("%Y-%m-%d"), n_rv, period, 
+                            alpha, wealth1[:,ydx].mean(), wealth1[:,ydx].std(), wealth2[:,ydx].mean(), wealth2[:,ydx].std() ,rois[:, ydx].mean(), rois[:, ydx].std(), max(JBs[:, ydx]), max(ADFs[:, ydx])))
+                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(dROIs[:, ydx].mean(), dROIs[:, ydx].std(), sharpes[:,ydx].mean(), sharpes[:,ydx].std(),
+                                                            sortinofs[:,ydx].mean(), sortinofs[:,ydx].std(), sortinops[:,ydx].mean(), sortinops[:,ydx].std()))
+                    avgIO.write("%s,%s,%s,%s\n"%(max( downDevF[:,ydx]), max(downDevP[:,ydx]), max(CVaRFailRates[:,ydx]), max(VaRFailRates[:,ydx])))
+                    print "n_rv:%s p:%s a:%s endDate:%s run:%s"%(n_rv, period, alpha, endDate, rdx+1)
+                
+        resFile =  os.path.join(ExpResultsDir, 'avg_y2yDynamicSymbolSPPortfolio_n%s_result_2005.csv'%(n_rv))
+        with open(resFile, 'ab') as fout:
+            fout.write(avgIO.getvalue())
+        avgIO.close()
+        print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
+
 if __name__ == '__main__':
 #     readWealthCSV()
 #     parseFixedSymbolResults()
@@ -666,4 +766,5 @@ if __name__ == '__main__':
 #     groupSymbolStats()
 #     comparisonStats()
 #     csv2Pkl()
-    y2yFixedSymbolResults()
+#     y2yFixedSymbolResults()
+    y2yDynamicSymbolResults()
