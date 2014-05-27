@@ -658,7 +658,7 @@ def y2yFixedSymbolResults():
 
 
 def y2yDynamicSymbolResults():
-    n_rvs = range(5, 55, 5)
+    n_rvs = range(20, 55, 5)
     hist_periods = range(70, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95")
@@ -680,6 +680,9 @@ def y2yDynamicSymbolResults():
             for alpha in alphas:
                 dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                
+                if len(exps) == 0:
+                    continue
                 
                 years = range(2005, 2013+1)
                 wealth1, wealth2, rois = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years))),  np.zeros((len(exps), len(years)))
@@ -743,7 +746,7 @@ def y2yDynamicSymbolResults():
                     endDate = date(year, 12, 31)
                         
                     exp_df =  wealth_df[startDate:endDate]
-                    
+                  
                     avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, %s,%s,"%(len(exps),exp_df.index[0].strftime("%Y-%m-%d"), exp_df.index[-1].strftime("%Y-%m-%d"), n_rv, period, 
                             alpha, wealth1[:,ydx].mean(), wealth1[:,ydx].std(), wealth2[:,ydx].mean(), wealth2[:,ydx].std() ,rois[:, ydx].mean(), rois[:, ydx].std(), max(JBs[:, ydx]), max(ADFs[:, ydx])))
                     avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(dROIs[:, ydx].mean(), dROIs[:, ydx].std(), sharpes[:,ydx].mean(), sharpes[:,ydx].std(),
