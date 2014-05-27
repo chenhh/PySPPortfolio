@@ -22,7 +22,7 @@ from time import time
 from stats import Performance
 import statsmodels.tsa.stattools as sts
 import statsmodels.stats.stattools as sss
-    
+import shutil    
 
 def VaRBackTest(wealth_df, risk_df):
     '''
@@ -514,6 +514,7 @@ def csv2Pkl(modelType="fixed"):
     elif modelType == "dynamic":
         myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
     
+    count = 0
     for n_rv in n_rvs:
         for period in hist_periods:
             for alpha in alphas:
@@ -531,6 +532,12 @@ def csv2Pkl(modelType="fixed"):
                         procName = csvFile[csvFile.rfind('/')+1:csvFile.rfind('.')]
                         dfFile = os.path.join(exp, "%s.pkl"%(procName))
                         
+#                         if not os.path.exists(dfFile) and not os.path.exists(csvFile):
+#                             count += 1
+#                             print "rmdir[%s]:%s"%(count, exp)
+#                             shutil.rmtree(exp)
+#                             break
+                        
                         if os.path.exists(dfFile) and not os.path.exists(csvFile):
                             continue
                     
@@ -542,14 +549,14 @@ def csv2Pkl(modelType="fixed"):
                         if os.path.exists(csvFile) and os.path.exists(dfFile):
                             os.remove(csvFile) 
                     
-                    print exp
+#                     print exp
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseFixedSymbolResults()
+    parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
 #     groupSymbolStats()
 #     comparisonStats()
-    csv2Pkl(modelType="dynamic")
+#     csv2Pkl()

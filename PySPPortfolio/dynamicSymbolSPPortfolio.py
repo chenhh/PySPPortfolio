@@ -347,5 +347,5 @@ if __name__ == '__main__':
                            buyTransFee, sellTransFee,
                            alpha, scenFunc, solver, 
                            n_stock=args.symbols, 
-                           save_pkl=False, save_csv=True, debug=debug)
+                           save_pkl=True, save_csv=False, debug=debug)
         

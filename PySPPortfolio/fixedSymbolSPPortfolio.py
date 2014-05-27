@@ -711,4 +711,4 @@ if __name__ == '__main__':
     optFunc (symbols, startDate, endDate,  money,
                            hist_period, n_scenario,
                            buyTransFee, sellTransFee,
-                           alpha, scenFunc, solver, debug)
+                           alpha, scenFunc, solver, save_pkl=True, save_csv=False, debug=debug)
