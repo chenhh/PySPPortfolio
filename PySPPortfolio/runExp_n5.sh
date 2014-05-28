@@ -14,3 +14,4 @@ do
         python fixedSymbolSPPortfolio.py -n 5 -p $p -a $alpha  -m 200501 -f
     done
 done
+

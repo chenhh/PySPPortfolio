@@ -53,7 +53,7 @@ def readWealthCSV():
 
 def parseFixedSymbolResults():
     n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
+    hist_periods = range(50, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
