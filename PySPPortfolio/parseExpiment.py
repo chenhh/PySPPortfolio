@@ -762,7 +762,7 @@ def y2yDynamicSymbolResults():
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseFixedSymbolResults()
+    parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
@@ -770,4 +770,4 @@ if __name__ == '__main__':
 #     comparisonStats()
 #     csv2Pkl()
 #     y2yFixedSymbolResults()
-    y2yDynamicSymbolResults()
+#     y2yDynamicSymbolResults()

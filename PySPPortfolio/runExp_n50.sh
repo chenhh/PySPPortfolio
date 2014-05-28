@@ -1,5 +1,5 @@
 #!/bin/bash
-for alpha 0.95 0.99
+for alpha in 0.95 0.99
 do
     for p in 70 80
     do
