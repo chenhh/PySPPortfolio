@@ -53,7 +53,7 @@ def readWealthCSV():
 
 def parseFixedSymbolResults():
     n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
+    hist_periods = range(50, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
@@ -78,8 +78,8 @@ def parseFixedSymbolResults():
                 
                 for exp in exps:
                     summaryFile = os.path.join(exp, "summary.json")
-                    if not os.path.exists(summaryFile):
-                        continue
+#                     if not os.path.exists(summaryFile):
+#                         continue
                     summary = json.load(open(summaryFile))                 
                     wealth = float(summary['final_wealth'])
                     print dirName, wealth
@@ -155,9 +155,9 @@ def parseFixedSymbolResults():
                         CVaRFailRates.append(CVaRFailRate*100)
                         VaRFailRates.append(VaRFailRate*100)
                         
-#                         fileName = os.path.join(exp, 'summary.json')
-#                         with open (fileName, 'w') as fout:
-#                             json.dump(summary, fout, indent=4)
+                        fileName = os.path.join(exp, 'summary.json')
+                        with open (fileName, 'w') as fout:
+                            json.dump(summary, fout, indent=4)
 #                         
                     
                         
@@ -509,7 +509,7 @@ def comparisonStats():
 
 def csv2Pkl(modelType="fixed"):
     n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
+    hist_periods = range(50, 80, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
@@ -536,11 +536,11 @@ def csv2Pkl(modelType="fixed"):
                         procName = csvFile[csvFile.rfind('/')+1:csvFile.rfind('.')]
                         dfFile = os.path.join(exp, "%s.pkl"%(procName))
                         
-#                         if not os.path.exists(dfFile) and not os.path.exists(csvFile):
-#                             count += 1
-#                             print "rmdir[%s]:%s"%(count, exp)
+                        if not os.path.exists(dfFile) and not os.path.exists(csvFile):
+                            count += 1
+                            print "rmdir[%s]:%s"%(count, exp)
 #                             shutil.rmtree(exp)
-#                             break
+                            break
                         
                         if os.path.exists(dfFile) and not os.path.exists(csvFile):
                             continue
@@ -548,7 +548,7 @@ def csv2Pkl(modelType="fixed"):
                         if not os.path.exists(dfFile) and  os.path.exists(csvFile):
                             df = pd.read_csv(csvFile, index_col=0, parse_dates=True)
                             df.save(dfFile)
-    
+     
                         #if transform successful
                         if os.path.exists(csvFile) and os.path.exists(dfFile):
                             os.remove(csvFile) 
@@ -659,7 +659,7 @@ def y2yFixedSymbolResults():
 
 def y2yDynamicSymbolResults():
     n_rvs = range(20, 55, 5)
-    hist_periods = range(70, 130, 10)
+    hist_periods = range(50, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95")
 #     n_rvs = [5,]
