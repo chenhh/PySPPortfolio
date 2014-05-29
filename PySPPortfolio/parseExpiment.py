@@ -52,9 +52,10 @@ def readWealthCSV():
 
 
 def parseFixedSymbolResults():
-#     n_rvs = range(5, 55, 5)
-    n_rvs = [50,]
+    n_rvs = range(5, 55, 5)
+#     n_rvs = [50,]
     hist_periods = range(50, 130, 10)
+#     hist_periods = [60,]
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
@@ -64,15 +65,19 @@ def parseFixedSymbolResults():
         t = time()
         avgIO = StringIO()        
         avgIO.write('run, n_stock-n_rv, hist_period, alpha, time, wealth, wealth-std, wROI(%),wROI-std, JB, ADF,' )
-        avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoFull-std,')
+        avgIO.write('meanROI(%%), stdev, skew, kurt, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoFull-std,')
         avgIO.write('SortinoPartial(%%), SortinoPartial-std, downDevFull, downDevPartial, CVaRfailRate, VaRfailRate, scen err\n')
         
         for period in hist_periods:
+            if n_rv == 50 and period == 50:
+                continue
+            
             for alpha in alphas:
                 dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
                 wealths, rois, elapsed, scenerr = [], [], [], []
                 sharpe, sortinof, sortinop, dROI = [], [], [], []
+                skews, kurts = [], []
                 CVaRFailRates, VaRFailRates = [], []
                 downDevF, downDevP = [], []
                 JBs, ADFs = [], []
@@ -97,6 +102,8 @@ def parseFixedSymbolResults():
                         downDevP.append((float(summary['wealth_ROI_downDevPartial']))*100)
                         JBs.append(float(summary['wealth_ROI_JBTest']))
                         ADFs.append(float(summary['wealth_ROI_ADFTest']))
+                        skews.append(float(summary['wealth_ROI_skew']))
+                        kurts.append(float(summary['wealth_ROI_kurt']))
                         
                     except (KeyError, TypeError):
                         #read wealth process
@@ -125,6 +132,11 @@ def parseFixedSymbolResults():
                         JBs.append(JB)
                         ADFs.append(ADF)
                         
+                        skew = spstats.skew(wrois)
+                        kurt = spstats.kurtosistest(wrois)
+                        skews.append(skew)
+                        kurts.append(kurt)
+                        
                         summary['wealth_ROI_mean'] = dROIval
                         summary['wealth_ROI_Sharpe'] = sharpeVal 
                         summary['wealth_ROI_SortinoFull'] = sortinofVal
@@ -133,6 +145,8 @@ def parseFixedSymbolResults():
                         summary['wealth_ROI_downDevPartial'] = ddp
                         summary['wealth_ROI_JBTest'] = JB
                         summary['wealth_ROI_ADFTest'] = ADF
+                        summary['wealth_ROI_skew'] = skew
+                        summary['wealth_ROI_kurt'] = kurt
                         
                         fileName = os.path.join(exp, 'summary.json')
                         with open (fileName, 'w') as fout:
@@ -176,12 +190,15 @@ def parseFixedSymbolResults():
                 downDevP = np.asarray(downDevP)
                 JBs = np.asarray(JBs)
                 ADFs = np.asarray(ADFs)
+                skews = np.asarray(skews)
+                kurts = np.asarray(kurts)
                                 
-                avgIO.write("%s, %s-%s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %.2f\n"%(
+                avgIO.write("%s, %s-%s, %s, %s, %s,%s,%s,%s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %.2f\n"%(
                                 len(rois), n_rv, n_rv, period, alpha,  elapsed.mean(),
                                 wealths.mean(), wealths.std(), 
                                 rois.mean(), rois.std(), max(JBs), max(ADFs),
-                                dROI.mean(), dROI.std(), 
+                                dROI.mean(), dROI.std(), skews.mean(),
+                                kurts.mean(), 
                                 sharpe.mean(), sharpe.std(), 
                                 sortinof.mean(), sortinof.std(), 
                                 sortinop.mean(), sortinop.std(),
@@ -196,7 +213,7 @@ def parseFixedSymbolResults():
         print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
 
 
-def parseFixedSymbol2Latex():
+def parseBestFixedSymbol2Latex():
     n_rvs = range(5, 55, 5)
     hist_periods = range(50, 130, 10)
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
@@ -204,23 +221,112 @@ def parseFixedSymbol2Latex():
     
     global ExpResultsDir
     myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+    outFile = os.path.join(ExpResultsDir, "fixedSymbolBestParam.txt")
+    
     for n_rv in n_rvs:
         t = time()
-        avgIO = StringIO()        
-        statIO.write('$h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
+       
+        statIO = StringIO()
+        if not os.path.exists(outFile):        
+            statIO.write('$n-h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF  \\\ \hline \n')
+        
+        currentBestParam = {"period": 0, "alpha": 0, "wealths": 0}
         for period in hist_periods:
             for alpha in alphas:
                 dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                wealths, rois, elapsed, scenerr = [], [], [], []
-                sharpe, sortinof, sortinop, dROI = [], [], [], []
-                CVaRFailRates, VaRFailRates = [], []
-                downDevF, downDevP = [], []
-                JBs, ADFs = [], []
-                
+                wealths = []
+           
                 for exp in exps:
                     summaryFile = os.path.join(exp, "summary.json")
-
+                    summary = json.load(open(summaryFile))                 
+                    wealth = float(summary['final_wealth'])
+                    wealths.append(wealth)
+                wealths = np.asarray(wealths)
+                
+                if wealths.mean() > currentBestParam['wealths']:
+                    currentBestParam['period'] = period
+                    currentBestParam['alpha'] = alpha
+                    currentBestParam['wealths'] = wealths.mean()
+        
+        #get the best param
+        print "n_rv:%s bestParam p:%s a:%s"%(n_rv, currentBestParam['period'], currentBestParam['alpha'])
+        dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, currentBestParam['period'], 
+                                                             currentBestParam['alpha'])
+        exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+        wealths, RAs,RCs = [], [], []
+        dROIs, skews, kurts = [], [], []
+        sharpes, sortinofs = [], []
+        JBs, ADFs = [], []
+        CVaRFailRates, VaRFailRates = [], []
+        
+        for exp in exps:
+            summaryFile = os.path.join(exp, "summary.json")
+            summary = json.load(open(summaryFile))                 
+            wealth = float(summary['final_wealth'])
+            wealths.append(wealth)
+            roi = (wealth/1e6-1)
+            RCs.append( roi* 100.0)
+            RAs.append((np.power(roi+1, 1./9) -1)*100)
+          
+            dROIs.append((float(summary['wealth_ROI_mean']))*100)
+            skews.append(float(summary['wealth_ROI_skew']))
+            kurts.append(float(summary['wealth_ROI_kurt'][0]))
+            
+            sharpes.append(float(summary['wealth_ROI_Sharpe'])*100)
+            sortinofs.append(float(summary['wealth_ROI_SortinoFull'])*100)
+            
+            JBs.append(float(summary['wealth_ROI_JBTest']))
+            ADFs.append(float(summary['wealth_ROI_ADFTest']))
+            
+            CVaRFailRate = float(summary['CVaR_failRate']*100)
+            VaRFailRate = float(summary['VaR_failRate']*100)
+            CVaRFailRates.append(CVaRFailRate)
+            VaRFailRates.append(VaRFailRate)
+            
+    
+        wealths = np.asarray(wealths)
+        RCs = np.asarray(RCs)
+        RAs = np.asarray(RAs)
+        dROIs =  np.asarray(dROIs)
+        skews = np.asarray(skews)
+        kurts = np.asarray(kurts)
+        
+        sharpes = np.asarray(sharpes)
+        sortinofs = np.asarray(sortinofs) 
+      
+        JBs = np.asarray(JBs)
+        ADFs = np.asarray(ADFs)
+       
+        CVaRFailRates = np.asarray(CVaRFailRates)
+        VaRFailRates = np.asarray(VaRFailRates)
+   
+        #'$h$ & \alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF & $F_{CVaR}$(\%) & $F_{VaR}$(\%) \\ \hline \n')
+        statIO.write("%s-%d-%4.2f & %4.2f & %4.2f & "%(
+                    n_rv,
+                    currentBestParam['period'],
+                    float(currentBestParam['alpha']),
+                    RCs.mean(), RAs.mean())
+                    )
+        
+        statIO.write("%4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & "%(
+                    dROIs.mean(), dROIs.std(),
+                    skews.mean(), kurts.mean(),
+                    sharpes.mean(), sortinofs.mean())
+                    )
+        
+        statIO.write("%4.2e & %4.2e \\\ \hline\n"%(
+                    max(JBs), max(ADFs))
+#                     CVaRFailRates.mean(),
+#                     VaRFailRates.mean())
+                    )
+        
+        with open(outFile, 'ab') as fout:
+            fout.write(statIO.getvalue())
+        statIO.close()
+        print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
+   
+                    
 
 def parseDynamicSymbolResults(n_rv=50):
 
@@ -793,7 +899,8 @@ def y2yDynamicSymbolResults():
 
 if __name__ == '__main__':
 #     readWealthCSV()
-    parseFixedSymbolResults()
+#     parseFixedSymbolResults()
+    parseBestFixedSymbol2Latex()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()

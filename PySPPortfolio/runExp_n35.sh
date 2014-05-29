@@ -7,4 +7,4 @@ do
     done
 done
 
-python fixedSymbolSPPortfolio.py -n 35 -p 120 -a 0.99  -m 200501 -f
+python fixedSymbolSPPortfolio.py -n 35 -p 60 -a 0.99  -m 200501 -f
