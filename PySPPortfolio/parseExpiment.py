@@ -339,7 +339,8 @@ def parseWCVaRSymbolResults():
 
 
 def individualSymbolStats():
-  
+    '''個股的統計分析
+    '''
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
                 '2303', '2002', '1303', '1326', '1301',
@@ -357,7 +358,7 @@ def individualSymbolStats():
     endDate=date(2013,12,31)
     
     statIO = StringIO()        
-    statIO.write('rank & symbol & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO.write('rank & symbol & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
     
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
@@ -368,11 +369,10 @@ def individualSymbolStats():
         std = rois.std()
         skew = spstats.skew(rois)
         kurt = spstats.kurtosis(rois)
-#         sharpe = Performance.Sharpe(rois)
-#         sortinof = Performance.SortinoFull(rois)
+        sharpe = Performance.Sharpe(rois)
+        sortinof, dd = Performance.SortinoFull(rois)
 #         sortinop = Performance.SortinoPartial(rois)
-        print rois
-#         k2, pval = spstats.normaltest(rois)
+
         ret = sss.jarque_bera(rois)
         JB = ret[1]
         
@@ -385,8 +385,9 @@ def individualSymbolStats():
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
         
-        statIO.write('%2d & %s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e & %8.4f & %8.4f   \\\ \hline \n'%(
-                        idx+1, symbol, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
+        #'rank & symbol & $R_{C}$ & $R_{A}$ $\mu$ & $\sigma$ & skew & kurt & JB & ADF & $S_p$ & $S_o$ 
+        statIO.write('%2d & %s & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2e & %4.2e \\\ \hline \n'%(
+                        idx+1, symbol, R_cum*100, AR_cum*100,  mean, std, skew, kurt,sharpe*100, sortinof*100,  JB, ADF ))
         print symbol, R_cum, AR_cum
     
     resFile =  os.path.join(ExpResultsDir, 'symbol_daily_stats.txt')
@@ -467,9 +468,10 @@ def comparisonStats():
     startDate=date(2005,1,3)
     endDate=date(2013,12,31)
     
-    statIO = StringIO()        
-    statIO.write('symbol & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO = StringIO()   
     
+    statIO.write('symbol & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
+
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
         print symbol, df.columns
@@ -480,6 +482,8 @@ def comparisonStats():
         std = rois.std()
         skew = spstats.skew(rois)
         kurt = spstats.kurtosis(rois)
+        sharpe = Performance.Sharpe(rois)
+        sortinof, dd = Performance.SortinoFull(rois)
         print rois
 #         k2, pval = spstats.normaltest(rois)
         
@@ -496,8 +500,8 @@ def comparisonStats():
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
         
-        statIO.write('%s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
-                        symbol, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
+        statIO.write(' %s & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2e & %4.2e \\\ \hline \n'%(
+                       symbol, R_cum*100, AR_cum*100,  mean, std, skew, kurt,sharpe*100, sortinof*100,  JB, ADF ))
         print symbol, R_cum, AR_cum
     
     resFile =  os.path.join(ExpResultsDir, 'comparison_daily_stats.txt')
@@ -762,12 +766,12 @@ def y2yDynamicSymbolResults():
 
 if __name__ == '__main__':
 #     readWealthCSV()
-    parseFixedSymbolResults()
+#     parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
-#     individualSymbolStats()
+    individualSymbolStats()
 #     groupSymbolStats()
-#     comparisonStats()
+    comparisonStats()
 #     csv2Pkl()
 #     y2yFixedSymbolResults()
 #     y2yDynamicSymbolResults()
