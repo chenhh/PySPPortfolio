@@ -11,6 +11,7 @@ import sys
 from datetime import date
 import time
 from stats import Performance
+import scipy.stats as spstats
 from cStringIO import StringIO
 
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
@@ -96,15 +97,17 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
     
     avgIO = StringIO()
     if not os.path.exists(fileName):
-        avgIO.write('n_rv, wealth, wROI(%), ROI(%%), ROI-std, JB, ADF,')
+        avgIO.write('n_rv, wealth, wROI(%), ROI(%%), std, skew, kurt, JB, ADF,')
         avgIO.write('Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), downDevFull, downDevPartial\n')
         
     sharpe = Performance.Sharpe(prois)
     sortinof, ddf = Performance.SortinoFull(prois)
     sortinop, ddp = Performance.SortinoPartial(prois)
     
-    avgIO.write('%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
+    avgIO.write('%s,%s,%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
                                         prois.mean(), prois.std(),
+                                        spstats.skew(prois),
+                                        spstats.kurtosis(prois),
                                         JB, ADF))
     avgIO.write('%s,%s,%s,%s,%s\n'%(sharpe*100, sortinof*100,sortinop*100, ddf*100, ddp*100))
     
@@ -182,6 +185,6 @@ if __name__ == '__main__':
    
     startDate=date(2005,1,3)
     endDate=date(2013,12,31)
-#     for n_stock in n_stocks:
-#         buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
-    y2yBuyHold()
+    for n_stock in n_stocks:
+        buyHoldPortfolio(symbols[:n_stock], startDate, endDate)
+#     y2yBuyHold()
