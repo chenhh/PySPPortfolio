@@ -13,6 +13,7 @@ import time
 from stats import Performance
 import scipy.stats as spstats
 from cStringIO import StringIO
+import scipy.stats as spstats
 
 ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
@@ -25,7 +26,7 @@ import statsmodels.stats.diagnostic as ssd
 
 def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31),  
                      money=1e6, buyTransFee=0.001425, sellTransFee=0.004425,
-                        save_pkl=False, save_csv=True, debug=False):
+                        save_latex=False, save_csv=True, debug=False):
     t = time.time()
     
     #read df
@@ -85,6 +86,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
         os.makedirs(resultDir)
     
     fileName = os.path.join(resultDir, 'BuyandHold_result_2005.csv')
+    statName = os.path.join(resultDir, 'BuyandHold_result_2005.txt')
     
     df_name = os.path.join(resultDir,"wealthProcess_n%s.pkl"%(len(dfs)))
     df2_name = os.path.join(resultDir,"wealthSum_n%s.pkl"%(len(dfs)))
@@ -95,25 +97,39 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
     wealthProcess.to_pickle(df_name)
     wealth.to_pickle(df2_name)
     
-    avgIO = StringIO()
+    csvIO = StringIO()
+    statIO = StringIO()
     if not os.path.exists(fileName):
-        avgIO.write('n_rv, wealth, wROI(%), ROI(%%), std, skew, kurt, JB, ADF,')
-        avgIO.write('Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), downDevFull, downDevPartial\n')
-        
+
+        csvIO.write('n_rv, wealth, wROI(%), ROI(%%), ROI-std, JB, ADF,')
+        csvIO.write('Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), downDevFull, downDevPartial\n')
+        statIO.write('$n$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
+
     sharpe = Performance.Sharpe(prois)
     sortinof, ddf = Performance.SortinoFull(prois)
     sortinop, ddp = Performance.SortinoPartial(prois)
     
-    avgIO.write('%s,%s,%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
+
+    csvIO.write('%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
                                         prois.mean(), prois.std(),
                                         spstats.skew(prois),
                                         spstats.kurtosis(prois),
                                         JB, ADF))
-    avgIO.write('%s,%s,%s,%s,%s\n'%(sharpe*100, sortinof*100,sortinop*100, ddf*100, ddp*100))
+    csvIO.write('%s,%s,%s,%s,%s\n'%(sharpe*100, sortinof*100,sortinop*100, ddf*100, ddp*100))
+    statIO.write('%2d &  %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2e & %4.2e \\\ \hline \n'%(
+                        n_rv,  pROI, np.power(wealth[-1]/1e6, 1./9)*100,  
+                        prois.mean()*100, prois.std()*100, 
+                        spstats.skew(prois), 
+                        spstats.kurtosis(prois),
+                        sharpe*100, sortinof*100,  JB, ADF ))
     
     with open(fileName, 'ab') as fout:
-        fout.write(avgIO.getvalue())
-    avgIO.close()
+        fout.write(csvIO.getvalue())
+    csvIO.close()
+    
+    with open(statName, 'ab') as fout:
+        fout.write(statIO.getvalue())
+    statIO.close()
   
     print "buyhold portfolio %s %s_%s pROI:%.3f%%, %.3f secs"%(startDate, endDate, n_rv,
                                                            pROI, time.time() -t )

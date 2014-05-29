@@ -195,6 +195,32 @@ def parseFixedSymbolResults():
         print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
 
 
+def parseFixedSymbol2Latex():
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(50, 130, 10)
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
+    
+    global ExpResultsDir
+    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+    for n_rv in n_rvs:
+        t = time()
+        avgIO = StringIO()        
+         statIO.write('$h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
+        for period in hist_periods:
+            for alpha in alphas:
+                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                wealths, rois, elapsed, scenerr = [], [], [], []
+                sharpe, sortinof, sortinop, dROI = [], [], [], []
+                CVaRFailRates, VaRFailRates = [], []
+                downDevF, downDevP = [], []
+                JBs, ADFs = [], []
+                
+                for exp in exps:
+                    summaryFile = os.path.join(exp, "summary.json")
+
+
 def parseDynamicSymbolResults(n_rv=50):
 
     n_stocks =  range(5, 55, 5)
@@ -339,7 +365,8 @@ def parseWCVaRSymbolResults():
 
 
 def individualSymbolStats():
-  
+    '''個股的統計分析
+    '''
     symbols = [
                 '2330', '2412', '2882', '6505', '2317',
                 '2303', '2002', '1303', '1326', '1301',
@@ -357,7 +384,7 @@ def individualSymbolStats():
     endDate=date(2013,12,31)
     
     statIO = StringIO()        
-    statIO.write('rank & symbol & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO.write('rank & symbol & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
     
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
@@ -368,11 +395,10 @@ def individualSymbolStats():
         std = rois.std()
         skew = spstats.skew(rois)
         kurt = spstats.kurtosis(rois)
-#         sharpe = Performance.Sharpe(rois)
-#         sortinof = Performance.SortinoFull(rois)
+        sharpe = Performance.Sharpe(rois)
+        sortinof, dd = Performance.SortinoFull(rois)
 #         sortinop = Performance.SortinoPartial(rois)
-        print rois
-#         k2, pval = spstats.normaltest(rois)
+
         ret = sss.jarque_bera(rois)
         JB = ret[1]
         
@@ -385,8 +411,9 @@ def individualSymbolStats():
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
         
-        statIO.write('%2d & %s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e & %8.4f & %8.4f   \\\ \hline \n'%(
-                        idx+1, symbol, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
+        #'rank & symbol & $R_{C}$ & $R_{A}$ $\mu$ & $\sigma$ & skew & kurt & JB & ADF & $S_p$ & $S_o$ 
+        statIO.write('%2d & %s & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2e & %4.2e \\\ \hline \n'%(
+                        idx+1, symbol, R_cum*100, AR_cum*100,  mean, std, skew, kurt,sharpe*100, sortinof*100,  JB, ADF ))
         print symbol, R_cum, AR_cum
     
     resFile =  os.path.join(ExpResultsDir, 'symbol_daily_stats.txt')
@@ -467,9 +494,10 @@ def comparisonStats():
     startDate=date(2005,1,3)
     endDate=date(2013,12,31)
     
-    statIO = StringIO()        
-    statIO.write('symbol & mean & stdev. & skewness & kurtosis & JB & ADF & $R_{CUM}$ & $R_{AR}$ \\\ \hline \n')
+    statIO = StringIO()   
     
+    statIO.write('symbol & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
+
     for idx, symbol in enumerate(symbols):
         df = pd.read_pickle(os.path.join(PklBasicFeaturesDir, '%s.pkl'%symbol))
         print symbol, df.columns
@@ -480,6 +508,8 @@ def comparisonStats():
         std = rois.std()
         skew = spstats.skew(rois)
         kurt = spstats.kurtosis(rois)
+        sharpe = Performance.Sharpe(rois)
+        sortinof, dd = Performance.SortinoFull(rois)
         print rois
 #         k2, pval = spstats.normaltest(rois)
         
@@ -496,8 +526,8 @@ def comparisonStats():
         R_cum = rtmp[1:].prod() - 1 
         AR_cum = np.power((R_cum+1), 1./9) -1  
         
-        statIO.write('%s & %8.4f & %8.4f & %8.4f & %8.4f & %8.4e & %8.4e & %8.4f & %8.4f  \\\ \hline \n'%(
-                        symbol, mean, std, skew, kurt,  JB, ADF, R_cum*100, AR_cum*100))
+        statIO.write(' %s & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2e & %4.2e \\\ \hline \n'%(
+                       symbol, R_cum*100, AR_cum*100,  mean, std, skew, kurt,sharpe*100, sortinof*100,  JB, ADF ))
         print symbol, R_cum, AR_cum
     
     resFile =  os.path.join(ExpResultsDir, 'comparison_daily_stats.txt')
