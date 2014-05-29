@@ -52,7 +52,7 @@ def readWealthCSV():
 
 
 def parseFixedSymbolResults():
-    n_rvs = range(5, 55, 5)
+    n_rvs = range(40, 55, 5)
 #     n_rvs = [50,]
     hist_periods = range(50, 130, 10)
 #     hist_periods = [60,]
@@ -899,8 +899,8 @@ def y2yDynamicSymbolResults():
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseFixedSymbolResults()
-    parseBestFixedSymbol2Latex()
+    parseFixedSymbolResults()
+#     parseBestFixedSymbol2Latex()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
