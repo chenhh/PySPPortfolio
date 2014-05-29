@@ -195,6 +195,32 @@ def parseFixedSymbolResults():
         print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
 
 
+def parseFixedSymbol2Latex():
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(50, 130, 10)
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
+    
+    global ExpResultsDir
+    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+    for n_rv in n_rvs:
+        t = time()
+        avgIO = StringIO()        
+         statIO.write('$h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
+        for period in hist_periods:
+            for alpha in alphas:
+                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                wealths, rois, elapsed, scenerr = [], [], [], []
+                sharpe, sortinof, sortinop, dROI = [], [], [], []
+                CVaRFailRates, VaRFailRates = [], []
+                downDevF, downDevP = [], []
+                JBs, ADFs = [], []
+                
+                for exp in exps:
+                    summaryFile = os.path.join(exp, "summary.json")
+
+
 def parseDynamicSymbolResults(n_rv=50):
 
     n_stocks =  range(5, 55, 5)
@@ -766,12 +792,12 @@ def y2yDynamicSymbolResults():
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseFixedSymbolResults()
+    parseFixedSymbolResults()
 #     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
-    individualSymbolStats()
+#     individualSymbolStats()
 #     groupSymbolStats()
-    comparisonStats()
+#     comparisonStats()
 #     csv2Pkl()
 #     y2yFixedSymbolResults()
 #     y2yDynamicSymbolResults()
