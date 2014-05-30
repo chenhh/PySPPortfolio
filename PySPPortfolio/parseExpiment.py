@@ -811,7 +811,12 @@ def csv2Pkl(modelType="fixed"):
 
 
 def y2yResults(modelType="fixed"):
-
+    '''fixedSymbol best parameters
+    5-100-0.60, 10-80-0.50 , 15-80-0.50, 20-110-0.50, 
+    25-100-0.55,30-120-0.60, 35-120-0.50, 40-110-0.50, 
+    45-120-0.55,, 50-120-0.50
+    '''
+    
     global ExpResultsDir
     if modelType == "fixed":
         n_rvs = range(5, 55, 5)

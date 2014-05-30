@@ -71,7 +71,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
     
     wealth = wealthProcess.sum(axis=1)
     pROI = (wealth[-1]/1e6 -1) * 100
-    prois = wealth.pct_change() * 100
+    prois = wealth.pct_change()
     prois[0] = 0
     
     ret = sss.jarque_bera(prois)
@@ -101,7 +101,7 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
     statIO = StringIO()
     if not os.path.exists(fileName):
 
-        csvIO.write('n_rv, wealth, wROI(%), ROI(%%), ROI-std, JB, ADF,')
+        csvIO.write('n_rv, wealth, wROI(%), ROI(%%), ROI-std, skew, kurt, JB, ADF,')
         csvIO.write('Sharpe(%%), SortinoFull(%%), SortinoPartial(%%), downDevFull, downDevPartial\n')
         statIO.write('$n$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF \\\ \hline \n')
 
@@ -110,14 +110,14 @@ def buyHoldPortfolio(symbols, startDate=date(2005,1,3), endDate=date(2013,12,31)
     sortinop, ddp = Performance.SortinoPartial(prois)
     
 
-    csvIO.write('%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
-                                        prois.mean(), prois.std(),
+    csvIO.write('%s,%s,%s,%s,%s,%s,%s,%s,%s,'%(n_rv, wealth[-1], pROI, 
+                                        prois.mean()*100, prois.std()*100,
                                         spstats.skew(prois),
                                         spstats.kurtosis(prois),
                                         JB, ADF))
     csvIO.write('%s,%s,%s,%s,%s\n'%(sharpe*100, sortinof*100,sortinop*100, ddf*100, ddp*100))
     statIO.write('%2d &  %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2f & %4.2e & %4.2e \\\ \hline \n'%(
-                        n_rv,  pROI, np.power(wealth[-1]/1e6, 1./9)*100,  
+                        n_rv,  pROI, (np.power(wealth[-1]/1e6, 1./9)-1)*100,  
                         prois.mean()*100, prois.std()*100, 
                         spstats.skew(prois), 
                         spstats.kurtosis(prois),
