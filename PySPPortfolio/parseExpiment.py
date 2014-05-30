@@ -53,9 +53,8 @@ def readWealthCSV():
 
 def parseFixedSymbolResults():
     n_rvs = range(5, 55, 5)
-#     n_rvs = [50,]
     hist_periods = range(50, 130, 10)
-#     hist_periods = [60,]
+
     alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
     global ExpResultsDir
@@ -64,9 +63,9 @@ def parseFixedSymbolResults():
     for n_rv in n_rvs:
         t = time()
         avgIO = StringIO()        
-        avgIO.write('run, n_stock-n_rv, hist_period, alpha, time, wealth, wealth-std, wROI(%),wROI-std, JB, ADF,' )
-        avgIO.write('meanROI(%%), stdev, skew, kurt, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoFull-std,')
-        avgIO.write('SortinoPartial(%%), SortinoPartial-std, downDevFull, downDevPartial, CVaRfailRate, VaRfailRate, scen err\n')
+        avgIO.write('run, n_rv, period, alpha, time, wealth, wealth-std, wROI(%), wROI-std,' )
+        avgIO.write('dROI(%%), stdev, skew, kurt, Sp(%%), Sp-std, StF(%%), StF-std,')
+        avgIO.write('StP(%%), Stp-std, downDevF, downDevP,  JB, ADF, CVaRfailRate, VaRfailRate, scen err\n')
         
         for period in hist_periods:
             if n_rv == 50 and period == 50:
@@ -75,79 +74,97 @@ def parseFixedSymbolResults():
             for alpha in alphas:
                 dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                wealths, rois, elapsed, scenerr = [], [], [], []
-                sharpe, sortinof, sortinop, dROI = [], [], [], []
-                skews, kurts = [], []
-                CVaRFailRates, VaRFailRates = [], []
-                downDevF, downDevP = [], []
+                wealths, ROI_Cs, dROIs, stdevs, skews, kurts =[], [], [], [], [], []
                 JBs, ADFs = [], []
+                sharpes, sortinofs, sortinops,  downDevF, downDevP = [],[],[],[],[]
+                CVaRFailRates, VaRFailRates = [], []
+                elapsed, scenerr = [], []
                 
-                for exp in exps:
+                if len(exps) > 3:
+                    exps = exps[:3]
+                  
+                if len(exps) == 0:
+                    avgIO.write('%s,'*26 + '\n')
+                    continue
+                    
+                    
+                for edx, exp in enumerate(exps):
+                    print exp
                     summaryFile = os.path.join(exp, "summary.json")
-#                     if not os.path.exists(summaryFile):
-#                         continue
-                    summary = json.load(open(summaryFile))                 
+                    summary = json.load(open(summaryFile))         
+                    print dirName
+                    
+                    #wealth and cum ROI
                     wealth = float(summary['final_wealth'])
-                    print dirName, wealth
                     wealths.append(wealth)
-                    rois.append((wealth/1e6-1) * 100.0)
+                    ROI_Cs.append((wealth/1e6-1) * 100.0)
+                    
                     elapsed.append(float(summary['elapsed']))
                     scenerr.append(summary['scen_err_cnt'])
                     try:
-                        sharpe.append(float(summary['wealth_ROI_Sharpe'])*100)
-                        sortinof.append(float(summary['wealth_ROI_SortinoFull'])*100)
-                        sortinop.append(float(summary['wealth_ROI_SortinoPartial'])*100)
-                        dROI.append((float(summary['wealth_ROI_mean']))*100)
+                        dROIs.append(float(summary['wealth_ROI_mean'])*100)
+                        stdevs.append(float(summary['wealth_ROI_stdev'])*100)
+                        skews.append(float(summary['wealth_ROI_skew']))
+                        kurts.append(float(summary['wealth_ROI_kurt']))
+                        sharpes.append(float(summary['wealth_ROI_Sharpe'])*100)
+                        sortinofs.append(float(summary['wealth_ROI_SortinoFull'])*100)
+                        sortinops.append(float(summary['wealth_ROI_SortinoPartial'])*100)
                         downDevF.append((float(summary['wealth_ROI_downDevFull']))*100)
                         downDevP.append((float(summary['wealth_ROI_downDevPartial']))*100)
                         JBs.append(float(summary['wealth_ROI_JBTest']))
                         ADFs.append(float(summary['wealth_ROI_ADFTest']))
-                        skews.append(float(summary['wealth_ROI_skew']))
-                        kurts.append(float(summary['wealth_ROI_kurt']))
                         
-                    except (KeyError, TypeError):
+                    except (KeyError,TypeError):
                         #read wealth process
-
+                        print "read raw df n_rv-period-alpha: %s-%s-%s:%s"%(n_rv, period, alpha, edx+1)
                         df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
+        
                         proc = df.sum(axis=1)
                         wrois =  proc.pct_change()
                         wrois[0] = 0
                         
-                        dROIval = wrois.mean()
-                        dROI.append(dROIval*100)
-                        sharpeVal = Performance.Sharpe(wrois)
-                        sortinofVal, ddf = Performance.SortinoFull(wrois)
-                        sortinopVal, ddp = Performance.SortinoPartial(wrois)
+                        dROI = wrois.mean()
+                        dROIs.append(dROI*100)
+                        summary['wealth_ROI_mean'] = dROI
+                        
+                        stdev = wrois.std()
+                        stdevs.append(stdev)
+                        summary['wealth_ROI_stdev'] = stdev
+                        
+                        skew = spstats.skew(wrois)
+                        skews.append(skew)
+                        summary['wealth_ROI_skew'] = skew
+                        
+                        kurt = spstats.kurtosis(wrois)
+                        kurts.append(kurt) 
+                        summary['wealth_ROI_kurt'] = kurt
+                      
+                        sharpe = Performance.Sharpe(wrois)
+                        sharpes.append(sharpe*100)
+                        summary['wealth_ROI_Sharpe'] = sharpe 
+                        
+                        sortinof, ddf = Performance.SortinoFull(wrois)
+                        sortinofs.append(sortinof*100)
+                        downDevF.append(ddf*100)
+                        summary['wealth_ROI_SortinoFull'] = sortinof
+                        summary['wealth_ROI_downDevFull'] = ddf
+                        
+                        sortinop, ddp = Performance.SortinoPartial(wrois)
+                        sortinops.append(sortinop*100)
+                        downDevP.append(ddp*100)
+                        summary['wealth_ROI_SortinoPartial'] = sortinop
+                        summary['wealth_ROI_downDevPartial'] = ddp
+                        
                         ret = sss.jarque_bera(wrois)
                         JB = ret[1]
+                        JBs.append(JB)
+                        summary['wealth_ROI_JBTest'] = JB
         
                         ret2 = sts.adfuller(wrois)
                         ADF = ret2[1]
-                        
-                        sharpe.append(sharpeVal*100)
-                        sortinof.append(sortinofVal*100)
-                        sortinop.append(sortinopVal*100)
-                        downDevF.append(ddf*100)
-                        downDevP.append(ddp*100)
-                        JBs.append(JB)
                         ADFs.append(ADF)
-                        
-                        skew = spstats.skew(wrois)
-                        kurt = spstats.kurtosistest(wrois)
-                        skews.append(skew)
-                        kurts.append(kurt)
-                        
-                        summary['wealth_ROI_mean'] = dROIval
-                        summary['wealth_ROI_Sharpe'] = sharpeVal 
-                        summary['wealth_ROI_SortinoFull'] = sortinofVal
-                        summary['wealth_ROI_SortinoPartial'] = sortinopVal
-                        summary['wealth_ROI_downDevFull'] = ddf
-                        summary['wealth_ROI_downDevPartial'] = ddp
-                        summary['wealth_ROI_JBTest'] = JB
                         summary['wealth_ROI_ADFTest'] = ADF
-                        summary['wealth_ROI_skew'] = skew
-                        summary['wealth_ROI_kurt'] = kurt
-                        
+             
                         fileName = os.path.join(exp, 'summary.json')
                         with open (fileName, 'w') as fout:
                             json.dump(summary, fout, indent=4)
@@ -163,49 +180,47 @@ def parseFixedSymbolResults():
                         risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
                         
                         CVaRFailRate, VaRFailRate = VaRBackTest(wealth_df, risk_df)
-                        print "CVaR fail:%s, VaR fail:%s"%(CVaRFailRate, VaRFailRate)
-                        summary['CVaR_failRate'] = CVaRFailRate
-                        summary['VaR_failRate'] = VaRFailRate
-                        
                         CVaRFailRates.append(CVaRFailRate*100)
                         VaRFailRates.append(VaRFailRate*100)
-                        
+                        summary['VaR_failRate'] = VaRFailRate
+                        summary['CVaR_failRate'] = CVaRFailRate
+                       
+                        print "CVaR fail:%s, VaR fail:%s"%(CVaRFailRate, VaRFailRate)
+                       
                         fileName = os.path.join(exp, 'summary.json')
                         with open (fileName, 'w') as fout:
                             json.dump(summary, fout, indent=4)
-#                         
-                    
-                        
-                rois = np.asarray(rois)
-                wealths = np.asarray(wealths)
-                elapsed = np.asarray(elapsed)
-                scenerr = np.asarray(scenerr)
-                sharpe = np.asarray(sharpe)
-                sortinof = np.asarray(sortinof) 
-                sortinop = np.asarray(sortinop)
-                dROI =  np.asarray(dROI) 
-                CVaRFailRates = np.asarray(CVaRFailRates)
-                VaRFailRates = np.asarray(VaRFailRates)
-                downDevF = np.asarray(downDevF)
-                downDevP = np.asarray(downDevP)
-                JBs = np.asarray(JBs)
-                ADFs = np.asarray(ADFs)
+                     
+        
+                wealths = np.asarray(wealths)    
+                ROI_Cs = np.asarray(ROI_Cs)
+                dROIs =  np.asarray(dROIs)
+                stdevs = np.asarray(stdevs)
                 skews = np.asarray(skews)
                 kurts = np.asarray(kurts)
-                                
-                avgIO.write("%s, %s-%s, %s, %s, %s,%s,%s,%s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %.2f\n"%(
-                                len(rois), n_rv, n_rv, period, alpha,  elapsed.mean(),
-                                wealths.mean(), wealths.std(), 
-                                rois.mean(), rois.std(), max(JBs), max(ADFs),
-                                dROI.mean(), dROI.std(), skews.mean(),
-                                kurts.mean(), 
-                                sharpe.mean(), sharpe.std(), 
-                                sortinof.mean(), sortinof.std(), 
-                                sortinop.mean(), sortinop.std(),
-                                downDevF.mean(), downDevP.mean(),
-                                CVaRFailRates.mean(), VaRFailRates.mean(),
-                                scenerr.mean() ))
+                JBs = np.asarray(JBs)
+                ADFs = np.asarray(ADFs)
                 
+                sharpes = np.asarray(sharpes)
+                sortinofs = np.asarray(sortinofs) 
+                sortinops = np.asarray(sortinops)
+                downDevF = np.asarray(downDevF)
+                downDevP = np.asarray(downDevP)
+                
+                CVaRFailRates = np.asarray(CVaRFailRates)
+                VaRFailRates = np.asarray(VaRFailRates)
+               
+                elapsed = np.asarray(elapsed)
+                scenerr = np.asarray(scenerr)
+                           
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,"%(len(ROI_Cs), n_rv, period, alpha,  elapsed.mean(),
+                                wealths.mean(), wealths.std(),  ROI_Cs.mean(), ROI_Cs.std() ))
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(dROIs.mean(), stdevs.mean(), skews.mean(),kurts.mean(), 
+                                sharpes.mean(), sharpes.std(), sortinofs.mean(), sortinofs.std() )) 
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s\n"%( sortinops.mean(), sortinops.std(), downDevF.mean(), 
+                                                             downDevP.mean(), max(JBs), max(ADFs), CVaRFailRates.mean(), 
+                                                             VaRFailRates.mean(),scenerr.mean() ))
+                    
         resFile =  os.path.join(ExpResultsDir, 'avg_fixedSymbolSPPortfolio_n%s_result_2005.csv'%(n_rv))
         with open(resFile, 'wb') as fout:
             fout.write(avgIO.getvalue())
@@ -228,7 +243,9 @@ def parseBestFixedSymbol2Latex():
        
         statIO = StringIO()
         if not os.path.exists(outFile):        
-            statIO.write('$n-h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & $\mu$(\%) & $\sigma$(\%) & skew & kurt & $S_p$(\%) & $S_o$(\%)  & JB & ADF  \\\ \hline \n')
+            statIO.write('$n-h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & ')
+            statIO.write('$\mu$(\%) & $\sigma$(\%) & skew & kurt & ')
+            statIO.write('$S_p$(\%) & $S_o$(\%)  & JB & ADF  \\\ \hline \n')
         
         currentBestParam = {"period": 0, "alpha": 0, "wealths": 0}
         for period in hist_periods:
@@ -250,7 +267,8 @@ def parseBestFixedSymbol2Latex():
                     currentBestParam['wealths'] = wealths.mean()
         
         #get the best param
-        print "n_rv:%s bestParam p:%s a:%s"%(n_rv, currentBestParam['period'], currentBestParam['alpha'])
+        print "n_rv:%s bestParam p:%s a:%s"%(n_rv, currentBestParam['period'], 
+                                             currentBestParam['alpha'])
         dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, currentBestParam['period'], 
                                                              currentBestParam['alpha'])
         exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
@@ -329,103 +347,116 @@ def parseBestFixedSymbol2Latex():
                     
 
 def parseDynamicSymbolResults(n_stock=50):
-
-    n_rvs = range(40, 55, 5)
-#     n_rvs = [50,]
-    hist_periods = range(50, 130, 10)
+    '''
+    p:90, 100, 110, 120
+    a:0.5, 0.55, 0.6, 0.65, 0.7
+    '''
+    n_rvs = range(5, 55, 5)
+    hist_periods = range(90, 120+10, 10)
 #     hist_periods = [60,]
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
-              "0.75", "0.8", "0.85", "0.9", "0.95", "0.99")
+    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
     global ExpResultsDir
     
     myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
     for n_rv in n_rvs:
         t = time()
         avgIO = StringIO()        
-        avgIO.write('run, n_stock-n_rv, hist_period, alpha, time, wealth, wealth-std, wROI(%),wROI-std, JB, ADF,' )
-        avgIO.write('meanROI(%%), stdev, skew, kurt, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoFull-std,')
-        avgIO.write('SortinoPartial(%%), SortinoPartial-std, downDevFull, downDevPartial, CVaRfailRate, VaRfailRate, scen err\n')
+        avgIO.write('run, n_rv-n_stock, period, alpha, time, wealth, wealth-std, wROI(%), wROI-std,' )
+        avgIO.write('dROI(%%), stdev, skew, kurt, Sp(%%), Sp-std, StF(%%), StF-std,')
+        avgIO.write('StP(%%), Stp-std, downDevF, downDevP,  JB, ADF, CVaRfailRate, VaRfailRate, scen err\n')
         
         for period in hist_periods:
-            if n_rv == 50 and period == 50:
-                continue
-            
+         
             for alpha in alphas:
                 dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                wealths, rois, elapsed, scenerr = [], [], [], []
-                sharpe, sortinof, sortinop, dROI = [], [], [], []
-                skews, kurts = [], []
-                CVaRFailRates, VaRFailRates = [], []
-                downDevF, downDevP = [], []
+                wealths, ROI_Cs, dROIs, stdevs, skews, kurts =[], [], [], [], [], []
                 JBs, ADFs = [], []
+                sharpes, sortinofs, sortinops,  downDevF, downDevP = [],[],[],[],[]
+                CVaRFailRates, VaRFailRates = [], []
+                elapsed, scenerr = [], []
                 
-                for exp in exps:
+                if len(exps) == 0:
+                    avgIO.write('%s,'*26 + '\n')
+                    continue
+                
+                for edx, exp in enumerate(exps):
+                    print exp
                     summaryFile = os.path.join(exp, "summary.json")
-#                     if not os.path.exists(summaryFile):
-#                         continue
-                    summary = json.load(open(summaryFile))                 
+                    summary = json.load(open(summaryFile))         
+                    print dirName
+                    
+                    #wealth and cum ROI
                     wealth = float(summary['final_wealth'])
-                    print dirName, wealth
                     wealths.append(wealth)
-                    rois.append((wealth/1e6-1) * 100.0)
+                    ROI_Cs.append((wealth/1e6-1) * 100.0)
+                    
                     elapsed.append(float(summary['elapsed']))
                     scenerr.append(summary['scen_err_cnt'])
                     try:
-                        sharpe.append(float(summary['wealth_ROI_Sharpe'])*100)
-                        sortinof.append(float(summary['wealth_ROI_SortinoFull'])*100)
-                        sortinop.append(float(summary['wealth_ROI_SortinoPartial'])*100)
-                        dROI.append((float(summary['wealth_ROI_mean']))*100)
+                        dROIs.append(float(summary['wealth_ROI_mean'])*100)
+                        stdevs.append(float(summary['wealth_ROI_stdev'])*100)
+                        skews.append(float(summary['wealth_ROI_skew']))
+                        kurts.append(float(summary['wealth_ROI_kurt']))
+                        sharpes.append(float(summary['wealth_ROI_Sharpe'])*100)
+                        sortinofs.append(float(summary['wealth_ROI_SortinoFull'])*100)
+                        sortinops.append(float(summary['wealth_ROI_SortinoPartial'])*100)
                         downDevF.append((float(summary['wealth_ROI_downDevFull']))*100)
                         downDevP.append((float(summary['wealth_ROI_downDevPartial']))*100)
                         JBs.append(float(summary['wealth_ROI_JBTest']))
                         ADFs.append(float(summary['wealth_ROI_ADFTest']))
-                        skews.append(float(summary['wealth_ROI_skew']))
-                        kurts.append(float(summary['wealth_ROI_kurt']))
                         
-                    except (KeyError, TypeError):
+                    except (KeyError,TypeError):
                         #read wealth process
-
+                        print "read raw df n_rv-period-alpha: %s-%s-%s:%s"%(n_rv, period, alpha, edx+1)
                         df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
+        
                         proc = df.sum(axis=1)
                         wrois =  proc.pct_change()
                         wrois[0] = 0
                         
-                        dROIval = wrois.mean()
-                        dROI.append(dROIval*100)
-                        sharpeVal = Performance.Sharpe(wrois)
-                        sortinofVal, ddf = Performance.SortinoFull(wrois)
-                        sortinopVal, ddp = Performance.SortinoPartial(wrois)
+                        dROI = wrois.mean()
+                        dROIs.append(dROI*100)
+                        summary['wealth_ROI_mean'] = dROI
+                        
+                        stdev = wrois.std()
+                        stdevs.append(stdev)
+                        summary['wealth_ROI_stdev'] = stdev
+                        
+                        skew = spstats.skew(wrois)
+                        skews.append(skew)
+                        summary['wealth_ROI_skew'] = skew
+                        
+                        kurt = spstats.kurtosis(wrois)
+                        kurts.append(kurt) 
+                        summary['wealth_ROI_kurt'] = kurt
+                      
+                        sharpe = Performance.Sharpe(wrois)
+                        sharpes.append(sharpe*100)
+                        summary['wealth_ROI_Sharpe'] = sharpe 
+                        
+                        sortinof, ddf = Performance.SortinoFull(wrois)
+                        sortinofs.append(sortinof*100)
+                        downDevF.append(ddf*100)
+                        summary['wealth_ROI_SortinoFull'] = sortinof
+                        summary['wealth_ROI_downDevFull'] = ddf
+                        
+                        sortinop, ddp = Performance.SortinoPartial(wrois)
+                        sortinops.append(sortinop*100)
+                        downDevP.append(ddp*100)
+                        summary['wealth_ROI_SortinoPartial'] = sortinop
+                        summary['wealth_ROI_downDevPartial'] = ddp
+                        
                         ret = sss.jarque_bera(wrois)
                         JB = ret[1]
+                        JBs.append(JB)
+                        summary['wealth_ROI_JBTest'] = JB
         
                         ret2 = sts.adfuller(wrois)
                         ADF = ret2[1]
-                        
-                        sharpe.append(sharpeVal*100)
-                        sortinof.append(sortinofVal*100)
-                        sortinop.append(sortinopVal*100)
-                        downDevF.append(ddf*100)
-                        downDevP.append(ddp*100)
-                        JBs.append(JB)
                         ADFs.append(ADF)
-                        
-                        skew = spstats.skew(wrois)
-                        kurt = spstats.kurtosistest(wrois)
-                        skews.append(skew)
-                        kurts.append(kurt)
-                        
-                        summary['wealth_ROI_mean'] = dROIval
-                        summary['wealth_ROI_Sharpe'] = sharpeVal 
-                        summary['wealth_ROI_SortinoFull'] = sortinofVal
-                        summary['wealth_ROI_SortinoPartial'] = sortinopVal
-                        summary['wealth_ROI_downDevFull'] = ddf
-                        summary['wealth_ROI_downDevPartial'] = ddp
-                        summary['wealth_ROI_JBTest'] = JB
                         summary['wealth_ROI_ADFTest'] = ADF
-                        summary['wealth_ROI_skew'] = skew
-                        summary['wealth_ROI_kurt'] = kurt
-                        
+             
                         fileName = os.path.join(exp, 'summary.json')
                         with open (fileName, 'w') as fout:
                             json.dump(summary, fout, indent=4)
@@ -441,49 +472,47 @@ def parseDynamicSymbolResults(n_stock=50):
                         risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
                         
                         CVaRFailRate, VaRFailRate = VaRBackTest(wealth_df, risk_df)
-                        print "CVaR fail:%s, VaR fail:%s"%(CVaRFailRate, VaRFailRate)
-                        summary['CVaR_failRate'] = CVaRFailRate
-                        summary['VaR_failRate'] = VaRFailRate
-                        
                         CVaRFailRates.append(CVaRFailRate*100)
                         VaRFailRates.append(VaRFailRate*100)
-                        
+                        summary['VaR_failRate'] = VaRFailRate
+                        summary['CVaR_failRate'] = CVaRFailRate
+                       
+                        print "CVaR fail:%s, VaR fail:%s"%(CVaRFailRate, VaRFailRate)
+                       
                         fileName = os.path.join(exp, 'summary.json')
                         with open (fileName, 'w') as fout:
                             json.dump(summary, fout, indent=4)
-#                         
-                    
-                        
-                rois = np.asarray(rois)
-                wealths = np.asarray(wealths)
-                elapsed = np.asarray(elapsed)
-                scenerr = np.asarray(scenerr)
-                sharpe = np.asarray(sharpe)
-                sortinof = np.asarray(sortinof) 
-                sortinop = np.asarray(sortinop)
-                dROI =  np.asarray(dROI) 
-                CVaRFailRates = np.asarray(CVaRFailRates)
-                VaRFailRates = np.asarray(VaRFailRates)
-                downDevF = np.asarray(downDevF)
-                downDevP = np.asarray(downDevP)
-                JBs = np.asarray(JBs)
-                ADFs = np.asarray(ADFs)
+                     
+        
+                wealths = np.asarray(wealths)    
+                ROI_Cs = np.asarray(ROI_Cs)
+                dROIs =  np.asarray(dROIs)
+                stdevs = np.asarray(stdevs)
                 skews = np.asarray(skews)
                 kurts = np.asarray(kurts)
-                                
-                avgIO.write("%s, %s-%s, %s, %s, %s,%s,%s,%s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %.2f\n"%(
-                                len(rois), n_rv, n_stock, period, alpha,  elapsed.mean(),
-                                wealths.mean(), wealths.std(), 
-                                rois.mean(), rois.std(), max(JBs), max(ADFs),
-                                dROI.mean(), dROI.std(), skews.mean(),
-                                kurts.mean(), 
-                                sharpe.mean(), sharpe.std(), 
-                                sortinof.mean(), sortinof.std(), 
-                                sortinop.mean(), sortinop.std(),
-                                downDevF.mean(), downDevP.mean(),
-                                CVaRFailRates.mean(), VaRFailRates.mean(),
-                                scenerr.mean() ))
+                JBs = np.asarray(JBs)
+                ADFs = np.asarray(ADFs)
                 
+                sharpes = np.asarray(sharpes)
+                sortinofs = np.asarray(sortinofs) 
+                sortinops = np.asarray(sortinops)
+                downDevF = np.asarray(downDevF)
+                downDevP = np.asarray(downDevP)
+                
+                CVaRFailRates = np.asarray(CVaRFailRates)
+                VaRFailRates = np.asarray(VaRFailRates)
+               
+                elapsed = np.asarray(elapsed)
+                scenerr = np.asarray(scenerr)
+                           
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,"%(len(ROI_Cs), n_rv, period, alpha,  elapsed.mean(),
+                                wealths.mean(), wealths.std(),  ROI_Cs.mean(), ROI_Cs.std() ))
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(dROIs.mean(), stdevs.mean(), skews.mean(),kurts.mean(), 
+                                sharpes.mean(), sharpes.std(), sortinofs.mean(), sortinofs.std() )) 
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s\n"%( sortinops.mean(), sortinops.std(), downDevF.mean(), 
+                                downDevP.mean(), max(JBs), max(ADFs), CVaRFailRates.mean(), 
+                                VaRFailRates.mean(),scenerr.mean() ))
+                    
         resFile =  os.path.join(ExpResultsDir, 'avg_dynamicSymbolSPPortfolio_n%s_result_2005.csv'%(n_rv))
         with open(resFile, 'wb') as fout:
             fout.write(avgIO.getvalue())
@@ -781,38 +810,52 @@ def csv2Pkl(modelType="fixed"):
                     print exp
 
 
-def y2yFixedSymbolResults():
-    n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
-              "0.75", "0.8", "0.85", "0.9", "0.95")
-#     n_rvs = [5,]
-#     hist_periods = [70,]
-#     alphas = ("0.5",)
+def y2yResults(modelType="fixed"):
 
     global ExpResultsDir
-    
-    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+    if modelType == "fixed":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(70, 130, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95")
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+        
+    elif modelType == "dynamic":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(90, 120+10, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
+   
     for n_rv in n_rvs:
-        t = time()
+        t = time()    
         avgIO = StringIO()        
-        avgIO.write('run,startDate, endDate, n_stock, hist_period, alpha,wealth1, wealth1_std, wealth2, wealth2_std, wROI(%), wROI-std, JB, ADF,' )
-        avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoF-std,SortinoPartial(%%),SortinoP-std,')
-        avgIO.write(' downDevFull, downDevPartial, CVaRfailRate, VaRfailRate\n')
+        avgIO.write('run, startDate, endDate, n_rv, period, alpha,  w1, w1-std, w2, w2-std, wROI(%), wROI-std,' )
+        avgIO.write('dROI(%%), stdev, skew, kurt, Sp(%%), Sp-std, StF(%%), StF-std,')
+        avgIO.write('StP(%%), Stp-std, downDevF, downDevP,  JB, ADF, CVaRfailRate, VaRfailRate, scen err\n')
         
         for period in hist_periods:
             for alpha in alphas:
-                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                if modelType == "fixed":
+                    dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                elif modelType == "dynamic":
+                    dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                     
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                if len(exps) > 3:
+                    exps = exps[:3]
                 
                 years = range(2005, 2013+1)
-                wealth1, wealth2, rois = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years))),  np.zeros((len(exps), len(years)))
-                sharpes, sortinofs, sortinops, dROIs = np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years)))
-                CVaRFailRates, VaRFailRates = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
-                downDevF, downDevP =  np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
-                JBs, ADFs = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
+                d1, d2 = len(exps), len(years)
                 
-                for rdx, exp in enumerate(exps):
+                wealth1, wealth2, ROI_Cs = np.zeros((d1, d2)), np.zeros((d1, d2)),  np.zeros((d1, d2))
+                dROIs, stdevs, skews, kurts = np.zeros((d1, d2)),  np.zeros((d1, d2)), np.zeros((d1, d2)), np.zeros((d1, d2))
+                JBs, ADFs =  np.zeros((d1, d2)),  np.zeros((d1, d2))
+                sharpes =  np.zeros((d1, d2))
+                sortinops, downDevP =  np.zeros((d1, d2)),  np.zeros((d1, d2))
+                sortinofs,downDevF =  np.zeros((d1, d2)),  np.zeros((d1, d2))
+                CVaRFailRates, VaRFailRates =   np.zeros((d1, d2)),  np.zeros((d1, d2))
+               
+                for edx, exp in enumerate(exps):
                     wealth_df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
                     risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
                     
@@ -820,60 +863,85 @@ def y2yFixedSymbolResults():
                         startDate = date(year,1,3)
                         endDate = date(year, 12, 31)
                         
-                        exp_df =  wealth_df[startDate:endDate]
+                        exp_wealth_df =  wealth_df[startDate:endDate]
                         exp_risk_df = risk_df[startDate:endDate]
                         
                         #wealth
-                        wealth = exp_df.sum(axis=1)
+                        wealth = exp_wealth_df.sum(axis=1)
                         wealth[-1] *=  (1-0.004425)
-                                        
+                        wealth1[edx,ydx] = wealth[0]
+                        wealth2[edx,ydx] = wealth[-1]
+                        
+                        #cum ROI
                         roi = (wealth[-1]/wealth[0] - 1)
                         wrois =  wealth.pct_change()
                         wrois[0] = 0
-                    
-                        wealth1[rdx,ydx] = wealth[0]
-                        wealth2[rdx,ydx] = wealth[-1]
-                        rois[rdx, ydx] = roi * 100
+                        ROI_Cs[edx, ydx] = roi * 100
                         
-                        #risk
-                        dROI = wrois.mean()
-                        sharpeVal = Performance.Sharpe(wrois)
-                        sortinofVal, ddf = Performance.SortinoFull(wrois)
-                        sortinopVal, ddp = Performance.SortinoPartial(wrois)
+                        #stats
+                        dROIs[edx, ydx] = wrois.mean() * 100
+                        stdevs[edx, ydx] = wrois.std()*100
+                        skews[edx, ydx] = spstats.skew(wrois)
+                        kurts[edx, ydx] = spstats.kurtosis(wrois)
+                        
+                        #JB, ADF
                         ret = sss.jarque_bera(wrois)
                         JB = ret[1]
                         ret2 = sts.adfuller(wrois)
                         ADF = ret2[1]
-                        CVaRFailRate, VaRFailRate = VaRBackTest(exp_df,  exp_risk_df)
+                        JBs[edx, ydx] = JB 
+                        ADFs[edx, ydx] = ADF
                         
-                        dROIs[rdx, ydx] = dROI * 100
-                        sharpes[rdx, ydx] = sharpeVal * 100
-                        sortinofs[rdx, ydx] = sortinofVal * 100
-                        sortinops[rdx, ydx] = sortinopVal*100
-                        JBs[rdx, ydx] = JB 
-                        ADFs[rdx, ydx] = ADF
-                        downDevF[rdx, ydx] = ddf*100
-                        downDevP[rdx, ydx] = ddp*100
-                        CVaRFailRates[rdx, ydx] = CVaRFailRate*100
-                        VaRFailRates[rdx, ydx] = VaRFailRate*100
-
-
-#                 avgIO.write('run,startDate, endDate, n_stock, hist_period, alpha, wealth, wealth_std, wROI(%), wROI-std, JB, ADF,' )
-#                 avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoF-std,SortinoPartial(%%),SortinoP-std,')
-#                 avgIO.write(' downDevFull, downDevPartial, CVaRfailRate, VaRfailRate\n')
-
+                        #Sharpe
+                        sharpe = Performance.Sharpe(wrois)
+                        sharpes[edx, ydx] = sharpe * 100
+                        
+                        sortinof, ddf = Performance.SortinoFull(wrois)
+                        sortinofs[edx, ydx] = sortinof * 100
+                        downDevF[edx, ydx] = ddf*100
+                        
+                        sortinop, ddp = Performance.SortinoPartial(wrois)
+                        sortinops[edx, ydx] = sortinop*100
+                        downDevP[edx, ydx] = ddp*100
+                      
+                        CVaRFailRate, VaRFailRate = VaRBackTest(exp_wealth_df,  exp_risk_df)
+                        CVaRFailRates[edx, ydx] = CVaRFailRate*100
+                        VaRFailRates[edx, ydx] = VaRFailRate*100
+                      
                 for ydx, year in enumerate(years):
                     startDate = date(year,1,3)
                     endDate = date(year, 12, 31)
                         
                     exp_df =  wealth_df[startDate:endDate]
                     
-                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, %s,%s,"%(len(exps),exp_df.index[0].strftime("%Y-%m-%d"), exp_df.index[-1].strftime("%Y-%m-%d"), n_rv, period, 
-                            alpha, wealth1[:,ydx].mean(), wealth1[:,ydx].std(), wealth2[:,ydx].mean(), wealth2[:,ydx].std() ,rois[:, ydx].mean(), rois[:, ydx].std(), max(JBs[:, ydx]), max(ADFs[:, ydx])))
-                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(dROIs[:, ydx].mean(), dROIs[:, ydx].std(), sharpes[:,ydx].mean(), sharpes[:,ydx].std(),
-                                                            sortinofs[:,ydx].mean(), sortinofs[:,ydx].std(), sortinops[:,ydx].mean(), sortinops[:,ydx].std()))
-                    avgIO.write("%s,%s,%s,%s\n"%(max( downDevF[:,ydx]), max(downDevP[:,ydx]), max(CVaRFailRates[:,ydx]), max(VaRFailRates[:,ydx])))
-                    print "n_rv:%s p:%s a:%s endDate:%s run:%s"%(n_rv, period, alpha, endDate, rdx+1)
+                    #avgIO.write('run, startDate, endDate, n_rv, period, alpha,  w1, w1-std, w2, w2-std, wROI(%), wROI-std,' )
+                    #avgIO.write('dROI(%%), stdev, skew, kurt, Sp(%%), Sp-std, StF(%%), StF-std,')
+                    #avgIO.write('StP(%%), Stp-std, downDevF, downDevP,  JB, ADF, CVaRfailRate, VaRfailRate\n')
+                    
+                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"%(
+                            len(exps),exp_df.index[0].strftime("%Y-%m-%d"), 
+                            exp_df.index[-1].strftime("%Y-%m-%d"), 
+                            n_rv, period, alpha, 
+                            wealth1[:,ydx].mean(), wealth1[:,ydx].std(), 
+                            wealth2[:,ydx].mean(), wealth2[:,ydx].std(), 
+                            ROI_Cs[:, ydx].mean(), ROI_Cs[:, ydx].std(), 
+                            ))
+                    
+                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(
+                            dROIs[:, ydx].mean(),  
+                            stdevs[:, ydx].mean(),
+                            skews[:, ydx].mean(), 
+                            kurts[:, ydx].mean(), 
+                            sharpes[:,ydx].mean(), sharpes[:,ydx].std(),
+                            sortinofs[:,ydx].mean(), sortinofs[:,ydx].std() 
+                           ))
+                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s\n"%(
+                            sortinops[:,ydx].mean(), sortinops[:,ydx].std(),
+                            downDevF[:,ydx].mean(), downDevP[:,ydx].mean(),
+                            max(JBs[:,ydx]), max(ADFs[:,ydx]),
+                            CVaRFailRates[:,ydx].mean(), VaRFailRates[:,ydx].mean()))
+             
+                    print "n_rv:%s p:%s a:%s endDate:%s run:%s"%(n_rv, period, alpha, endDate, edx+1)
                 
         resFile =  os.path.join(ExpResultsDir, 'avg_y2yfixedSymbolSPPortfolio_n%s_result_2005.csv'%(n_rv))
         with open(resFile, 'ab') as fout:
@@ -882,118 +950,16 @@ def y2yFixedSymbolResults():
         print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
 
 
-def y2yDynamicSymbolResults():
-    n_rvs = range(20, 55, 5)
-    hist_periods = range(50, 130, 10)
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
-              "0.75", "0.8", "0.85", "0.9", "0.95")
-#     n_rvs = [5,]
-#     hist_periods = [70,]
-#     alphas = ("0.5",)
-
-    global ExpResultsDir
-    
-    myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
-    for n_rv in n_rvs:
-        t = time()
-        avgIO = StringIO()        
-        avgIO.write('run,startDate, endDate, n_stock, hist_period, alpha,wealth1, wealth1_std, wealth2, wealth2_std, wROI(%), wROI-std, JB, ADF,' )
-        avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoF-std,SortinoPartial(%%),SortinoP-std,')
-        avgIO.write(' downDevFull, downDevPartial, CVaRfailRate, VaRfailRate\n')
-        
-        for period in hist_periods:
-            for alpha in alphas:
-                dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
-                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                
-                if len(exps) == 0:
-                    continue
-                
-                years = range(2005, 2013+1)
-                wealth1, wealth2, rois = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years))),  np.zeros((len(exps), len(years)))
-                sharpes, sortinofs, sortinops, dROIs = np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years))),np.zeros((len(exps), len(years)))
-                CVaRFailRates, VaRFailRates = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
-                downDevF, downDevP =  np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
-                JBs, ADFs = np.zeros((len(exps), len(years))), np.zeros((len(exps), len(years)))
-                
-                for rdx, exp in enumerate(exps):
-                    wealth_df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
-                    risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
-                    
-                    for ydx, year in enumerate(years):     
-                        startDate = date(year,1,3)
-                        endDate = date(year, 12, 31)
-                        
-                        exp_df =  wealth_df[startDate:endDate]
-                        exp_risk_df = risk_df[startDate:endDate]
-                        
-                        #wealth
-                        wealth = exp_df.sum(axis=1)
-                        wealth[-1] *=  (1-0.004425)
-                                        
-                        roi = (wealth[-1]/wealth[0] - 1)
-                        wrois =  wealth.pct_change()
-                        wrois[0] = 0
-                    
-                        wealth1[rdx,ydx] = wealth[0]
-                        wealth2[rdx,ydx] = wealth[-1]
-                        rois[rdx, ydx] = roi * 100
-                        
-                        #risk
-                        dROI = wrois.mean()
-                        sharpeVal = Performance.Sharpe(wrois)
-                        sortinofVal, ddf = Performance.SortinoFull(wrois)
-                        sortinopVal, ddp = Performance.SortinoPartial(wrois)
-                        ret = sss.jarque_bera(wrois)
-                        JB = ret[1]
-                        ret2 = sts.adfuller(wrois)
-                        ADF = ret2[1]
-                        CVaRFailRate, VaRFailRate = VaRBackTest(exp_df,  exp_risk_df)
-                        
-                        dROIs[rdx, ydx] = dROI * 100
-                        sharpes[rdx, ydx] = sharpeVal * 100
-                        sortinofs[rdx, ydx] = sortinofVal * 100
-                        sortinops[rdx, ydx] = sortinopVal*100
-                        JBs[rdx, ydx] = JB 
-                        ADFs[rdx, ydx] = ADF
-                        downDevF[rdx, ydx] = ddf*100
-                        downDevP[rdx, ydx] = ddp*100
-                        CVaRFailRates[rdx, ydx] = CVaRFailRate*100
-                        VaRFailRates[rdx, ydx] = VaRFailRate*100
-
-
-#                 avgIO.write('run,startDate, endDate, n_stock, hist_period, alpha, wealth, wealth_std, wROI(%), wROI-std, JB, ADF,' )
-#                 avgIO.write('meanROI(%%), meanROI-std, Sharpe(%%), Sharpe-std, SortinoFull(%%), SortinoF-std,SortinoPartial(%%),SortinoP-std,')
-#                 avgIO.write(' downDevFull, downDevPartial, CVaRfailRate, VaRfailRate\n')
-
-                for ydx, year in enumerate(years):
-                    startDate = date(year,1,3)
-                    endDate = date(year, 12, 31)
-                        
-                    exp_df =  wealth_df[startDate:endDate]
-                  
-                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, %s,%s,"%(len(exps),exp_df.index[0].strftime("%Y-%m-%d"), exp_df.index[-1].strftime("%Y-%m-%d"), n_rv, period, 
-                            alpha, wealth1[:,ydx].mean(), wealth1[:,ydx].std(), wealth2[:,ydx].mean(), wealth2[:,ydx].std() ,rois[:, ydx].mean(), rois[:, ydx].std(), max(JBs[:, ydx]), max(ADFs[:, ydx])))
-                    avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,"%(dROIs[:, ydx].mean(), dROIs[:, ydx].std(), sharpes[:,ydx].mean(), sharpes[:,ydx].std(),
-                                                            sortinofs[:,ydx].mean(), sortinofs[:,ydx].std(), sortinops[:,ydx].mean(), sortinops[:,ydx].std()))
-                    avgIO.write("%s,%s,%s,%s\n"%(max( downDevF[:,ydx]), max(downDevP[:,ydx]), max(CVaRFailRates[:,ydx]), max(VaRFailRates[:,ydx])))
-                    print "n_rv:%s p:%s a:%s endDate:%s run:%s"%(n_rv, period, alpha, endDate, rdx+1)
-                
-        resFile =  os.path.join(ExpResultsDir, 'avg_y2yDynamicSymbolSPPortfolio_n%s_result_2005.csv'%(n_rv))
-        with open(resFile, 'ab') as fout:
-            fout.write(avgIO.getvalue())
-        avgIO.close()
-        print "n_rv:%s OK, elapsed %.3f secs"%(n_rv, time()-t)
 
 if __name__ == '__main__':
 #     readWealthCSV()
 #     parseFixedSymbolResults()
 #     parseBestFixedSymbol2Latex()
-    parseDynamicSymbolResults()
+#     parseDynamicSymbolResults()
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
 #     groupSymbolStats()
 #     comparisonStats()
 #     csv2Pkl()
-#     y2yFixedSymbolResults()
-#     y2yDynamicSymbolResults()
+    y2yResults()
+
