@@ -866,8 +866,8 @@ def _ROIstats(rois):
 
 if __name__ == '__main__':
 #     readWealthCSV()
-#     parseSymbolResults(modelType = "fixed")
-#     parseSymbolResults(modelType = "dynamic")    
+    parseSymbolResults(modelType = "fixed")
+    parseSymbolResults(modelType = "dynamic")    
 #     parseBestSymbol2Latex(modelType = "fixed")
 #     parseBestSymbol2Latex(modelType = "dynamic")
 
@@ -877,4 +877,4 @@ if __name__ == '__main__':
 #     comparisonStats()
 #     csv2Pkl()
 #     y2yResults()
-    compareY2YResults()
+#     compareY2YResults()
