@@ -155,7 +155,7 @@ def SPA4BHSymbol(modelType="fixed"):
                         diffobj.setCompareROIs(wrois)
         
         print " SPA4BHSymbol n_rv: %s, load data OK, %.3f secs"%(n_rv, time.time()-t1)
-        t2 = time()
+        t2 = time.time()
         #SPA test
         Q = 0.5
         n_samplings = 5000
@@ -233,7 +233,7 @@ def SPA4Symbol(modelType = "fixed"):
                         diffobj.setCompareROIs(wrois)
         
         print " SPA4Symbol n_rv: %s, load data OK, %.3f secs"%(n_rv, time.time()-t1)
-        t2 = time()
+        t2 = time.time()
         #SPA test
         Q = 0.5
         n_samplings = 5000
