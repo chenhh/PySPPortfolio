@@ -16,6 +16,7 @@ ProjectDir = os.path.join(os.path.abspath(os.path.curdir), '..')
 sys.path.insert(0, ProjectDir)
 from PySPPortfolio import  (PklBasicFeaturesDir,  ExpResultsDir)
 import simplejson as json
+from datetime import date
 from cStringIO import StringIO
  
 class ROIDiffObject(object):
@@ -89,7 +90,7 @@ class ROIDiffObject(object):
         return np.sqrt(varColMtx)
 
 
-def SPA4BHSymbol(modelType="fixed"):
+def SPA4BHSymbol(modelType="fixed", years=None):
     '''
     buy-and-hold versus. SP model
     '''
@@ -102,8 +103,13 @@ def SPA4BHSymbol(modelType="fixed"):
               "0.75", "0.8", "0.85", "0.9", "0.95")
         myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", 
                              "LargestMarketValue_200501")
-        resFile = os.path.join(ExpResultsDir, "SPA", 
-                               "SPA_Fixed_BetterBH.csv")
+        if not years:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
+                                   "SPA_Fixed_BetterBH.csv")
+        else:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
+                                   "SPA_year_Fixed_BetterBH.csv")
+        
         
     elif modelType == "dynamic":
         n_rvs = range(5, 55, 5)
@@ -111,17 +117,27 @@ def SPA4BHSymbol(modelType="fixed"):
         alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
         myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", 
                              "LargestMarketValue_200501_rv50")
-        resFile = os.path.join(ExpResultsDir, "SPA", 
+        if not years:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
                                "SPA_Dynamic_BetterBH.csv")
+        else:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_year_Dynamic_BetterBH.csv")
 
     bhDir = os.path.join(ExpResultsDir, "BuyandHoldPortfolio")
     
     
     #stats file
     avgIO = StringIO()
-    if not os.path.exists(resFile):        
-        avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
-        
+    if not os.path.exists(resFile):
+        if not years: 
+            avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
+        else:
+            avgIO.write('startDate, endDate, n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
+            
+    bh_rois = None
+    tgt_rois = []
+    
     for n_rv in n_rvs:
         t1 = time.time()
         
@@ -130,7 +146,6 @@ def SPA4BHSymbol(modelType="fixed"):
         bh_finalWealth = bh_df[-1]
         bh_rois = bh_df.pct_change()
         bh_rois[0] = 0
-        diffobj = ROIDiffObject(bh_rois)
         
         #load model ROI
         for period in hist_periods:
@@ -149,23 +164,50 @@ def SPA4BHSymbol(modelType="fixed"):
                     df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
                     proc = df.sum(axis=1)
                     exp_finalWealth = proc[-1]
+                    
                     if exp_finalWealth >= bh_finalWealth:
                         wrois =  proc.pct_change()
                         wrois[0] = 0
-                        diffobj.setCompareROIs(wrois)
-        
+                        tgt_rois.append(wrois)
+                  
         print " SPA4BHSymbol n_rv: %s, load data OK, %.3f secs"%(n_rv, time.time()-t1)
-        t2 = time.time()
-        #SPA test
-        Q = 0.5
-        n_samplings = 5000
-        verbose = True
-        pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
-        print "n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(n_rv,
-                    diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
-        avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, 
-                            diffobj.n_rules, diffobj.n_periods, pvalue))
-    
+        
+        if not years: 
+            #set diff obj
+            diffobj = ROIDiffObject(bh_rois)
+            for rois in tgt_rois:
+                diffobj.setCompareROIs(rois)
+       
+            #SPA test
+            t2 = time.time()
+            Q = 0.5
+            n_samplings = 5000
+            verbose = True
+            pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+            print "full n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(
+                    n_rv, diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
+            avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, 
+                                diffobj.n_rules, diffobj.n_periods, pvalue))
+        else:
+            for year in years:
+                startDate, endDate = date(year, 1, 1), date(year, 12, 31)
+                
+                diffobj = ROIDiffObject(bh_rois[startDate:endDate])
+                for rois in tgt_rois:
+                    diffobj.setCompareROIs(rois[startDate:endDate])
+                    
+                t2 = time.time()
+                Q = 0.5
+                n_samplings = 5000
+                verbose = True
+                pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+                print "year:%s n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(
+                        year, n_rv, diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
+                avgIO.write("%s, %s,%s,%s,%s,%s,%s,%s\n"%(
+                    bh_rois[startDate:endDate].index[0],  bh_rois[startDate:endDate].index[-1],
+                    n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
+                
+            
     with open(resFile, 'ab') as fout:
         fout.write(avgIO.getvalue())
     avgIO.close()
@@ -174,7 +216,7 @@ def SPA4BHSymbol(modelType="fixed"):
 
 
 
-def SPA4Symbol(modelType = "fixed"):
+def SPA4Symbol(modelType = "fixed", years=None):
     '''
     model for profit test
     '''
@@ -187,8 +229,12 @@ def SPA4Symbol(modelType = "fixed"):
               "0.75", "0.8", "0.85", "0.9", "0.95")
         myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", 
                              "LargestMarketValue_200501")
-        resFile = os.path.join(ExpResultsDir, "SPA", 
+        if not years:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
                        "SPA_Fixed_Profit.csv")
+        else:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
+                       "SPA_year_Fixed_Profit.csv")
        
     elif modelType == "dynamic":
         n_rvs = range(5, 55, 5)
@@ -196,22 +242,32 @@ def SPA4Symbol(modelType = "fixed"):
         alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
         myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", 
                              "LargestMarketValue_200501_rv50")
-        resFile = os.path.join(ExpResultsDir, "SPA", 
+        if not years:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
                                "SPA_Dynamic_Profit.csv")
+        else:
+            resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_year_Dynamic_Profit.csv")
 
     #stats file
     avgIO = StringIO()
     if not os.path.exists(resFile):        
-        avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
-        
+        if not years: 
+            avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
+        else:
+            avgIO.write('startDate, endDate, n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
+      
+    
+    base_rois = None
+    tgt_rois = []
+       
     for n_rv in n_rvs:
         t1 = time.time()
         
         #set base ROI
         n_periods = 2236
         base_rois = np.zeros(n_periods)
-        diffobj = ROIDiffObject(base_rois)
-        
+     
         #load exp ROI
         for period in hist_periods:
             for alpha in alphas:
@@ -230,19 +286,45 @@ def SPA4Symbol(modelType = "fixed"):
                     if exp_finalWealth >= 0:
                         wrois =  proc.pct_change()
                         wrois[0] = 0
-                        diffobj.setCompareROIs(wrois)
-        
+                        tgt_rois.append(wrois)
+                    
         print " SPA4Symbol n_rv: %s, load data OK, %.3f secs"%(n_rv, time.time()-t1)
-        t2 = time.time()
-        #SPA test
-        Q = 0.5
-        n_samplings = 5000
-        verbose = True
-        pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
-        print "n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(n_rv,
-                    diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
-        avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
-    
+        
+        if not years:
+            diffobj = ROIDiffObject(base_rois)
+            for rois in tgt_rois:
+                diffobj.setCompareROIs(rois)
+        
+            t2 = time.time()
+            #SPA test
+            Q = 0.5
+            n_samplings = 5000
+            verbose = True
+            pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+            print "n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(n_rv,
+                        diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
+            avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
+        else:
+            for year in years:
+                startDate, endDate = date(year, 1, 1), date(year, 12, 31)
+                dataLen = tgt_rois[0][startDate:endDate]
+                
+                diffobj = ROIDiffObject(np.zeros(dataLen))
+                for rois in tgt_rois:
+                    diffobj.setCompareROIs(rois[startDate:endDate])
+                    
+                t2 = time.time()
+                Q = 0.5
+                n_samplings = 5000
+                verbose = True
+                pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+                print "year:%s n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(
+                        year, n_rv, diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
+                avgIO.write("%s, %s,%s,%s,%s,%s,%s,%s\n"%(
+                   tgt_rois[0][startDate:endDate].index[0],  tgt_rois[0][startDate:endDate].index[-1],
+                    n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
+            
+        
     with open(resFile, 'ab') as fout:
         fout.write(avgIO.getvalue())
     avgIO.close()
@@ -252,7 +334,22 @@ def SPA4Symbol(modelType = "fixed"):
 
 
 if __name__ == '__main__':
-    SPA4BHSymbol(modelType="fixed")
-    SPA4BHSymbol(modelType="dynamic")
-    SPA4Symbol(modelType = "fixed")
-    SPA4Symbol(modelType = "dynamic")
+    import argparse
+    parser = argparse.ArgumentParser(description='SPTest')
+
+    parser.add_argument('-y', '--years', action='store_true', help="SPA by year")
+    args = parser.parse_args()
+    
+    if not args.years:
+        print "full data"
+        SPA4BHSymbol(modelType="fixed")
+        SPA4BHSymbol(modelType="dynamic")
+        SPA4Symbol(modelType = "fixed")
+        SPA4Symbol(modelType = "dynamic")
+    else:
+        print "yearly data"
+        years = range(2005, 2013+1)
+        SPA4BHSymbol("fixed", years)
+        SPA4BHSymbol("dynamic", years)
+        SPA4Symbol("fixed", years)
+        SPA4Symbol("dynamic", years)
