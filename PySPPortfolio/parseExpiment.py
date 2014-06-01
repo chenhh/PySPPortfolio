@@ -866,10 +866,10 @@ def _ROIstats(rois):
 
 if __name__ == '__main__':
 #     readWealthCSV()
-    parseSymbolResults(modelType = "fixed")
-    parseSymbolResults(modelType = "dynamic")    
-#     parseBestSymbol2Latex(modelType = "fixed")
-#     parseBestSymbol2Latex(modelType = "dynamic")
+#     parseSymbolResults(modelType = "fixed")
+#     parseSymbolResults(modelType = "dynamic")    
+    parseBestSymbol2Latex(modelType = "fixed")
+    parseBestSymbol2Latex(modelType = "dynamic")
 
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()

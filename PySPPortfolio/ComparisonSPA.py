@@ -87,20 +87,35 @@ class ROIDiffObject(object):
         return np.sqrt(varColMtx)
 
 
-def SPA4BHandFixedSymbolSP():
+def SPA4BHSymbol(modelType="fixed"):
+    '''
+    buy-and-hold versus. SP model
+    '''
     t0 = time.time()
     
-    n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+    if modelType == "fixed":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(50, 130, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95")
-    
-    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", 
+                             "LargestMarketValue_200501")
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_Fixed_BetterBH.csv")
+        
+    elif modelType == "dynamic":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(90, 120+10, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", 
+                             "LargestMarketValue_200501_rv50")
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_Dynamic_BetterBH.csv")
+
     bhDir = os.path.join(ExpResultsDir, "BuyandHoldPortfolio")
     
     
     #stats file
-    resFile = os.path.join(ExpResultsDir, "SPA", "SPAFixedSymbol_BetterBH.csv")
     avgIO = StringIO()
     if not os.path.exists(resFile):        
         avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
@@ -108,19 +123,25 @@ def SPA4BHandFixedSymbolSP():
     for n_rv in n_rvs:
         t1 = time.time()
         
-        #load buyhold roi
+        #load buyhold ROI
         bh_df = pd.read_pickle(os.path.join(bhDir,"wealthSum_n%s.pkl"%n_rv))
         bh_finalWealth = bh_df[-1]
         bh_rois = bh_df.pct_change()
         bh_rois[0] = 0
         diffobj = ROIDiffObject(bh_rois)
         
+        #load model ROI
         for period in hist_periods:
-            
             for alpha in alphas:
-                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                if modelType == "fixed":
+                    dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                elif modelType == "dynamic":
+                    dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                    
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                
+                if len(exps) > 3:
+                    exps = exps[:3]
+                    
                 for exp in exps:
                     #load comparison rois
                     df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
@@ -130,92 +151,51 @@ def SPA4BHandFixedSymbolSP():
                         wrois =  proc.pct_change()
                         wrois[0] = 0
                         diffobj.setCompareROIs(wrois)
+        
+        #SPA test
         Q = 0.5
-        n_samplings = 1000
+        n_samplings = 5000
         verbose = True
         print "n_rv:%s, n_rules:%s, n_periods:%s"%(n_rv, diffobj.n_rules, diffobj.n_periods)
         pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
         print "n_rv:%s, SPA_C:%s elapsed:%.3f secs"%(n_rv, pvalue, time.time()-t1)
-        avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
+        avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, 
+                            diffobj.n_rules, diffobj.n_periods, pvalue))
     
     with open(resFile, 'ab') as fout:
         fout.write(avgIO.getvalue())
     avgIO.close()
     
-    print "all SPA, elapsed %.3f secs"%(time.time()-t0)
+    print "SPA4BHSymbol SPA, elapsed %.3f secs"%(time.time()-t0)
 
 
-def SPA4BHandDynamicSymbolSP():
+
+def SPA4Symbol(modelType = "fixed"):
+    '''
+    model for profit test
+    '''
     t0 = time.time()
     
-    n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+    if modelType == "fixed":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(50, 130, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95")
-    
-    myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
-    bhDir = os.path.join(ExpResultsDir, "BuyandHoldPortfolio")
-    
-    
-    #stats file
-    resFile = os.path.join(ExpResultsDir, "SPA", "SPADynamicSymbol_BetterBH.csv")
-    avgIO = StringIO()
-    if not os.path.exists(resFile):        
-        avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
-        
-    for n_rv in n_rvs:
-        t1 = time.time()
-        
-        #load buyhold roi
-        bh_df = pd.read_pickle(os.path.join(bhDir,"wealthSum_n%s.pkl"%n_rv))
-        bh_finalWealth = bh_df[-1]
-        bh_rois = bh_df.pct_change()
-        bh_rois[0] = 0
-        diffobj = ROIDiffObject(bh_rois)
-        
-        for period in hist_periods:
-            
-            for alpha in alphas:
-                dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
-                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                
-                for exp in exps:
-                    #load comparison rois
-                    df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
-                    proc = df.sum(axis=1)
-                    exp_finalWealth = proc[-1]
-                    if exp_finalWealth >= bh_finalWealth:
-                        wrois =  proc.pct_change()
-                        wrois[0] = 0
-                        diffobj.setCompareROIs(wrois)
-        Q = 0.5
-        n_samplings = 1000
-        verbose = True
-        print "n_rv:%s, n_rules:%s, n_periods:%s"%(n_rv, diffobj.n_rules, diffobj.n_periods)
-        pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
-        print "n_rv:%s, SPA_C:%s elapsed:%.3f secs"%(n_rv, pvalue, time.time()-t1)
-        avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
-    
-    with open(resFile, 'ab') as fout:
-        fout.write(avgIO.getvalue())
-    avgIO.close()
-    
-    print "all SPA, elapsed %.3f secs"%(time.time()-t0)
-
-
-def SPA4FixedSymbolSP():
-    t0 = time.time()
-    
-    n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
-              "0.75", "0.8", "0.85", "0.9", "0.95")
-    
-    myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", 
+                             "LargestMarketValue_200501")
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                       "SPA_Fixed_Profit.csv")
        
-    
+    elif modelType == "dynamic":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(90, 120+10, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", 
+                             "LargestMarketValue_200501_rv50")
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_Dynamic_Profit.csv")
+
     #stats file
-    resFile = os.path.join(ExpResultsDir, "SPA", "SPAFixedSymbol_Profit.csv")
     avgIO = StringIO()
     if not os.path.exists(resFile):        
         avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
@@ -223,14 +203,19 @@ def SPA4FixedSymbolSP():
     for n_rv in n_rvs:
         t1 = time.time()
         
+        #set base ROI
         n_periods = 2236
         base_rois = np.zeros(n_periods)
         diffobj = ROIDiffObject(base_rois)
         
+        #load exp ROI
         for period in hist_periods:
-            
             for alpha in alphas:
-                dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                if modelType == "fixed":
+                    dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                elif modelType == "dynamic":
+                    dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                    
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
                 
                 for exp in exps:
@@ -242,8 +227,10 @@ def SPA4FixedSymbolSP():
                         wrois =  proc.pct_change()
                         wrois[0] = 0
                         diffobj.setCompareROIs(wrois)
+        
+        #SPA test
         Q = 0.5
-        n_samplings = 1000
+        n_samplings = 5000
         verbose = True
         print "n_rv:%s, n_rules:%s, n_periods:%s"%(n_rv, diffobj.n_rules, diffobj.n_periods)
         pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
@@ -254,63 +241,13 @@ def SPA4FixedSymbolSP():
         fout.write(avgIO.getvalue())
     avgIO.close()
     
-    print "all SPA, elapsed %.3f secs"%(time.time()-t0)
+    print "SPA4Symbol SPA, elapsed %.3f secs"%(time.time()-t0)
 
 
-def SPA4DynamicSymbolSP():
-    t0 = time.time()
-    
-    n_rvs = range(5, 55, 5)
-    hist_periods = range(70, 130, 10)
-    alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
-              "0.75", "0.8", "0.85", "0.9", "0.95")
-    
-    myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
-       
-    #stats file
-    resFile = os.path.join(ExpResultsDir, "SPA", "SPADynamicSymbol_Profit.csv")
-    avgIO = StringIO()
-    if not os.path.exists(resFile):        
-        avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
-        
-    for n_rv in n_rvs:
-        t1 = time.time()
-        
-        n_periods = 2236
-        base_rois = np.zeros(n_periods)
-        diffobj = ROIDiffObject(base_rois)
-        
-        for period in hist_periods:
-            
-            for alpha in alphas:
-                dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
-                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                
-                for exp in exps:
-                    #load comparison rois
-                    df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
-                    proc = df.sum(axis=1)
-                    exp_finalWealth = proc[-1]
-                    if exp_finalWealth >= 0:
-                        wrois =  proc.pct_change()
-                        wrois[0] = 0
-                        diffobj.setCompareROIs(wrois)
-        Q = 0.5
-        n_samplings = 1000
-        verbose = True
-       
-        pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
-        print "SPA4DynamicSymbolSP n_rv:%s, n_rules:%s, n_periods:%s SPA_C:%s elapsed:%.3f secs"%(n_rv, diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t1)
-        avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
-    
-    with open(resFile, 'ab') as fout:
-        fout.write(avgIO.getvalue())
-    avgIO.close()
-    
-    print "all SPA, elapsed %.3f secs"%(time.time()-t0)
+
 
 if __name__ == '__main__':
-#     SPA4BHandFixedSymbolSP()
-    SPA4BHandDynamicSymbolSP()
-#     SPA4SymbolSP()
-#     SPA4DynamicSymbolSP()
+    SPA4BHSymbol(modelType="fixed")
+    SPA4BHSymbol(modelType="dynamic")
+    SPA4Symbol(modelType = "fixed")
+    SPA4Symbol(modelType = "dynamic")
