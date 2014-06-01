@@ -155,14 +155,14 @@ def SPA4BHSymbol(modelType="fixed"):
                         diffobj.setCompareROIs(wrois)
         
         print " SPA4BHSymbol n_rv: %s, load data OK, %.3f secs"%(n_rv, time.time()-t1)
-        
+        t2 = time()
         #SPA test
         Q = 0.5
         n_samplings = 5000
         verbose = True
         pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
         print "n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(n_rv,
-                    diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t1)
+                    diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
         avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, 
                             diffobj.n_rules, diffobj.n_periods, pvalue))
     
@@ -233,14 +233,14 @@ def SPA4Symbol(modelType = "fixed"):
                         diffobj.setCompareROIs(wrois)
         
         print " SPA4Symbol n_rv: %s, load data OK, %.3f secs"%(n_rv, time.time()-t1)
-        
+        t2 = time()
         #SPA test
         Q = 0.5
         n_samplings = 5000
         verbose = True
         pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
         print "n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(n_rv,
-                    diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t1)
+                    diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
         avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
     
     with open(resFile, 'ab') as fout:
