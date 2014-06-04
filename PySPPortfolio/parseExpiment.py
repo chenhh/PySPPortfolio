@@ -627,7 +627,7 @@ def y2yResults(modelType="fixed"):
     global ExpResultsDir
     if modelType == "fixed":
         n_rvs = range(5, 55, 5)
-        hist_periods = range(70, 130, 10)
+        hist_periods = range(50, 130, 10)
         alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
               "0.75", "0.8", "0.85", "0.9", "0.95")
         myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
@@ -646,6 +646,9 @@ def y2yResults(modelType="fixed"):
         avgIO.write('StP(%%), Stp-std, downDevF, downDevP,  JB, ADF, CVaRfailRate, VaRfailRate, scen err\n')
         
         for period in hist_periods:
+            if n_rv == 50 and period == 50:
+                continue
+            
             for alpha in alphas:
                 if modelType == "fixed":
                     dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
@@ -672,7 +675,7 @@ def y2yResults(modelType="fixed"):
                     risk_df = pd.read_pickle(os.path.join(exp, 'riskProcess.pkl'))
                     
                     for ydx, year in enumerate(years):     
-                        startDate = date(year,1,3)
+                        startDate = date(year,1,1)
                         endDate = date(year, 12, 31)
                         
                         exp_wealth_df =  wealth_df[startDate:endDate]
@@ -721,7 +724,7 @@ def y2yResults(modelType="fixed"):
                         VaRFailRates[edx, ydx] = VaRFailRate*100
                       
                 for ydx, year in enumerate(years):
-                    startDate = date(year,1,3)
+                    startDate = date(year,1,1)
                     endDate = date(year, 12, 31)
                         
                     exp_df =  wealth_df[startDate:endDate]
@@ -868,13 +871,14 @@ if __name__ == '__main__':
 #     readWealthCSV()
 #     parseSymbolResults(modelType = "fixed")
 #     parseSymbolResults(modelType = "dynamic")    
-    parseBestSymbol2Latex(modelType = "fixed")
-    parseBestSymbol2Latex(modelType = "dynamic")
+#     parseBestSymbol2Latex(modelType = "fixed")
+#     parseBestSymbol2Latex(modelType = "dynamic")
 
 #     parseWCVaRSymbolResults()
 #     individualSymbolStats()
 #     groupSymbolStats()
 #     comparisonStats()
 #     csv2Pkl()
-#     y2yResults()
+    y2yResults("fixed")
+    y2yResults("dynamic")
 #     compareY2YResults()
