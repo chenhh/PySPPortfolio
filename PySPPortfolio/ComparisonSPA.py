@@ -277,7 +277,9 @@ def SPA4Symbol(modelType = "fixed", years=None):
                     dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
                     
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
-                
+                if len(exps) >3:
+                    exps = exps[:3]
+                    
                 for exp in exps:
                     #load comparison rois
                     df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
