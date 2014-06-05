@@ -253,9 +253,9 @@ def SPA4Symbol(modelType = "fixed", years=None):
     avgIO = StringIO()
     if not os.path.exists(resFile):        
         if not years: 
-            avgIO.write('n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
+            avgIO.write('n, h, alpha, SPA_Q, sampling, n_rule, n_period, P-value\n')
         else:
-            avgIO.write('startDate, endDate, n_rv, SPA_Q, sampling, n_rule, n_period, P-value\n')
+            avgIO.write('startDate, endDate, n, h, alpha, SPA_Q, sampling, n_rule, n_period, P-value\n')
       
     
     base_rois = None
@@ -303,7 +303,8 @@ def SPA4Symbol(modelType = "fixed", years=None):
             pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
             print "n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(n_rv,
                         diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
-            avgIO.write("%s,%s,%s,%s,%s,%s\n"%(n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
+            avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s\n"%(n_rv, period, alpha, Q, n_samplings, 
+                                                     diffobj.n_rules, diffobj.n_periods, pvalue))
         else:
             for year in years:
                 startDate, endDate = date(year, 1, 1), date(year, 12, 31)
@@ -320,9 +321,9 @@ def SPA4Symbol(modelType = "fixed", years=None):
                 pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
                 print "year:%s n_rv:%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(
                         year, n_rv, diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
-                avgIO.write("%s, %s,%s,%s,%s,%s,%s,%s\n"%(
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n"%(
                    tgt_rois[0][startDate:endDate].index[0],  tgt_rois[0][startDate:endDate].index[-1],
-                    n_rv, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
+                    n_rv, period, alpha, Q, n_samplings, diffobj.n_rules, diffobj.n_periods, pvalue))
             
         
     with open(resFile, 'ab') as fout:
@@ -342,14 +343,14 @@ if __name__ == '__main__':
     
     if not args.years:
         print "full data"
-        SPA4BHSymbol(modelType="fixed")
-        SPA4BHSymbol(modelType="dynamic")
+#         SPA4BHSymbol(modelType="fixed")
+#         SPA4BHSymbol(modelType="dynamic")
         SPA4Symbol(modelType = "fixed")
         SPA4Symbol(modelType = "dynamic")
     else:
         print "yearly data"
         years = range(2005, 2013+1)
-        SPA4BHSymbol("fixed", years)
-        SPA4BHSymbol("dynamic", years)
+#         SPA4BHSymbol("fixed", years)
+#         SPA4BHSymbol("dynamic", years)
         SPA4Symbol("fixed", years)
         SPA4Symbol("dynamic", years)
