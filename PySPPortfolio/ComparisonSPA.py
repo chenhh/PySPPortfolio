@@ -364,15 +364,19 @@ def SPA4Symbol(modelType = "fixed"):
                                "SPA_Dynamic_eachParam_Profit.csv")
      
     avgIO = StringIO()
-    if not os.path.exists(resFile):         
-        avgIO.write('n, h, alpha, SPA_Q, sampling, n_rule, n_period, P-value\n')
-      
+    if not os.path.exists(resFile):
+        with open(resFile, 'ab') as fout:         
+            fout.write('n, h, alpha, SPA_Q, sampling, n_rule, n_period, P-value\n')
+        
     for n_rv in n_rvs:
       
         
         #load exp ROI
         for period in hist_periods:
             for alpha in alphas:
+                if period == 50 and alpha =="0.5":
+                    continue
+                
                 t1 = time.time()
                 if modelType == "fixed":
                     dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
