@@ -216,9 +216,9 @@ def SPA4BHSymbol(modelType="fixed", years=None):
 
 
 
-def SPA4Symbol(modelType = "fixed", years=None):
+def SPA4SymbolPortfolioSize(modelType = "fixed", years=None):
     '''
-    model for profit test
+    model for profit test of portflio size 
     '''
     t0 = time.time()
     
@@ -335,6 +335,89 @@ def SPA4Symbol(modelType = "fixed", years=None):
     print "SPA4Symbol SPA, elapsed %.3f secs"%(time.time()-t0)
 
 
+def SPA4Symbol(modelType = "fixed"):
+    '''
+    model for profit test of each parameter 
+    '''
+    t0 = time.time()
+    
+    if modelType == "fixed":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(50, 130, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95")
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", 
+                             "LargestMarketValue_200501")
+        
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                       "SPA_Fixed_eachParam_Profit.csv")
+       
+       
+    elif modelType == "dynamic":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(90, 120+10, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", 
+                             "LargestMarketValue_200501_rv50")
+        
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_Dynamic_eachParam_Profit.csv")
+     
+    avgIO = StringIO()
+    if not os.path.exists(resFile):         
+        avgIO.write('n, h, alpha, SPA_Q, sampling, n_rule, n_period, P-value\n')
+      
+    for n_rv in n_rvs:
+      
+        
+        #load exp ROI
+        for period in hist_periods:
+            for alpha in alphas:
+                t1 = time.time()
+                if modelType == "fixed":
+                    dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                elif modelType == "dynamic":
+                    dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                    
+                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                if len(exps) >3:
+                    exps = exps[:3]
+                
+                #set base ROI
+                n_periods = 2236
+                base_rois = np.zeros(n_periods)
+                diffobj = ROIDiffObject(base_rois)
+                    
+                for exp in exps:
+                    #load comparison rois
+                    df = pd.read_pickle(os.path.join(exp, 'wealthProcess.pkl'))
+                    proc = df.sum(axis=1)
+                    exp_finalWealth = proc[-1]
+                    if exp_finalWealth >= 0:
+                        wrois =  proc.pct_change()
+                        wrois[0] = 0
+                        diffobj.setCompareROIs(wrois)
+                    
+                print " SPA4Symbol n-h-alpha:%s-%s-%s, load data OK, %.3f secs"%(n_rv, period, alpha, time.time()-t1)
+     
+                t2 = time.time()
+                #SPA test
+                Q = 0.5
+                n_samplings = 5000
+                verbose = True
+                pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+                print "n-h-alpha:%s-%s-%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(
+                            n_rv, period, alpha,
+                            diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
+                avgIO.write("%s,%s,%s,%s,%s,%s,%s,%s\n"%(n_rv, period, alpha, Q, n_samplings, 
+                                                         diffobj.n_rules, diffobj.n_periods, pvalue))
+      
+    with open(resFile, 'ab') as fout:
+        fout.write(avgIO.getvalue())
+    avgIO.close()
+    
+    print "SPA4Symbol SPA, elapsed %.3f secs"%(time.time()-t0)
+
 
 if __name__ == '__main__':
     import argparse
@@ -354,5 +437,5 @@ if __name__ == '__main__':
         years = range(2005, 2013+1)
 #         SPA4BHSymbol("fixed", years)
 #         SPA4BHSymbol("dynamic", years)
-        SPA4Symbol("fixed", years)
-        SPA4Symbol("dynamic", years)
+#         SPA4Symbol("fixed", years)
+#         SPA4Symbol("dynamic", years)
