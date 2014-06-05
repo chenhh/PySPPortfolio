@@ -369,14 +369,12 @@ def SPA4Symbol(modelType = "fixed"):
             fout.write('n, h, alpha, SPA_Q, sampling, n_rule, n_period, P-value\n')
         
     for n_rv in n_rvs:
-      
-        
         #load exp ROI
         for period in hist_periods:
-            for alpha in alphas:
-                if period == 50 and alpha =="0.5":
+            if n_rv == 50 and period ==50:
                     continue
-                
+            for alpha in alphas:
+                           
                 t1 = time.time()
                 if modelType == "fixed":
                     dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
@@ -409,7 +407,10 @@ def SPA4Symbol(modelType = "fixed"):
                 Q = 0.5
                 n_samplings = 5000
                 verbose = True
-                pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+                try:
+                    pvalue = SPATest.SPATest(diffobj, Q, n_samplings, "SPA_C", verbose)
+                except AssertionError:
+                    continue
                 print "n-h-alpha:%s-%s-%s, (n_rules, n_periods):(%s, %s), SPA_C:%s elapsed:%.3f secs"%(
                             n_rv, period, alpha,
                             diffobj.n_rules, diffobj.n_periods, pvalue, time.time()-t2)
