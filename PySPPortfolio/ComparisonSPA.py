@@ -18,6 +18,7 @@ from PySPPortfolio import  (PklBasicFeaturesDir,  ExpResultsDir)
 import simplejson as json
 from datetime import date
 from cStringIO import StringIO
+import csv
  
 class ROIDiffObject(object):
     
@@ -424,7 +425,126 @@ def SPA4Symbol(modelType = "fixed"):
     print "SPA4Symbol SPA, elapsed %.3f secs"%(time.time()-t0)
 
 
+def parseSPA4SymbolProfit(modelType="fixed"):
+    '''
+    csv to latex format
+    '''
+    if modelType == "fixed":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(50, 130, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95")
+            
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                       "SPA_Fixed_eachParam_Profit.csv")
+       
+    elif modelType == "dynamic":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(90, 120+10, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
+              
+        resFile = os.path.join(ExpResultsDir, "SPA", 
+                               "SPA_Dynamic_eachParam_Profit.csv")
+      
+     
+    #read resfile
+    SPA = {}
+    reader = csv.reader(open(resFile))
+    reader.next()
+    for row in reader:
+        print row 
+        key = "%s-%s-%s"%(row[0], row[1], row[2])
+        pvalue = float(row[7])
+        if key not in SPA.keys():
+            SPA[key] =pvalue
+        elif pvalue > SPA[key]:
+            SPA[key] = pvalue
+      
+    if modelType == "fixed":
+        outFile = os.path.join(ExpResultsDir, "SPA", 
+                   "SPA_Fixed_Latex_Profit.txt")
+    elif modelType == "dynamic":
+        outFile = os.path.join(ExpResultsDir, "SPA", 
+                       "SPA_Dynamic_Latex_Profit.txt")
+        
+        
+    for n_rv in n_rvs:
+        if modelType == "fixed":
+            tableHead = r'''
+\begin{table}
+\fontsize{8pt}{8pt}\selectfont
+\caption{The SPA test $p$-value of our SP model with portfolio size $n=%s$.}
+\begin{center} 
+\begin{tabular}{| r | r |r |r |r |r |r |r| r | }
+\hline
+'''%(n_rv)
+            
+            tableTail = r'''\end{tabular}
+\end{center}
+\label{tab:SPA_SP_n%s}
+\end{table}
+'''%(n_rv)
+        
+        elif modelType == "dynamic":
+            tableHead = r'''
+\begin{table}
+\fontsize{8pt}{8pt}\selectfont
+\caption{The SPA test $p$-value of our SIP model with portfolio size $n=%s$.}
+\begin{center} 
+\begin{tabular}{| r | r |r |r |r |}
+\hline
+'''%(n_rv)
+            
+            tableTail = r'''\end{tabular}
+\end{center}
+\label{tab:SPA_SIP_n%s}
+\end{table}
+'''%(n_rv)
+            
+        
+        statIO = StringIO()
+        with open(outFile, 'ab') as fout:  
+            fout.write(tableHead)
+            fout.write(r'$\alpha$ & $h=%4s$ & '%(hist_periods[0]))
+            fout.write(r' & '.join(str(p) for p in hist_periods[1:]))
+            fout.write('\\\ \hline \n')
+         
+        #load exp ROI
+        for alpha in alphas:
+            statIO.write('%4s &'%(alpha))
+            
+            for hdx, period in enumerate(hist_periods):
+                if n_rv == 50 and period ==50:
+                    statIO.write('- &')
+                    continue
+                
+                key = "%s-%s-%s"%(n_rv, period, alpha)
+                if SPA[key] <= 0.01:
+                    statIO.write('***%4.4f '%(SPA[key]))
+                elif SPA[key] <= 0.05:
+                    statIO.write('**%4.4f '%(SPA[key]))
+                elif SPA[key] <= 0.1:
+                    statIO.write('*%4.4f '%(SPA[key]))
+                else:
+                    statIO.write('%4.4f '%(SPA[key]))
+                
+                
+                if hdx != len(hist_periods) - 1:
+                    statIO.write(' & ')
+                else:
+                    statIO.write('\\\ \hline \n')
+        
+        with open(outFile, 'ab') as fout:
+            fout.write(statIO.getvalue())
+            fout.write(tableTail)
+        statIO.close()
+        
+    
+
 if __name__ == '__main__':
+    parseSPA4SymbolProfit(modelType="fixed")
+    parseSPA4SymbolProfit(modelType="dynamic")
+    
     import argparse
     parser = argparse.ArgumentParser(description='SPTest')
 
@@ -435,8 +555,8 @@ if __name__ == '__main__':
         print "full data"
 #         SPA4BHSymbol(modelType="fixed")
 #         SPA4BHSymbol(modelType="dynamic")
-        SPA4Symbol(modelType = "fixed")
-        SPA4Symbol(modelType = "dynamic")
+#         SPA4Symbol(modelType = "fixed")
+#         SPA4Symbol(modelType = "dynamic")
     else:
         print "yearly data"
         years = range(2005, 2013+1)
