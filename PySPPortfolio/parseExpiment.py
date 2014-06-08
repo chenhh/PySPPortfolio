@@ -255,6 +255,7 @@ def parseBestSymbol2Latex(modelType = "fixed"):
         myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", 
                              "LargestMarketValue_200501")
         outFile = os.path.join(ExpResultsDir, "fixedSymbolBestParam.txt")
+        procFile = os.path.join(ExpResultsDir, "fixedSymbolBestParam_process.csv")
         
     elif modelType == "dynamic":
         n_rvs = range(5, 55, 5)
@@ -263,6 +264,7 @@ def parseBestSymbol2Latex(modelType = "fixed"):
         myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", 
                              "LargestMarketValue_200501_rv50")
         outFile = os.path.join(ExpResultsDir, "dynamicSymbolBestParam.txt")
+        procFile = os.path.join(ExpResultsDir, "dynamicSymbolBestParam_process.csv")
     
     global ExpResultsDir
   
@@ -273,7 +275,7 @@ def parseBestSymbol2Latex(modelType = "fixed"):
         statIO = StringIO()
         if not os.path.exists(outFile):        
             statIO.write('$n-h-\alpha$ & $R_{C}$(\%) & $R_{A}$(\%) & ')
-            statIO.write('$\mu$(\%) & $\sigma$(\%) & skew & kurt & ')
+            statIO.write('$\mu$(\%) & $\sigma$(\%) & $S_k$ & $    K$ & ')
             statIO.write('$S_p$(\%) & $S_t$(\%)  & JB & ADF  \\\ \hline \n')
         
         currentBestParam = {"period": 0, "alpha": 0, "wealths": 0}
@@ -286,6 +288,8 @@ def parseBestSymbol2Latex(modelType = "fixed"):
                     
                 exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
                 wealths = []
+                if len(exps) > 3:
+                    exps = exps[:3]
            
                 for exp in exps:
                     summaryFile = os.path.join(exp, "summary.json")
@@ -867,6 +871,111 @@ def _ROIstats(rois):
             "ddp":ddp}
           
 
+def bestParampkl2csv(modelType="fixed"):
+    
+       
+    global ExpResultsDir
+    if modelType == "fixed":
+        params = [(5, 100, "0.6"), (10, 80, "0.5"), (15, 80, "0.5"), (20, 110, "0.5"), 
+                  (25, 100, "0.55"), (30, 120, "0.6"), (35, 120, "0.5"), (40, 110, "0.5"),
+                  (45, 120, "0.55"), (50, 120, "0.5")
+                  ]
+        
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+      
+    elif modelType == "dynamic":
+        params = [(5, 120, "0.5"), 
+                (10, 120, "0.55"), (15, 120, "0.5"), (20, 120, "0.5"), 
+                (25, 110, "0.5"), (30, 120, "0.5"), (35, 110, "0.5"), (40, 120, "0.5"),
+                (45, 120, "0.55"), (50, 120, "0.5")
+                  ]
+      
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")
+      
+    bestParamDir =  os.path.join(ExpResultsDir, "bestParam")
+    
+    wealthTotalDict = {}
+    for n_rv, period, alpha in params:
+        if modelType == "fixed":
+            dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+        elif modelType == "dynamic":
+            dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+            
+        exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+        if len(exps) > 3:
+            exps = exps[:3]
+          
+        wealthDict = {}
+        for idx, exp in enumerate(exps):
+                pklFile =os.path.join(exp, 'wealthProcess.pkl')
+                pkl = pd.read_pickle(pklFile)
+                print pkl.sum(axis=1).tail(2)
+                wealthDict[idx] = pkl.sum(axis=1)
+   
+        wealthDF = pd.DataFrame.from_dict(wealthDict)
+        wealthDF = wealthDF.mean(axis=1)
+
+        wealthTotalDict["%s-%s-%s"%(n_rv, period, alpha)] = wealthDF 
+        print "%s %s-%s-%s"%(modelType, n_rv, period, alpha), "OK"
+    bestWealthDF = pd.DataFrame.from_dict(wealthTotalDict)
+    bestWealthDF.to_csv(os.path.join(bestParamDir, "%s-bestParam.csv"%(modelType)))
+
+
+def updateFinalWealth( modelType = "fixed"):
+    
+    if modelType == "fixed":
+        n_rvs = range(5, 55, 5)
+        hist_periods = range(50, 130, 10)
+        alphas = ("0.5", "0.55", "0.6", "0.65", "0.7", 
+              "0.75", "0.8", "0.85", "0.9", "0.95", '0.99')
+        myDir = os.path.join(ExpResultsDir, "fixedSymbolSPPortfolio", "LargestMarketValue_200501")
+        
+    elif modelType == "dynamic":
+#         n_rvs = range(5, 55, 5)
+#         hist_periods = range(90, 120+10, 10)
+#         alphas = ("0.5", "0.55", "0.6", "0.65", "0.7")
+        n_rvs = (5,)
+        hist_periods = (120,)
+        alphas= ("0.5",)
+        myDir = os.path.join(ExpResultsDir, "dynamicSymbolSPPortfolio", "LargestMarketValue_200501_rv50")  
+        
+    
+    for n_rv in n_rvs:
+        t = time()
+       
+        for period in hist_periods:
+            if n_rv == 50 and period == 50:
+                continue
+                
+            for alpha in alphas:
+                if modelType == "fixed":
+                    dirName = "fixedSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                elif modelType == "dynamic":
+                    dirName = "dynamicSymbolSPPortfolio_n%s_p%s_s200_a%s"%(n_rv, period, alpha)
+                    
+                exps = glob(os.path.join(myDir, dirName, "20050103-20131231_*"))
+                
+                avgs = []
+                for edx, exp in enumerate(exps):
+                    print exp
+                    summaryFile = os.path.join(exp, "summary.json")
+                    summary = json.load(open(summaryFile))         
+                   
+                    
+                    #wealth and cum ROI
+                    wealth = float(summary['final_wealth'])
+                    avgs.append(wealth)
+                    pklFile =os.path.join(exp, 'wealthProcess.pkl')
+                    pkl = pd.read_pickle(pklFile)
+                    wealth2 = pkl.sum(axis=1)
+                    wealth2 = wealth2[-1]
+                    if wealth2 != wealth:
+                        print wealth, wealth2
+                    else:
+                        print wealth, "equal" 
+                print sum(avgs)/3. 
+            
+
 if __name__ == '__main__':
 #     readWealthCSV()
 #     parseSymbolResults(modelType = "fixed")
@@ -879,6 +988,11 @@ if __name__ == '__main__':
 #     groupSymbolStats()
 #     comparisonStats()
 #     csv2Pkl()
-    y2yResults("fixed")
-    y2yResults("dynamic")
+#     y2yResults("fixed")
+#     y2yResults("dynamic")
 #     compareY2YResults()
+    bestParampkl2csv("fixed")
+    bestParampkl2csv("dynamic")
+#     updateFinalWealth( modelType = "fixed")
+#     updateFinalWealth( "dynamic")
+    
