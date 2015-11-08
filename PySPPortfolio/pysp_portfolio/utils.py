@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-.. codeauthor:: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
-the SPA test is a function of arch
-https://github.com/bashtage/arch
+Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
+License: GPL v2
 """
-__author__ = 'Hung-Hsin Chen'
 
 import os
 from datetime import date

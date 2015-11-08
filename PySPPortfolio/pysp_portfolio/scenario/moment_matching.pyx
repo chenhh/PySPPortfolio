@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+#!python
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: infer_types=True
+#cython: cdivision=True
+
 """
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
@@ -10,7 +16,6 @@ and applications, vol. 24, pp 169-185, 2003.
 correlation, skewness, kurtosis does not affect by scale and shift.
 """
 
-from __future__ import division
 import os
 from datetime import date
 import pandas as pd
@@ -22,9 +27,13 @@ import matplotlib.pyplot as plt
 from time import time
 
 
-def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
-                              max_moment_err=1e-3, max_corr_err=1e-3,
-                              max_cubic_err=1e-5, verbose=False):
+cpdef heuristic_moment_matching(double [:, :] tgt_moments,
+                              double [:, :] tgt_corrs,
+                              int n_scenario=200,
+                              double max_moment_err=1e-3,
+                              double max_corr_err=1e-3,
+                              double max_cubic_err=1e-5,
+                              bool verbose=False):
     """
     Parameters:
     --------------
@@ -47,26 +56,41 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     t0 = time()
 
     # parameters
-    n_rv = tgt_moments.shape[0]
+    cdef int n_rv = tgt_moments.shape[0]
 
     # iteration for find good start samples
-    max_start_iter = 5
+    cdef int max_start_iter = 5
 
     # cubic transform iteration
-    max_cubic_iter = 2
+    cdef int max_cubic_iter = 2
 
     # main iteration of moment matching loop
-    max_main_iter = 20
+    cdef int max_main_iter = 20
 
     # out mtx, for storing scenarios
-    out_mtx = np.empty((n_rv, n_scenario))
+    cdef double [:, :] out_mtx = np.empty((n_rv, n_scenario))
 
     # to generate samples Y with zero mean, and unit variance,
     # shape: (n_rv, 4)
-    y_moments = np.zeros((n_rv, 4))
+    cdef double [:, :] y_moments = np.zeros((n_rv, 4))
+
     y_moments[:, 1] = 1
     y_moments[:, 2] = tgt_moments[:, 2]
     y_moments[:, 3] = tgt_moments[:, 3] + 3
+
+    # define variables
+    cdef:
+        double cubic_err
+        double beset_cub_err
+        double [:] tmp_out
+        double [:] ey
+        int cub_iter
+        double [:] ex
+        double [:] x_init
+        double moment_err
+        double corrs_err
+        double [:, :] c_lower, out_corrs, co_inv, l_vec
+
 
     # find good start moment matrix (with err_moment converge)
     for rv in xrange(n_rv):
@@ -225,7 +249,8 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     return out_mtx
 
 
-def cubic_function(cubic_params, sample_moments, tgt_moments):
+cpdef cubic_function(double [:] cubic_params, double[:] sample_moments,
+                     double[:] tgt_moments):
     """
     Parameters:
     ----------------
@@ -233,6 +258,10 @@ def cubic_function(cubic_params, sample_moments, tgt_moments):
     sample_moments: numpy.array, shape:(12,), 1~12 moments of samples
     tgt_moments: numpy.array, shape:(4,), 1~4th moments of target
     """
+    cdef:
+        double a, b, c, d
+        double [:] ex, ey
+
     a, b, c, d = cubic_params
     ex = sample_moments
     ey = tgt_moments
@@ -285,7 +314,9 @@ def cubic_function(cubic_params, sample_moments, tgt_moments):
     return v1, v2, v3, v4
 
 
-def error_statistics(out_mtx, tgt_moments, tgt_corrs=None):
+cpdef error_statistics( double [:,:] out_mtx,
+                        double [:, :] tgt_moments,
+                        double [:, :] tgt_corrs):
     """
     Parameters:
     ----------------
@@ -293,33 +324,35 @@ def error_statistics(out_mtx, tgt_moments, tgt_corrs=None):
     tgt_moments: numpy.array, shape: (n_rv, 4)
     tgt_corrs: numpy.array, shape: (n_rv, n_rv)
     """
-    n_rv = out_mtx.shape[0]
-    out_moments = np.empty((n_rv, 4))
+    cdef:
+        int n_rv = out_mtx.shape[0]
+        double [:, :] out_moments = np.empty((n_rv, 4))
+        double [:, :] out_corrs
+        int idx
+        double moments_err, corrs_err
+
 
     for idx in xrange(4):
         out_moments[:, idx] = (out_mtx ** (idx + 1)).mean(axis=1)
 
     moments_err = rmse(out_moments, tgt_moments)
 
-    if tgt_corrs is None:
-        return moments_err
-    else:
-        out_corrs = np.corrcoef(out_mtx)
-        corrs_err = rmse(out_corrs, tgt_corrs)
-        return moments_err, corrs_err
+    out_corrs = np.corrcoef(out_mtx)
+    corrs_err = rmse(out_corrs, tgt_corrs)
+    return moments_err, corrs_err
 
 
-def rmse(src_arr, tgt_arr):
+cpdef rmse(double [:,:] src_arr, double[:,:] tgt_arr):
     """
-    :src_arr:, numpy.array
-    :tgt_arr:, numpy.array
+    src_arr:, numpy.array
+    tgt_arr:, numpy.array
     """
-    assert src_arr.shape == tgt_arr.shape
+    cdef double error=1e52
     error = np.sqrt(((src_arr - tgt_arr) ** 2).sum())
     return error
 
 
-def central_to_orig_moment(central_moments):
+def central_to_orig_moment(double [:,:] central_moments):
     '''
     central moments to original moments
     E[X] = samples.mean()
@@ -332,8 +365,10 @@ def central_to_orig_moment(central_moments):
     skew =  m3/np.sqrt(m2)**3
     kurt = m4/m2**2 -3
     '''
-    n_rv = central_moments.shape[0]
-    orig_moments = np.empty((n_rv, 4))
+    cdef:
+        int n_rv = central_moments.shape[0]
+        double[:, :] orig_moments = np.empty((n_rv, 4))
+
     orig_moments[:, 0] = central_moments[:, 0]
 
     orig_moments[:, 1] = (central_moments[:, 1] ** 2
@@ -355,87 +390,3 @@ def central_to_orig_moment(central_moments):
 
     return orig_moments
 
-
-def test_moment_matching():
-    t0 = time()
-    n_rv = 20
-    n_scenario = 200
-    data = np.random.randn(n_rv, 1000)
-
-    tgt_moments = np.zeros((n_rv, 4))
-    tgt_moments[:, 0] = data.mean(axis=1)
-    tgt_moments[:, 1] = data.std(axis=1)
-    tgt_moments[:, 2] = spstats.skew(data, axis=1)
-    tgt_moments[:, 3] = spstats.kurtosis(data, axis=1)
-    corr_mtx = np.corrcoef(data)
-
-    out_mtx = heuristic_moment_matching(tgt_moments, corr_mtx,
-                                        n_scenario=n_scenario, verbose=True)
-
-    print "1st moments difference {}".format(
-        (tgt_moments[:, 0] - out_mtx.mean(axis=1)).sum()
-    )
-    print "2nd moments difference {}".format(
-        (tgt_moments[:, 1] - out_mtx.std(axis=1)).sum()
-    )
-    print "3th moments difference {}".format(
-        (tgt_moments[:, 2] - spstats.skew(out_mtx, axis=1)).sum()
-    )
-    print "4th moments difference {}".format(
-        (tgt_moments[:, 3] - spstats.kurtosis(out_mtx, axis=1)).sum()
-    )
-
-    print "corr difference {}".format(
-        (corr_mtx - np.corrcoef(out_mtx)).sum()
-    )
-    print "HMM OK, {:.3f} secs".format(time()-t0)
-
-
-def plot_moment_matching():
-    """
-    Wireframe plots
-    http://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
-    :return:
-    """
-    from ipro.dev import (STOCK_PKL_DIR, )
-
-    stock_panel = pd.read_pickle(os.path.join(STOCK_PKL_DIR,
-                                              "panel_largest50stocks.pkl"))
-    symbols = ['2002', '2412', ]
-    n_stock = len(symbols)
-    start_date = date(2006, 12, 27)
-    n_scenario = 1000
-
-    # shape: (n_stock,)
-    risk_rois = stock_panel.loc[start_date].loc[symbols]['adj_roi']
-
-    # shape: (n_period, n_stock)
-    pre_risk_rois = stock_panel.loc[date(2005,1,1):start_date,symbols,
-                    'adj_roi'].T
-
-
-    pre_risk_rois.plot(kind='hist', subplots=True, bins=100, title="original "
-                                                                   "distribution")
-    pre_risk_rois.plot(symbols[0], symbols[1], kind='scatter', title="orignal correlation")
-
-    tgt_moments = np.zeros((n_stock, 4))
-    tgt_moments[:, 0] = pre_risk_rois.mean(axis=0)
-    tgt_moments[:, 1] = pre_risk_rois.std(axis=0)
-    tgt_moments[:, 2] = spstats.skew(pre_risk_rois, axis=0)
-    tgt_moments[:, 3] = spstats.kurtosis(pre_risk_rois, axis=0)
-    corr_mtx = np.corrcoef(pre_risk_rois.T)
-
-    # shape: (n_stock, n_scenario)
-    scenarios = heuristic_moment_matching(tgt_moments, corr_mtx,  n_scenario= n_scenario)
-    predict_risk_rois = pd.DataFrame(scenarios.T, columns=symbols)
-    print predict_risk_rois
-    predict_risk_rois.plot(kind='hist', subplots=True, bins=100,
-                           title='sample distribution')
-    predict_risk_rois.plot(symbols[0], symbols[1], kind='scatter',
-                            title="sample  correlation")
-    plt.show()
-
-
-if __name__ == '__main__':
-    # test_moment_matching()
-    plot_moment_matching()
