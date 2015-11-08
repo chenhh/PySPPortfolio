@@ -37,8 +37,7 @@ import numpy as np
 extensions = [
     Extension(
               "c_moment_matching",
-              ["moment_matching.pyx"],
-              libraries=["m"],
+              ["c_moment_matching.pyx"],
               include_dirs = [np.get_include()],
     ),
 ]

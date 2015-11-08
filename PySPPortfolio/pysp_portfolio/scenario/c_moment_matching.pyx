@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-#!python
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: infer_types=True
-#cython: cdivision=True
 
 """
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
@@ -16,24 +14,23 @@ and applications, vol. 24, pp 169-185, 2003.
 correlation, skewness, kurtosis does not affect by scale and shift.
 """
 
-import os
-from datetime import date
-import pandas as pd
+from __future__ import division
 import numpy as np
 import numpy.linalg as la
 import scipy.optimize as spopt
 import scipy.stats as spstats
-import matplotlib.pyplot as plt
 from time import time
 
+cimport numpy as cnp
+ctypedef cnp.float64_t FLOAT_t
 
-cpdef heuristic_moment_matching(double [:, :] tgt_moments,
-                              double [:, :] tgt_corrs,
+def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
+                              cnp.ndarray[FLOAT_t, ndim=2] tgt_corrs,
                               int n_scenario=200,
                               double max_moment_err=1e-3,
                               double max_corr_err=1e-3,
                               double max_cubic_err=1e-5,
-                              bool verbose=False):
+                              int verbose=False):
     """
     Parameters:
     --------------
@@ -50,9 +47,6 @@ cpdef heuristic_moment_matching(double [:, :] tgt_moments,
     out_mtx: numpy.array, shape:(n_rv, n_scenario)
     """
 
-    # check variable
-    assert n_scenario >= 0
-    assert tgt_moments.shape[0] == tgt_corrs.shape[0] == tgt_corrs.shape[1]
     t0 = time()
 
     # parameters
@@ -68,11 +62,11 @@ cpdef heuristic_moment_matching(double [:, :] tgt_moments,
     cdef int max_main_iter = 20
 
     # out mtx, for storing scenarios
-    cdef double [:, :] out_mtx = np.empty((n_rv, n_scenario))
+    cdef cnp.ndarray[FLOAT_t, ndim=2] out_mtx = np.empty((n_rv, n_scenario))
 
     # to generate samples Y with zero mean, and unit variance,
     # shape: (n_rv, 4)
-    cdef double [:, :] y_moments = np.zeros((n_rv, 4))
+    cdef cnp.ndarray[FLOAT_t, ndim=2] y_moments = np.zeros((n_rv, 4))
 
     y_moments[:, 1] = 1
     y_moments[:, 2] = tgt_moments[:, 2]
@@ -80,16 +74,15 @@ cpdef heuristic_moment_matching(double [:, :] tgt_moments,
 
     # define variables
     cdef:
-        double cubic_err
-        double beset_cub_err
-        double [:] tmp_out
-        double [:] ey
+        double cubic_err, best_cub_err
         int cub_iter
-        double [:] ex
-        double [:] x_init
-        double moment_err
-        double corrs_err
-        double [:, :] c_lower, out_corrs, co_inv, l_vec
+
+        cnp.ndarray[FLOAT_t, ndim=1] ex
+        cnp.ndarray[FLOAT_t, ndim=1] ey
+        cnp.ndarray[FLOAT_t, ndim=1] tmp_out
+        cnp.ndarray[FLOAT_t, ndim=1] x_init
+        double moment_err, corrs_err
+        cnp.ndarray[FLOAT_t, ndim=2] c_lower, out_corrs, co_inv, l_vec
 
 
     # find good start moment matrix (with err_moment converge)
@@ -244,13 +237,14 @@ cpdef heuristic_moment_matching(double [:, :] tgt_moments,
         raise ValueError("out mtx not converge, moment error: {}, "
                          "corr err:{}".format(moments_err, corrs_err))
     if verbose:
-        print "HeuristicMomentMatching elapsed {:.3f} secs".format(
+        print "c_HeuristicMomentMatching elapsed {:.3f} secs".format(
             time() - t0)
     return out_mtx
 
 
-cpdef cubic_function(double [:] cubic_params, double[:] sample_moments,
-                     double[:] tgt_moments):
+cpdef cubic_function(cnp.ndarray[FLOAT_t, ndim=1] cubic_params,
+                     cnp.ndarray[FLOAT_t, ndim=1] sample_moments,
+                     cnp.ndarray[FLOAT_t, ndim=1] tgt_moments):
     """
     Parameters:
     ----------------
@@ -260,7 +254,8 @@ cpdef cubic_function(double [:] cubic_params, double[:] sample_moments,
     """
     cdef:
         double a, b, c, d
-        double [:] ex, ey
+        cnp.ndarray[FLOAT_t, ndim=1] ex, ey
+        double v1, v2, v3, v4
 
     a, b, c, d = cubic_params
     ex = sample_moments
@@ -314,9 +309,9 @@ cpdef cubic_function(double [:] cubic_params, double[:] sample_moments,
     return v1, v2, v3, v4
 
 
-cpdef error_statistics( double [:,:] out_mtx,
-                        double [:, :] tgt_moments,
-                        double [:, :] tgt_corrs):
+cpdef error_statistics( cnp.ndarray[FLOAT_t, ndim=2] out_mtx,
+                        cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
+                        cnp.ndarray[FLOAT_t, ndim=2] tgt_corrs):
     """
     Parameters:
     ----------------
@@ -326,48 +321,47 @@ cpdef error_statistics( double [:,:] out_mtx,
     """
     cdef:
         int n_rv = out_mtx.shape[0]
-        double [:, :] out_moments = np.empty((n_rv, 4))
-        double [:, :] out_corrs
+        cnp.ndarray[FLOAT_t, ndim=2] out_moments = np.empty((n_rv, 4))
+        cnp.ndarray[FLOAT_t, ndim=2] out_corrs = np.corrcoef(out_mtx)
+        double moments_err = 1e50, corrs_err = 1e50
         int idx
-        double moments_err, corrs_err
-
 
     for idx in xrange(4):
         out_moments[:, idx] = (out_mtx ** (idx + 1)).mean(axis=1)
 
     moments_err = rmse(out_moments, tgt_moments)
-
-    out_corrs = np.corrcoef(out_mtx)
     corrs_err = rmse(out_corrs, tgt_corrs)
+
     return moments_err, corrs_err
 
 
-cpdef rmse(double [:,:] src_arr, double[:,:] tgt_arr):
+cpdef rmse(cnp.ndarray[FLOAT_t, ndim=2] src_arr,
+           cnp.ndarray[FLOAT_t, ndim=2] tgt_arr):
     """
     src_arr:, numpy.array
     tgt_arr:, numpy.array
     """
-    cdef double error=1e52
+    cdef double error=1e50
     error = np.sqrt(((src_arr - tgt_arr) ** 2).sum())
     return error
 
 
-def central_to_orig_moment(double [:,:] central_moments):
-    '''
+cpdef central_to_orig_moment(cnp.ndarray[FLOAT_t, ndim=2] central_moments):
+    """
     central moments to original moments
     E[X] = samples.mean()
     std**2 = var = E[X**2] - E[X]*E[X]
-    
+
     scipy.stats.skew, scipy.stats.kurtosis equations:
     m2 = np.mean((d - d.mean())**2)
     m3 = np.mean((d - d.mean())**3)
     m4 = np.mean((d - d.mean())**4)
     skew =  m3/np.sqrt(m2)**3
     kurt = m4/m2**2 -3
-    '''
+    """
     cdef:
         int n_rv = central_moments.shape[0]
-        double[:, :] orig_moments = np.empty((n_rv, 4))
+        cnp.ndarray[FLOAT_t, ndim=2] orig_moments = np.empty((n_rv, 4))
 
     orig_moments[:, 0] = central_moments[:, 0]
 
@@ -389,4 +383,4 @@ def central_to_orig_moment(double [:,:] central_moments):
                           orig_moments[:, 2])
 
     return orig_moments
-
+#

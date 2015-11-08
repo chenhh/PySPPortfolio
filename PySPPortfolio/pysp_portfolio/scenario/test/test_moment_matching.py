@@ -9,6 +9,9 @@ import scipy.stats as spstats
 from PySPPortfolio.pysp_portfolio.scenario.moment_matching import (
     heuristic_moment_matching,)
 
+from PySPPortfolio.pysp_portfolio.scenario.c_moment_matching import (
+    heuristic_moment_matching as c_HMM,)
+
 def test_HMM(precision=2):
     n_rv, n_sample = 50, 100
     n_scenario = 500
@@ -39,6 +42,6 @@ def test_HMM(precision=2):
     np.testing.assert_array_almost_equal(tgt_corrs, res_corrs, precision)
 
 if __name__ == '__main__':
-    test_HMM()
-
+    # test_HMM()
+    c_HMM(np.random.rand(2,4), np.random.rand(2,2))
 

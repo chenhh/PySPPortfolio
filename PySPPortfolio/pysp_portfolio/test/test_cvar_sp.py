@@ -9,7 +9,7 @@ from PySPPortfolio.pysp_portfolio.min_cvar_sp import (
     all_scenarios_min_cvar_sp_portfolio,)
 
 def test_all_scenarios_min_cvar_sp():
-    n_period, n_stock, n_scenario = 20, 10, 10
+    n_period, n_stock, n_scenario = 10, 50, 20
     initial_money = 1e6
 
     symbols = np.arange(n_stock)

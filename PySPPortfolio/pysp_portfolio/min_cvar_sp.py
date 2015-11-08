@@ -303,30 +303,30 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     n_exp_period = risk_rois.shape[1]
 
     # concrete model
-    model = ConcreteModel()
+    instance = ConcreteModel(name="all_scenarios_min_cvar_sp_portfolio")
 
     # Set
-    model.symbols = symbols
-    model.scenarios = np.arange(n_scenario)
-    model.exp_periods = np.arange(n_exp_period)
+    instance.symbols = symbols
+    instance.scenarios = np.arange(n_scenario)
+    instance.exp_periods = np.arange(n_exp_period)
 
     # decision variables
     # in each period, we buy or sell stock
-    model.buy_amounts = Var(model.exp_periods, model.symbols,
+    instance.buy_amounts = Var(instance.exp_periods, instance.symbols,
                             within=NonNegativeReals)
-    model.sell_amounts = Var(model.exp_periods, model.symbols,
+    instance.sell_amounts = Var(instance.exp_periods, instance.symbols,
                              within=NonNegativeReals)
 
-    model.risk_wealth = Var(model.exp_periods, model.symbols,
+    instance.risk_wealth = Var(instance.exp_periods, instance.symbols,
                             within=NonNegativeReals)
-    model.risk_free_wealth = Var(model.exp_periods,
+    instance.risk_free_wealth = Var(instance.exp_periods,
                                  within=NonNegativeReals)
 
     # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
-    model.Z = Var(model.exp_periods, within=Reals)
+    instance.Z = Var(instance.exp_periods, within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
-    model.Ys = Var(model.exp_periods, model.scenarios,
+    instance.Ys = Var(instance.exp_periods, instance.scenarios,
                    within=NonNegativeReals)
 
     # constraint
@@ -350,8 +350,9 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                 model.buy_amounts[tdx, mdx] - model.sell_amounts[tdx, mdx]
             )
 
-    model.risk_wealth_constraint = Constraint(
-        model.exp_periods, model.symbols, rule=risk_wealth_constraint_rule)
+    instance.risk_wealth_constraint = Constraint(
+        instance.exp_periods, instance.symbols,
+        rule=risk_wealth_constraint_rule)
 
     # constraint
     def risk_free_wealth_constraint_rule(model, tdx):
@@ -377,8 +378,8 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                 total_sell - total_buy
             )
 
-    model.risk_free_wealth_constraint = Constraint(
-         model.exp_periods, rule=risk_free_wealth_constraint_rule)
+    instance.risk_free_wealth_constraint = Constraint(
+         instance.exp_periods, rule=risk_free_wealth_constraint_rule)
 
     # constraint
     def cvar_constraint_rule(model, tdx, sdx):
@@ -394,7 +395,7 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                      for mdx in model.symbols)
         return model.Ys[tdx, sdx] >= (model.Z[tdx] - wealth)
 
-    model.cvar_constraint = Constraint(model.exp_periods, model.scenarios,
+    instance.cvar_constraint = Constraint(instance.exp_periods, instance.scenarios,
                                        rule=cvar_constraint_rule)
 
     # objective
@@ -404,11 +405,18 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                                     for sdx in xrange(n_scenario))
         return model.Z[edx] - 1. / (1. - alpha) * scenario_expectation
 
-    model.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+    instance.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
-    instance = model.create()
     results = opt.solve(instance)
     instance.load(results)
-    display(instance)
+    # display(instance)
+
+    # extract results
+    edx = n_exp_period -1
+    final_wealth = sum(instance.risk_wealth[edx, mdx].value
+                       for mdx in symbols)
+    final_wealth += + instance.risk_free_wealth[edx].value
+    roi = final_wealth/allocated_risk_free_wealth -1
+    print "final_wealth:{}, ROI:{:.4%}".format(final_wealth, roi)

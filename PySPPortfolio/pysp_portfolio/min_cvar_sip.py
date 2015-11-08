@@ -236,3 +236,31 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
             self.max_portfolio_size,
         )
         return results
+
+
+def all_scenarios_min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
+                          allocated_risk_wealth,
+                          allocated_risk_free_wealth, buy_trans_fee,
+                          sell_trans_fee, alpha, predict_risk_rois,
+                          predict_risk_free_roi, n_scenario,
+                          max_portfolio_size,
+                          scenario_probs=None, solver="cplex", verbose=False
+    ):
+    """
+    after generating all scenarios, solving the SIP at once
+    symbols: list of string
+    risk_rois: pandas.DataFrame, shape: (n_exp_period, n_stock)
+    risk_free_roi: pandas.Series, shape: (n_exp_period,)
+    allocated_risk_wealth: pandas.Series, shape: (n_stock,)
+    allocated_risk_free_wealth: float
+    buy_trans_fee: float
+    sell_trans_fee: float
+    alpha: float, 1-alpha is the significant level
+    predict_risk_ret: pandas.Panel, shape: (n_exp_period, n_stock, n_scenario)
+    predict_risk_free_roi: float
+    n_scenario: integer
+    scenario_probs: numpy.array, shape: (n_scenario,)
+    solver: str, supported by Pyomo
+
+    """
+    pass
