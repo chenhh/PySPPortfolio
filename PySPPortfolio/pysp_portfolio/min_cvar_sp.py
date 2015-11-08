@@ -270,3 +270,145 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
             self.n_scenario,
         )
         return results
+
+
+def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
+                          allocated_risk_wealth,
+                          allocated_risk_free_wealth, buy_trans_fee,
+                          sell_trans_fee, alpha, predict_risk_rois,
+                          predict_risk_free_roi, n_scenario,
+                          scenario_probs=None, solver="cplex", verbose=False
+    ):
+    """
+    after generating all scenarios, solving the SP at once
+    symbols: list of string
+    risk_rois: pandas.DataFrame, shape: (n_exp_period, n_stock)
+    risk_free_roi: pandas.Series, shape: (n_exp_period,)
+    allocated_risk_wealth: pandas.Series, shape: (n_stock,)
+    allocated_risk_free_wealth: float
+    buy_trans_fee: float
+    sell_trans_fee: float
+    alpha: float, 1-alpha is the significant level
+    predict_risk_ret: pandas.Panel, shape: (n_exp_period, n_stock, n_scenario)
+    predict_risk_free_roi: float
+    n_scenario: integer
+    scenario_probs: numpy.array, shape: (n_scenario,)
+    solver: str, supported by Pyomo
+
+    """
+    t0 = time()
+    if scenario_probs is None:
+        scenario_probs = np.ones(n_scenario, dtype=np.float) / n_scenario
+
+    n_exp_period = risk_rois.shape[1]
+
+    # concrete model
+    model = ConcreteModel()
+
+    # Set
+    model.symbols = symbols
+    model.scenarios = np.arange(n_scenario)
+    model.exp_periods = np.arange(n_exp_period)
+
+    # decision variables
+    # in each period, we buy or sell stock
+    model.buy_amounts = Var(model.exp_periods, model.symbols,
+                            within=NonNegativeReals)
+    model.sell_amounts = Var(model.exp_periods, model.symbols,
+                             within=NonNegativeReals)
+
+    model.risk_wealth = Var(model.exp_periods, model.symbols,
+                            within=NonNegativeReals)
+    model.risk_free_wealth = Var(model.exp_periods,
+                                 within=NonNegativeReals)
+
+    # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
+    model.Z = Var(model.exp_periods, within=Reals)
+
+    # aux variable, portfolio wealth less than than VaR (Z)
+    model.Ys = Var(model.exp_periods, model.scenarios,
+                   within=NonNegativeReals)
+
+    # constraint
+    def risk_wealth_constraint_rule(model, tdx, mdx):
+        """
+        Parameters:
+        ------------
+        tdx: integer, time index of period
+        mdx: str, symbol
+        """
+        if tdx == 0:
+            return (
+                model.risk_wealth[tdx, mdx] ==
+                (1. + risk_rois[tdx, mdx]) * allocated_risk_wealth[mdx] +
+                model.buy_amounts[tdx, mdx] - model.sell_amounts[tdx, mdx]
+            )
+        else:
+            return (
+                model.risk_wealth[tdx, mdx] ==
+                (1. + risk_rois[tdx, mdx]) * model.risk_wealth[tdx-1, mdx] +
+                model.buy_amounts[tdx, mdx] - model.sell_amounts[tdx, mdx]
+            )
+
+    model.risk_wealth_constraint = Constraint(
+        model.exp_periods, model.symbols, rule=risk_wealth_constraint_rule)
+
+    # constraint
+    def risk_free_wealth_constraint_rule(model, tdx):
+        """
+        Parameters:
+        ------------
+        tdx: integer, time index of period
+        """
+        total_sell = sum((1. - sell_trans_fee) * model.sell_amounts[tdx, mdx]
+                         for mdx in model.symbols)
+        total_buy = sum((1. + buy_trans_fee) * model.buy_amounts[tdx, mdx]
+                        for mdx in model.symbols)
+        if tdx == 0:
+            return (
+                model.risk_free_wealth[tdx] ==
+                (1. + risk_free_roi[tdx]) * allocated_risk_free_wealth +
+                total_sell - total_buy
+            )
+        else:
+            return (
+                model.risk_free_wealth[tdx] ==
+                (1. + risk_free_roi[tdx]) * model.risk_free_wealth[tdx-1] +
+                total_sell - total_buy
+            )
+
+    model.risk_free_wealth_constraint = Constraint(
+         model.exp_periods, rule=risk_free_wealth_constraint_rule)
+
+    # constraint
+    def cvar_constraint_rule(model, tdx, sdx):
+        """
+        auxiliary variable Y depends on scenario. CVaR <= VaR
+        Parameters:
+        ------------
+        tdx: integer, time index of period
+        sdx: integer, scenario index
+        """
+        wealth = sum((1. + predict_risk_rois[tdx, mdx, sdx]) *
+                     model.risk_wealth[tdx, mdx]
+                     for mdx in model.symbols)
+        return model.Ys[tdx, sdx] >= (model.Z[tdx] - wealth)
+
+    model.cvar_constraint = Constraint(model.exp_periods, model.scenarios,
+                                       rule=cvar_constraint_rule)
+
+    # objective
+    def cvar_objective_rule(model):
+        edx = n_exp_period -1
+        scenario_expectation = sum(model.Ys[edx, sdx] * scenario_probs[sdx]
+                                    for sdx in xrange(n_scenario))
+        return model.Z[edx] - 1. / (1. - alpha) * scenario_expectation
+
+    model.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+
+    # solve
+    opt = SolverFactory(solver)
+    instance = model.create()
+    results = opt.solve(instance)
+    instance.load(results)
+    display(instance)

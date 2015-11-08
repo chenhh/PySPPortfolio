@@ -235,5 +235,4 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
             self.n_scenario,
             self.max_portfolio_size,
         )
-
         return results
