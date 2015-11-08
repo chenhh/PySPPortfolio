@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-.. codeauthor:: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
-stochastic programming
+Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
+License: GPL v2
 """
 
 from __future__ import division
@@ -13,12 +13,10 @@ import pandas as pd
 import scipy.stats as spstats
 from pyomo.environ import *
 import matplotlib.pyplot as plt
-# from moment_matching import heuristic_moment_matching
-from pyx.moment_matching import heuristic_moment_matching
-from base import SPTradingPortfolio
-from utils import generate_rois_df
 
-__author__ = 'Hung-Hsin Chen'
+from pyx.moment_matching import heuristic_moment_matching
+from base_model import SPTradingPortfolio
+from utils import generate_rois_df
 
 
 def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
@@ -29,22 +27,22 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                           scenario_probs=None, solver="cplex", verbose=False):
     """
     two-stage minimize conditional value at risk stochastic programming
-    portfolio
+    portfolio.
+    It will be called in get_current_buy_sell_amounts function
 
-    :param symbols: list of string
-    :param risk_rois: pandas.Series, shape: (n_stock, )
-    :param risk_free_roi: float,
-    :param allocated_risk_wealth: pandas.Series, shape: (n_stock,)
-    :param allocated_risk_free_wealth: float
-    :param buy_trans_fee: float
-    :param sell_trans_fee: float
-    :param alpha: float, significant level
-    :param predict_risk_ret: pandas.DataFrame, shape: (n_stock, n_scenario)
-    :param predict_risk_free_roi: float
-    :param n_scenario: integer
-    :param scenario_probs: numpy.array, shape: (n_scenario,)
-    :param solver:
-    :return:
+    symbols: list of string
+    risk_rois: pandas.Series, shape: (n_stock, )
+    risk_free_roi: float,
+    allocated_risk_wealth: pandas.Series, shape: (n_stock,)
+    allocated_risk_free_wealth: float
+    buy_trans_fee: float
+    sell_trans_fee: float
+    alpha: float, 1-alpha is the significant level
+    predict_risk_ret: pandas.DataFrame, shape: (n_stock, n_scenario)
+    predict_risk_free_roi: float
+    n_scenario: integer
+    scenario_probs: numpy.array, shape: (n_scenario,)
+    solver: str, supported by Pyomo
     """
     t0 = time()
     if scenario_probs is None:
@@ -54,7 +52,6 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     model = ConcreteModel()
 
     # Set
-    # model.symbols = np.arange(len(symbols))
     model.symbols = symbols
     model.scenarios = np.arange(n_scenario)
 
@@ -76,8 +73,9 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     # constraint
     def risk_wealth_constraint_rule(model, mdx):
         """
-        risk_wealth is a decision variable which depends on both buy_amount and
-        sell_amount. i.e. the risk_wealth depends on scenario.
+        risk_wealth is a decision variable which depends on both buy_amount
+        and sell_amount.
+        i.e. the risk_wealth depends on scenario.
 
         buy_amount and sell_amount are first stage variable,
         risk_wealth is second stage variable.
@@ -91,9 +89,9 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
 
     # constraint
     def risk_free_wealth_constraint_rule(model):
-        total_sell = sum((1 - sell_trans_fee) * model.sell_amounts[mdx]
+        total_sell = sum((1. - sell_trans_fee) * model.sell_amounts[mdx]
                          for mdx in model.symbols)
-        total_buy = sum((1 + buy_trans_fee) * model.buy_amounts[mdx]
+        total_buy = sum((1. + buy_trans_fee) * model.buy_amounts[mdx]
                         for mdx in model.symbols)
 
         return (model.risk_free_wealth ==
@@ -105,7 +103,7 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
 
     # constraint
     def cvar_constraint_rule(model, sdx):
-        """auxiliary variable Y depends on scenario. CVaR <= VaR"""
+        """ auxiliary variable Y depends on scenario. CVaR <= VaR """
         wealth = sum((1. + predict_risk_rois.at[mdx, sdx]) *
                      model.risk_wealth[mdx]
                      for mdx in model.symbols)
@@ -116,14 +114,14 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
 
     # objective
     def cvar_objective_rule(model):
-        return model.Z - 1 / (1 - alpha) * sum(
-            model.Ys[sdx] * scenario_probs[sdx]
-            for sdx in xrange(n_scenario))
+        scenario_expectation =  sum(model.Ys[sdx] * scenario_probs[sdx]
+                                    for sdx in xrange(n_scenario))
+        return model.Z - 1. / (1. - alpha) * scenario_expectation
 
     model.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
 
+    # solve
     opt = SolverFactory(solver)
-
     instance = model.create()
     results = opt.solve(instance)
     instance.load(results)
@@ -131,10 +129,10 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
         display(instance)
 
     # buy and sell amounts
-    buy_amounts = pd.Series([instance.buy_amounts[symbol].value for symbol in
-                             symbols], index=symbols)
-    sell_amounts = pd.Series([instance.sell_amounts[symbol].value for symbol in
-                              symbols], index=symbols)
+    buy_amounts = pd.Series([instance.buy_amounts[symbol].value
+                             for symbol in symbols], index=symbols)
+    sell_amounts = pd.Series([instance.sell_amounts[symbol].value
+                              for symbol in symbols], index=symbols)
 
     # value at risk (estimated)
     estimated_var = instance.Z.value
@@ -146,7 +144,7 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
         "buy_amounts": buy_amounts,
         "sell_amounts": sell_amounts,
         "estimated_var": estimated_var,
-        "cvar_objective": model.cvar_objective()
+        "estimated_cvar": model.cvar_objective()
     }
 
 
@@ -213,30 +211,47 @@ def test_min_cvar_sp_portfolio():
 
 
 class MinCVaRSPPortfolio(SPTradingPortfolio):
-    def __init__(self, symbols, risk_rois, risk_free_rois, initial_risk_wealth,
-                 initial_risk_free_wealth, buy_trans_fee=0.001425,
-                 sell_trans_fee=0.004425, start_date=date(2005, 1, 1),
-                 end_date=date(2015, 4, 30), window_length=200,
-                 alpha=0.05, n_scenario=200, verbose=False):
+    def __init__(self, symbols, risk_rois, risk_free_rois,
+                 initial_risk_wealth, initial_risk_free_wealth,
+                 buy_trans_fee=0.001425, sell_trans_fee=0.004425,
+                 start_date=date(2005, 1, 1), end_date=date(2015, 4, 30),
+                 window_length=200, alpha=0.05, n_scenario=200,
+                 verbose=False):
+        """
+        Parameters:
+         -----------------------
+        alpha: float, 0<=value<0.5, 1-alpha is the confidence level of risk
+        n_scenario: integer, number of scenarios in a period
+
+        Data:
+        -------------
+        var_arr: pandas.Series, Value at risk of each period in the simulation
+        cvar_arr: pandas.Series, conditional value at risk of each period
+        """
 
         super(MinCVaRSPPortfolio, self).__init__(
            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
             start_date, end_date, window_length, verbose)
+
         self.alpha = alpha
-        self.n_scenario = n_scenario
-        self.var_df = pd.Series(np.zeros(self.n_exp_period),
+        self.n_scenario = int(n_scenario)
+        self.var_arr = pd.Series(np.zeros(self.n_exp_period),
                                 index=self.exp_risk_rois.index)
+        self.cvar_arr = pd.Series(np.zeros(self.n_exp_period),
+                                  index = self.exp_risk_rois.index)
+
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSP_M{}_W{}_a{}".format(
-            self.n_stock, self.window_length, self.alpha)
+        return "MinCVaRSP_M{}_W{}_a{}_s{}".format(
+            self.n_stock, self.window_length, self.alpha, self.n_scenario)
 
     def add_results_to_reports(self, reports):
         """ add additional items to reports """
         reports['alpha'] = self.alpha
         reports['n_scenario'] = self.n_scenario
-        reports['var_df'] = self.var_df
+        reports['var_arr'] = self.var_arr
+        reports['cvar_arr'] = self.cvar_arr
         return reports
 
     def get_estimated_risk_free_roi(self, *arg, **kwargs):
@@ -246,18 +261,25 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
     def get_estimated_risk_rois(self, *args, **kwargs):
         """
         heuristic moment matching
+
+        Returns:
+        -----------
+        estimated_risk_rois, numpy.array, shape: (n_stock, n_scenario)
         """
+        # current index in the exp_period
         tdx = kwargs['tdx']
         hist_end_idx = self.start_date_idx + tdx
         hist_start_idx = self.start_date_idx + tdx - self.window_length
 
-        # shape: (window_length, n_stock), index slciing should plus 1
+        # shape: (window_length, n_stock), index slicing should plus 1
         hist_data = self.risk_rois.iloc[hist_start_idx:hist_end_idx+1]
         if self.verbose:
             print "HMM current: {} hist_data:[{}-{}]".format(
                                 self.exp_risk_rois.index[tdx],
                                 self.risk_rois.index[hist_start_idx],
                                 self.risk_rois.index[hist_end_idx])
+
+        # 1-4 th moments of historical data, shape: (n_stock, 4)
         tgt_moments = np.zeros((self.n_stock, 4))
         tgt_moments[:, 0] = hist_data.mean(axis=0)
         # the 2nd moment must be standard deviation, not the variance
@@ -266,14 +288,15 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0)
         corr_mtx = np.corrcoef(hist_data.T)
 
-        # shape: (n_stock, n_scenario)
+        # scenarios shape: (n_stock, n_scenario)
         for idx, error_order in enumerate(xrange(-3, 0)):
+            # if the HMM is not converge, relax the tolerance error
             try:
                 max_moment_err = 10**(error_order)
                 max_corr_err = 10**(error_order)
-                scenarios = heuristic_moment_matching(tgt_moments, corr_mtx,
-                                              self.n_scenario, max_moment_err,
-                                                  max_corr_err)
+                scenarios = heuristic_moment_matching(
+                                tgt_moments, corr_mtx, self.n_scenario,
+                                max_moment_err, max_corr_err)
                 break
             except ValueError as e:
                 print e
@@ -282,29 +305,35 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
 
         return pd.DataFrame(scenarios, index=self.symbols)
 
+
     def set_specific_period_action(self, *args, **kwargs):
+        """
+        user specified action after getting results
+        """
         tdx = kwargs['tdx']
         results = kwargs['results']
-        self.var_df.iloc[tdx] = results["estimated_var"]
+        self.var_arr.iloc[tdx] = results["estimated_var"]
+        self.cvar_arr.iloc[tdx] = results['estimated_cvar']
 
 
     def get_current_buy_sell_amounts(self, *args, **kwargs):
-        """
-        min_cvar function
-        """
+        """ min_cvar function """
+
+        # current exp_period index
         tdx = kwargs['tdx']
-        results = min_cvar_sp_portfolio(self.symbols,
-                                        self.exp_risk_rois.iloc[tdx, :],
-                                        self.risk_free_rois.iloc[tdx],
-                                        kwargs['allocated_risk_wealth'],
-                                        kwargs['allocated_risk_free_wealth'],
-                                        self.buy_trans_fee,
-                                        self.sell_trans_fee,
-                                        self.alpha,
-                                        kwargs['estimated_risk_rois'],
-                                        kwargs['estimated_risk_free_roi'],
-                                        self.n_scenario,
-                                        )
+        results = min_cvar_sp_portfolio(
+            self.symbols,
+            self.exp_risk_rois.iloc[tdx, :],
+            self.risk_free_rois.iloc[tdx],
+            kwargs['allocated_risk_wealth'],
+            kwargs['allocated_risk_free_wealth'],
+            self.buy_trans_fee,
+            self.sell_trans_fee,
+            self.alpha,
+            kwargs['estimated_risk_rois'],
+            kwargs['estimated_risk_free_roi'],
+            self.n_scenario,
+        )
 
         return results
 
