@@ -272,7 +272,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         return results
 
 
-def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
+def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_rois,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,
@@ -283,7 +283,7 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     after generating all scenarios, solving the SP at once
     symbols: list of string
     risk_rois: pandas.DataFrame, shape: (n_exp_period, n_stock)
-    risk_free_roi: pandas.Series, shape: (n_exp_period,)
+    risk_free_rois: pandas.Series, shape: (n_exp_period,)
     allocated_risk_wealth: pandas.Series, shape: (n_stock,)
     allocated_risk_free_wealth: float
     buy_trans_fee: float
@@ -300,15 +300,15 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     if scenario_probs is None:
         scenario_probs = np.ones(n_scenario, dtype=np.float) / n_scenario
 
-    n_exp_period = risk_rois.shape[1]
+    n_exp_period = risk_rois.shape[0]
 
     # concrete model
     instance = ConcreteModel(name="all_scenarios_min_cvar_sp_portfolio")
 
     # Set
+    instance.exp_periods = np.arange(n_exp_period)
     instance.symbols = symbols
     instance.scenarios = np.arange(n_scenario)
-    instance.exp_periods = np.arange(n_exp_period)
 
     # decision variables
     # in each period, we buy or sell stock
@@ -368,13 +368,13 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
         if tdx == 0:
             return (
                 model.risk_free_wealth[tdx] ==
-                (1. + risk_free_roi[tdx]) * allocated_risk_free_wealth +
+                (1. + risk_free_rois[tdx]) * allocated_risk_free_wealth +
                 total_sell - total_buy
             )
         else:
             return (
                 model.risk_free_wealth[tdx] ==
-                (1. + risk_free_roi[tdx]) * model.risk_free_wealth[tdx-1] +
+                (1. + risk_free_rois[tdx]) * model.risk_free_wealth[tdx-1] +
                 total_sell - total_buy
             )
 
@@ -395,8 +395,9 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                      for mdx in model.symbols)
         return model.Ys[tdx, sdx] >= (model.Z[tdx] - wealth)
 
-    instance.cvar_constraint = Constraint(instance.exp_periods, instance.scenarios,
-                                       rule=cvar_constraint_rule)
+    instance.cvar_constraint = Constraint(
+        instance.exp_periods, instance.scenarios,
+        rule=cvar_constraint_rule)
 
     # objective
     def cvar_objective_rule(model):
@@ -405,12 +406,13 @@ def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                                     for sdx in xrange(n_scenario))
         return model.Z[edx] - 1. / (1. - alpha) * scenario_expectation
 
-    instance.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+    instance.cvar_objective = Objective(rule=cvar_objective_rule,
+                                        sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
     results = opt.solve(instance)
-    instance.load(results)
+    instance.solutions.load_from(results)
     # display(instance)
 
     # extract results
