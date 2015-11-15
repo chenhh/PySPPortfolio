@@ -290,7 +290,7 @@ def multi_stage_scenarios_min_cvar_sp_portfolio(symbols, risk_rois,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,
                           predict_risk_free_roi, n_scenario,
-                          scenario_probs=None, solver="cplex", verbose=False
+                          scenario_probs=None, solver=DEFAULT_SOLVER, verbose=False
     ):
     """
     after generating all scenarios, solving the SP at once

@@ -246,7 +246,7 @@ def multi_stage_scenarios_min_cvar_sip_portfolio(symbols, risk_rois,
                           sell_trans_fee, alpha, predict_risk_rois,
                           predict_risk_free_roi, n_scenario,
                           max_portfolio_size,
-                          scenario_probs=None, solver="cplex", verbose=False
+                          scenario_probs=None, solver=DEFAULT_SOLVER, verbose=False
     ):
     """
     after generating all scenarios, solving the SIP at once

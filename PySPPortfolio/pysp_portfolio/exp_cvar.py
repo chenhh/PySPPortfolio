@@ -4,22 +4,34 @@ Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
 """
 
+import os
+import pandas as pd
+from . import *
+from min_cvar_sp import (MinCVaRSPPortfolio,)
 
 
 def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
     """
-    :return: reports
-    """
-    from ipro.dev import (EXP_SYMBOLS, DROPBOX_UP_EXPERIMENT_DIR)
+    2nd stage SP simulation
 
-    n_stock = int(n_stock)
-    window_length = int(window_length)
+    Parameters:
+    -------------------
+    n_stock: integer, number of stocks of the EXP_SYMBOLS to the portfolios
+    window_length: integer, number of periods for estimating scenarios
+    alpha: float, for conditional risk
+    n_scenario, int, number of scenarios
+
+    Returns:
+    --------------------
+    reports
+    """
+
+    n_stock, window_length = int(n_stock), int(window_length)
     alpha = float(alpha)
 
+    # getting experiment symbols
     symbols = EXP_SYMBOLS[:n_stock]
     risk_rois = generate_rois_df(symbols)
-    start_date = date(2005, 1, 1)
-    end_date = date(2015, 4, 30)
 
     exp_risk_rois = risk_rois.loc[start_date:end_date]
     n_period = exp_risk_rois.shape[0]
@@ -27,13 +39,11 @@ def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
     initial_risk_free_wealth = 1e6
 
-    obj = MinCVaRSPPortfolio(symbols, risk_rois, risk_free_rois,
-                           initial_risk_wealth,
-                           initial_risk_free_wealth, start_date=start_date,
-                           end_date=end_date, window_length=window_length,
-                           alpha=alpha, n_scenario=n_scenario, verbose=False)
+    instance = MinCVaRSPPortfolio(symbols, risk_rois, risk_free_rois,
+                           initial_risk_wealth, initial_risk_free_wealth,
+                           alpha=alpha, verbose=False)
 
-    reports = obj.run()
+    reports = instance.run()
     print reports
 
     file_name = '{}_SP_{}-{}_m{}_w{}_a{:.2f}_s{}.pkl'.format(
@@ -45,7 +55,7 @@ def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
         alpha,
         n_scenario)
 
-    file_dir = os.path.join(DROPBOX_UP_EXPERIMENT_DIR, 'cvar_sp')
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'cvar_sp')
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 

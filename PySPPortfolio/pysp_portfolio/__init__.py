@@ -9,20 +9,27 @@ import platform
 from datetime import date
 
 PROJECT_DIR = os.path.abspath(os.path.curdir)
+
+# directory of storing stock data
 PKL_BASIC_FEATURES_DIR = os.path.join(PROJECT_DIR, 'pkl', 'BasicFeatures')
-os_type = platform.uname()[0]
+
+# operating system
+os_type = platform.system()
 if os_type == 'Linux':
-    EXP_RESULT_DIR = os.path.join('/', 'home', 'chenhh', 'Dropbox',
+    EXP_SP_PORTFOLIO_DIR = os.path.join(r'/home/chenhh/Dropbox',
                                   'financial_experiment', 'pysp_portfolio')
 
 elif os_type == 'Windows':
-    EXP_RESULT_DIR = os.path.join(r'C:\\', 'Users', 'chen1', 'Dropbox',
+    EXP_SP_PORTFOLIO_DIR = os.path.join(r'C:\Users\chen1\Dropbox',
                                   'financial_experiment',
                                   'pysp_portfolio')
 else:
     raise ValueError('unknown os platform:{}'.format(os_type))
 
-# global setting
+if not os.path.exists(EXP_SP_PORTFOLIO_DIR):
+    os.makedirs(EXP_SP_PORTFOLIO_DIR)
+
+# experiment global setting
 DEFAULT_SOLVER = 'cplex'
 BUY_TRANS_FEE = 0.001425
 SELL_TRANS_FEE = 0.004425
@@ -30,6 +37,7 @@ START_DATE = date(2005, 1, 1)
 END_DATE = date(2014, 12, 31)
 N_SCENARIO = 200
 WINDOW_LENGTH = 200
+
 
 EXP_SYMBOLS = [
     "2330", "2412", "2882", "6505", "2317",
@@ -47,4 +55,4 @@ EXP_SYMBOLS = [
 __all__ = ['PROJECT_DIR', 'PKL_BASIC_FEATURES_DIR', 'EXP_RESULT_DIR',
            'DEFAULT_SOLVER', 'BUY_TRANS_FEE', 'SELL_TRANS_FEE',
            'START_DATE', 'END_DATE', "N_SCENARIO", 'WINDOW_LENGTH',
-           'EXP_SYMBOL']
+           'EXP_SYMBOLS']
