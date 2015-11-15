@@ -13,6 +13,7 @@ import pandas as pd
 import scipy.stats as spstats
 from pyomo.environ import *
 
+from . import *
 from scenario.moment_matching import heuristic_moment_matching
 from base_model import SPTradingPortfolio
 
@@ -22,9 +23,10 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,
                           predict_risk_free_roi, n_scenario,
-                          scenario_probs=None, solver="cplex", verbose=False):
+                          scenario_probs=None, solver=DEFAULT_SOLVER,
+                          verbose=False):
     """
-    two-stage minimize conditional value at risk stochastic programming
+    2nd-stage minimize conditional value at risk stochastic programming
     portfolio.
     It will be called in get_current_buy_sell_amounts function
 
@@ -149,11 +151,13 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
 class MinCVaRSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
                  initial_risk_wealth, initial_risk_free_wealth,
-                 buy_trans_fee=0.001425, sell_trans_fee=0.004425,
-                 start_date=date(2005, 1, 1), end_date=date(2015, 4, 30),
-                 window_length=200, alpha=0.05, n_scenario=200,
-                 verbose=False):
+                 buy_trans_fee=BUY_TRANS_FEE, sell_trans_fee=SELL_TRANS_FEE,
+                 start_date=START_DATE, end_date=END_DATE,
+                 window_length=WINDOW_LENGTH, alpha=0.05,
+                 n_scenario=N_SCENARIO, verbose=False):
         """
+        2nd-stage SP
+
         Parameters:
          -----------------------
         alpha: float, 0<=value<0.5, 1-alpha is the confidence level of risk
@@ -189,8 +193,8 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         reports['cvar_arr'] = self.cvar_arr
         return reports
 
-    def get_estimated_risk_free_roi(self, *arg, **kwargs):
-        """the risk free roi is set all zeros"""
+    def get_estimated_risk_free_rois(self, *arg, **kwargs):
+        """ the risk free roi is set all zeros """
         return 0.
 
     def get_estimated_risk_rois(self, *args, **kwargs):
@@ -203,11 +207,15 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         """
         # current index in the exp_period
         tdx = kwargs['tdx']
-        hist_end_idx = self.start_date_idx + tdx
-        hist_start_idx = self.start_date_idx + tdx - self.window_length
 
-        # shape: (window_length, n_stock), index slicing should plus 1
-        hist_data = self.risk_rois.iloc[hist_start_idx:hist_end_idx+1]
+        # because we trade stock on the after-hour market, we known today
+        # market information, therefore the historical interval contain
+        # current day
+        hist_end_idx = self.start_date_idx + tdx + 1
+        hist_start_idx = self.start_date_idx + tdx - self.window_length + 1
+
+        # shape: (window_length, n_stock)
+        hist_data = self.risk_rois.iloc[hist_start_idx:hist_end_idx]
         if self.verbose:
             print "HMM current: {} hist_data:[{}-{}]".format(
                                 self.exp_risk_rois.index[tdx],
@@ -236,7 +244,10 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
             except ValueError as e:
                 print e
                 if idx >= 2:
-                    raise ValueError('HMM not converge.')
+                    raise ValueError('{}: {} HMM not converge.'.format(
+                    self.get_trading_func_name(),
+                        self.exp_risk_rois.index[tdx]
+                    ))
 
         return pd.DataFrame(scenarios, index=self.symbols)
 
@@ -272,7 +283,9 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         return results
 
 
-def all_scenarios_min_cvar_sp_portfolio(symbols, risk_rois, risk_free_rois,
+
+def multi_stage_scenarios_min_cvar_sp_portfolio(symbols, risk_rois,
+                                              risk_free_rois,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,

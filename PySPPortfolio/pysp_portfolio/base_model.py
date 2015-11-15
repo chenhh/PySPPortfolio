@@ -286,7 +286,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         """
         raise NotImplementedError('get_estimated_rois')
 
-    def get_estimated_risk_free_roi(self, *arg, **kwargs):
+    def get_estimated_risk_free_rois(self, *arg, **kwargs):
         """
         estimating next period risk free asset rois,
         implemented by user, and it should return a float number.
@@ -355,7 +355,8 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                     self.exp_risk_rois.index[tdx], e))
                 self.estimated_risk_roi_error[tdx] = True
 
-            estimated_risk_free_roi = self.get_estimated_risk_free_roi(tdx=tdx)
+            estimated_risk_free_rois = self.get_estimated_risk_free_rois(
+                tdx=tdx)
 
             # generating scenarios success
             if self.estimated_risk_roi_error[tdx] is False:
@@ -364,7 +365,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                 results = self.get_current_buy_sell_amounts(
                     tdx=tdx,
                     estimated_risk_rois=estimated_risk_rois,
-                    estimated_risk_free_roi=estimated_risk_free_roi,
+                    estimated_risk_free_roi=estimated_risk_free_rois,
                     allocated_risk_wealth=allocated_risk_wealth,
                     allocated_risk_free_wealth=allocated_risk_free_wealth
                 )

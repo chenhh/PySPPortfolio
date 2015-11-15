@@ -8,6 +8,7 @@ License: GPL v2
 from __future__ import division
 from time import time
 from datetime import (date,)
+from . import *
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
                            buy_trans_fee, sell_trans_fee, alpha,
                            predict_risk_rois, predict_risk_free_roi,
                            n_scenario, max_portfolio_size,
-                           scenario_probs=None, solver="cplex",
+                           scenario_probs=None, solver=DEFAULT_SOLVER,
                            verbose=False):
     """
     two stage minimize conditional value at risk stochastic programming
@@ -165,10 +166,10 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
 class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
     def __init__(self, symbols, max_portfolio_size, risk_rois,
                  risk_free_rois, initial_risk_wealth,
-                 initial_risk_free_wealth, buy_trans_fee=0.001425,
-                 sell_trans_fee=0.004425, start_date=date(2005, 1, 1),
-                 end_date=date(2015, 4, 30), window_length=200,
-                 alpha=0.05, n_scenario=200, verbose=False):
+                 initial_risk_free_wealth, buy_trans_fee=BUY_TRANS_FEE,
+                 sell_trans_fee=SELL_TRANS_FEE, start_date=START_DATE,
+                 end_date=END_DATE, window_length=WINDOW_LENGTH,
+                 alpha=0.05, n_scenario=N_SCENARIO, verbose=False):
         """
         Parameters:
          -----------------------
@@ -238,7 +239,8 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
         return results
 
 
-def all_scenarios_min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
+def multi_stage_scenarios_min_cvar_sip_portfolio(symbols, risk_rois,
+                                               risk_free_roi,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,

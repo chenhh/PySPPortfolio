@@ -4,6 +4,8 @@ Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
 """
 
+
+
 def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
     """
     :return: reports
