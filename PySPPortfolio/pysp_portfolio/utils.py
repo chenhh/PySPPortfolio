@@ -16,178 +16,6 @@ from arch.bootstrap import (SPA, )
 from arch.unitroot import (DFGLS, PhillipsPerron, KPSS)
 
 
-def generate_relative_prices_df(symbols):
-    """
-    generating relative price data frame of given stocks
-    relative pricep[t] = p[t]/p[t-1]
-
-    :param symbols: list of strings
-    :return: pandas.dataframe, each column represents the relative price of
-    one stock
-    """
-    from  ipro.dev import (STOCK_PKL_DIR, )
-
-    pkl_path = os.path.join(STOCK_PKL_DIR, 'panel_largest50stocks.pkl')
-    panel = pd.read_pickle(pkl_path)
-
-    # roi_df, shape (n_period, n_symbol)
-    roi_df = panel.loc[:, list(symbols), 'adj_roi'].T
-    rp_df = roi_df / 100. + 1
-
-    # fill na with 1
-    rp_df = rp_df.fillna(1)
-
-    return rp_df
-
-
-
-def generate_rois_df(symbols):
-
-    from  ipro.dev import (STOCK_PKL_DIR, )
-    pkl_path = os.path.join(STOCK_PKL_DIR, 'panel_largest50stocks.pkl')
-    panel = pd.read_pickle(pkl_path)
-
-    # roi_df, shape (n_period, n_symbol)
-    roi_df = (panel.loc[:, list(symbols), 'adj_roi'].T)/100.
-    roi_df = roi_df.fillna(0.)
-
-    return roi_df
-
-
-def generate_close_prices_df(symbols):
-
-    from  ipro.dev import (STOCK_PKL_DIR, )
-    pkl_path = os.path.join(STOCK_PKL_DIR, 'panel_largest50stocks.pkl')
-    panel = pd.read_pickle(pkl_path)
-
-    # roi_df, shape (n_period, n_symbol)
-    price_df = panel.loc[:, list(symbols), 'close_price'].T
-
-    return price_df
-
-
-
-def check_common_variable(buy_trans_fee, sell_trans_fee,
-                          start_date, end_date):
-    """
-    :param buy_trans_fee: float
-    :param sell_trans_fee: float
-    :param start_date: datetime.date
-    :param end_date: datetime.date
-    :return:
-    """
-
-    if not 0 <= buy_trans_fee <= 1:
-        raise ValueError("wrong buy_trans_fee: {}".format(buy_trans_fee))
-
-    if not 0 <= sell_trans_fee <= 1:
-        raise ValueError("wrong sell_trans_fee: {}".format(sell_trans_fee))
-
-    else:
-        if start_date >= end_date:
-            raise ValueError(
-                "wrong trans_interval, start:{}, end:{})".format(start_date,
-                                                                 end_date))
-
-
-
-
-
-def get_performance_report(func_name, symbols, start_date, end_date,
-                           buy_trans_fee, sell_trans_fee,
-                           initial_wealth, final_wealth, n_exp_period,
-                           trans_fee_loss, wealth_df, weights_df):
-    """
-    :param func_name: string
-    "param symbols: list of string
-    :param start_date: datetime.date
-    :param end_date:  datetime.date
-    :param initial_wealth: float
-    :param final_wealth: float
-    :param n_exp_period: integer
-    :param trans_fee_loss: float
-    :param wealth_df: pandas.dataframe
-    :param weights_df: pandas.dataframe or numpy.array
-    :return:
-    """
-    # return analysis
-    reports = {}
-    reports['func_name'] = func_name
-    reports['symbols'] = symbols
-    reports['start_date'] = start_date
-    reports['end_date'] = end_date
-    reports['buy_trans_fee'] = buy_trans_fee
-    reports['sell_trans_fee'] = sell_trans_fee
-
-    reports['initial_wealth'] = initial_wealth
-    reports['final_wealth'] = final_wealth
-    reports['n_stock'] = len(symbols)
-    reports['n_exp_period'] = n_exp_period
-    reports['trans_fee_loss'] = trans_fee_loss
-    reports['wealth_df'] = wealth_df
-    reports['weights_df'] = weights_df
-
-    reports['cum_roi'] = final_wealth / initial_wealth - 1.
-    reports['daily_roi'] = np.power(final_wealth / initial_wealth,
-                                    1. / n_exp_period) - 1
-
-    # risk analysis
-    wealths = wealth_df.sum(axis=1)
-    wealth_daily_ROIs = wealths.pct_change()
-    wealth_daily_ROIs[0] = 0
-    reports['daily_mean_roi'] = wealth_daily_ROIs.mean()
-    reports['daily_std_roi'] = wealth_daily_ROIs.std()
-    reports['daily_skew_roi'] = wealth_daily_ROIs.skew()
-    reports['daily_kurt_roi'] = wealth_daily_ROIs.kurt()  # excess kurtosis
-    reports['sharpe'] = sharpe(wealth_daily_ROIs)
-    reports['sortino_full'], reports[
-        'sortino_full_semistd'] = \
-        sortino_full(wealth_daily_ROIs)
-
-    reports['sortino_partial'], \
-    reports['sortino_partial_semistd'] = \
-        sortino_partial(wealth_daily_ROIs)
-
-    reports['max_drawdown'], reports['max_abs_drawdown'] = \
-        maximum_drawdown(wealths)
-
-    # statistics test
-    # SPA test, benchmark is no action
-    spa = SPA(wealth_daily_ROIs, np.zeros(wealths.size), reps=1000)
-    spa.seed(np.random.randint(0, 2 ** 31 - 1))
-    spa.compute()
-    reports['SPA_c_pvalue'] = spa.pvalues[1]
-
-    outputs = 'func: {}, [{}-{}] n_period: {}\n'.format(
-        func_name, start_date, end_date, n_exp_period)
-
-    outputs += "final wealth: {}, trans_fee_loss: {}\n".format(
-        final_wealth, trans_fee_loss)
-
-    outputs += "cum_roi:{:.6%}, daily_roi:{:.6%}\n".format(
-        reports['cum_roi'], reports['daily_roi'])
-
-    outputs += "roi (mean, std, skew, ex_kurt): "
-    outputs += "({:.6%}, {:.6%}, {:.6f}, {:.6f})\n".format(
-        reports['daily_mean_roi'], reports['daily_std_roi'],
-        reports['daily_skew_roi'], reports['daily_kurt_roi']
-    )
-
-    outputs += "Sharpe: {:.6%}\n".format(reports['sharpe'])
-    outputs += "Sortino full: ({:.6%}, {:.6%}\n".format(
-        reports['sortino_full'], reports['sortino_full_semistd'])
-
-    outputs += "Sortino partial: ({:.6%}, {:.6%}\n".format(
-        reports['sortino_partial'], reports['sortino_partial_semistd'])
-
-    outputs += "mdd: {:.2%}, mad:{:.4f}\n".format(
-        reports['max_drawdown'], reports['max_abs_drawdown'])
-
-    outputs += "SPA_c pvalue: {:.4%}\n".format(reports['SPA_c_pvalue'])
-
-    return outputs, reports
-
-
 def sharpe(series):
     """
     ROI series
@@ -208,12 +36,12 @@ def sortino_full(series, mar=0):
     """
     s = np.asarray(series)
     mean = s.mean()
-    semistd = np.sqrt(((s * ((s - mar) < 0)) ** 2).mean())
+    semi_std = np.sqrt(((s * ((s - mar) < 0)) ** 2).mean())
     try:
-        val = mean / semistd
+        val = mean / semi_std
     except FloatingPointError:
         val = 0
-    return val, semistd
+    return val, semi_std
 
 
 def sortino_partial(series, mar=0):
@@ -225,11 +53,11 @@ def sortino_partial(series, mar=0):
     mean = s.mean()
     n_neg_period = ((s - mar) < 0).sum()
     try:
-        semistd = np.sqrt(((s * ((s - mar) < 0)) ** 2).sum() / n_neg_period)
-        val = mean / semistd
+        semi_std = np.sqrt(((s * ((s - mar) < 0)) ** 2).sum() / n_neg_period)
+        val = mean / semi_std
     except FloatingPointError:
-        val, semistd = 0, 0
-    return val, semistd
+        val, semi_std = 0, 0
+    return val, semi_std
 
 
 def maximum_drawdown(series):
@@ -246,9 +74,12 @@ def maximum_drawdown(series):
     ad = np.maximum(peak - s, 0)
     mad = np.max(ad)
 
-    # drawdown
-    dd = np.maximum(1. - s / peak, 0)
-    mdd = np.max(dd)
+    # drawdown, if peak == 0, return 0
+    with np.errstate(divide='ignore'):
+        res = s / peak
+        res[peak==0] = 1
+        dd = np.maximum(1. - res, 0)
+        mdd = np.max(dd)
 
     return mdd, mad
 
