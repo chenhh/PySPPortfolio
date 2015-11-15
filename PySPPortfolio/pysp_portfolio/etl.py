@@ -122,7 +122,7 @@ def dataframe_to_panel(symbols=EXP_SYMBOLS):
     print ("all exp_symbols load to panel OK, {:.3f} secs".format(time()-t0))
 
 
-def plot_exp_symbol_roi():
+def plot_exp_symbol_roi(n_row=5, n_col=5, plot_kind='line'):
     """
     plot the line and distribution charts
 
@@ -146,7 +146,6 @@ def plot_exp_symbol_roi():
 
     # shape: (5,5) * 2
     symbols = EXP_SYMBOLS
-    n_row, n_col = 5, 5
     if len(symbols) % (n_col * n_row) == 0:
          n_figure = len(symbols) / (n_col * n_row)
     else:
@@ -156,27 +155,35 @@ def plot_exp_symbol_roi():
     for fdx in xrange(n_figure):
         sdx = fdx * n_row * n_col
         edx = (fdx+1) * n_row * n_col
-        df = panel.ix[:20, symbols[sdx:edx], 'simple_roi'].T
-        axes_arr = df.plot(subplots=True, layout=(n_row, n_col),
-                           color='green', legend=False, sharex=True,
-                           sharey=True)
+        df = panel.ix[:, symbols[sdx:edx], 'simple_roi'].T
+
+        if plot_kind == "line":
+            axes_arr = df.plot(
+                kind=plot_kind,
+                subplots=True, layout=(n_row, n_col), figsize=(48, 36),
+                color='green', legend=False, sharex=True, sharey=True)
+
+        elif plot_kind == "hist":
+            axes_arr = df.plot(
+                kind=plot_kind, bins=50,
+                subplots=True, layout=(n_row, n_col), figsize=(48, 36),
+                color='green', legend=False, sharex=False, sharey=False)
 
         for rdx in xrange(n_row):
             for cdx in xrange(n_col):
                 axes_arr[rdx,cdx].legend(loc='upper center',
-                                         bbox_to_anchor=(0.5, 1.2))
+                                         bbox_to_anchor=(0.5, 1.0))
+
+        img_path = os.path.join(DATA_DIR, 'roi_plot',
+                                'roi_{}_{}.pdf'.format(plot_kind, fdx))
+        plt.savefig(img_path)
 
     plt.show()
-
-
-
-
-
-
-
+    plt.close()
 
 
 if __name__ == '__main__':
     # csv_to_pkl()
     # dataframe_to_panel()
-    plot_exp_symbol_roi()
+    plot_exp_symbol_roi(plot_kind='line')
+    plot_exp_symbol_roi(plot_kind='hist')
