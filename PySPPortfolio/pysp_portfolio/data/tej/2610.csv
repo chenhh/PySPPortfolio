@@ -1,4 +1,4 @@
-靡ㄩ絏,虏嘿,るら,秨絃基(じ),程蔼基(じ),程基(じ),Μ絃基(じ),Θユ秖(),Θユ(じ),厨筍瞯,秅锣瞯,カ(κ窾じ),厨筍瞯-Ln
+symbol,abbreviation,year_month_day,open_price,high_price,low_price,close_price,volume_1000_shares,value_1000_dollars,simple_roi_%,turnover_ratio_%,market_value_million_dollars,continuous_roi_%
 2610   ,地         ,20000104,   22.40,   22.40,   21.50,   21.90,     4415,       96420,   4.2857,   0.2177,       44423,   4.1964
 2610   ,地         ,20000105,   21.50,   21.70,   21.10,   21.10,     1957,       41497,  -3.6530,   0.0965,       42800,  -3.7214
 2610   ,地         ,20000106,   21.10,   21.70,   21.10,   21.40,     2550,       54579,   1.4218,   0.1257,       43408,   1.4118

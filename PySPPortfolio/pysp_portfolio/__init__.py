@@ -11,7 +11,8 @@ from datetime import date
 PROJECT_DIR = os.path.abspath(os.path.curdir)
 
 # directory of storing stock data
-PKL_BASIC_FEATURES_DIR = os.path.join(PROJECT_DIR, 'pkl', 'BasicFeatures')
+SYMBOLS_CSV_DIR =os.path.join(PROJECT_DIR, 'data', 'tej')
+SYMBOLS_PKL_DIR = os.path.join(PROJECT_DIR, 'data', 'pkl')
 
 # operating system
 os_type = platform.system()
@@ -52,7 +53,8 @@ EXP_SYMBOLS = [
     "2371", "2204", "1605", "2615", "2201",
 ]
 
-__all__ = ['PROJECT_DIR', 'PKL_BASIC_FEATURES_DIR', 'EXP_RESULT_DIR',
+__all__ = ['PROJECT_DIR', 'SYMBOLS_CSV_DIR', 'SYMBOLS_PKL_DIR',
+           'EXP_SP_PORTFOLIO_DIR',
            'DEFAULT_SOLVER', 'BUY_TRANS_FEE', 'SELL_TRANS_FEE',
            'START_DATE', 'END_DATE', "N_SCENARIO", 'WINDOW_LENGTH',
            'EXP_SYMBOLS']
