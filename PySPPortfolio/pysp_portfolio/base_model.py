@@ -5,6 +5,7 @@ License: GPL v2
 """
 from datetime import (date, )
 from time import time
+import platform
 import numpy as np
 import pandas as pd
 
@@ -34,8 +35,11 @@ class PortfolioReportMixin(object):
         weights_df: pandas.DataFrame, shape:(n_stock, n_exp_period)
 
         """
-        # return analysis
         reports = {}
+        # platform information
+        reports['os_uname'] = "|".join(platform.uname())
+
+        # return analysis
         reports['func_name'] = func_name
         reports['symbols'] = symbols
         reports['start_date'] = start_date
@@ -116,8 +120,6 @@ class PortfolioReportMixin(object):
             reports['SPA_u_pvalue'])
 
         return outputs, reports
-
-
 
 
 class ValidPortfolioParameterMixin(object):
@@ -203,9 +205,9 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         self.initial_risk_wealth = initial_risk_wealth
         self.initial_risk_free_wealth = initial_risk_free_wealth
 
-        # valid transactio nfee
-        self.valid_trans_fee(buy_trans_fee)
+        # valid transaction fee
         self.buy_trans_fee = buy_trans_fee
+        self.valid_trans_fee(buy_trans_fee)
         self.valid_trans_fee(sell_trans_fee)
         self.sell_trans_fee = sell_trans_fee
 
@@ -280,10 +282,9 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
         Returns:
         ----------------------------
-        estimated_risk_rois: pandas.Dataframe, shape: (n_stock, n_scenario)
+        estimated_risk_rois: pandas.DataFrame, shape: (n_stock, n_scenario)
         """
         raise NotImplementedError('get_estimated_rois')
-
 
     def get_estimated_risk_free_roi(self, *arg, **kwargs):
         """
@@ -295,7 +296,6 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         risk_free_roi: float
         """
         raise NotImplementedError('get_estimated_risk_free_roi')
-
 
     def get_current_buy_sell_amounts(self, *args, **kwargs):
         """
@@ -328,33 +328,37 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
     def run(self):
         """
-        run simulation
+        run recourse programming simulation
 
         Returns:
         ----------------
         standard report
         """
         t0 = time()
+
         # get function name
         func_name = self.get_trading_func_name()
 
-        # current wealth in each stock
+        # current wealth of each stock in the portfolio
         allocated_risk_wealth = self.initial_risk_wealth
         allocated_risk_free_wealth = self.initial_risk_free_wealth
 
+        # count of generating scenario error
         estimated_risk_roi_error_count = 0
         for tdx in xrange(self.n_exp_period):
             t1 = time()
             # estimating next period rois, shape: (n_stock, n_scenario)
             try:
                 estimated_risk_rois = self.get_estimated_risk_rois(tdx=tdx)
-            except ValueError:
+            except ValueError as e:
+                print ("generating scenario error: {}, {}".format(
+                    self.exp_risk_rois.index[tdx], e))
                 self.estimated_risk_roi_error[tdx] = True
 
             estimated_risk_free_roi = self.get_estimated_risk_free_roi(tdx=tdx)
 
             # generating scenarios success
-            if self.estimated_risk_roi_error[tdx] == False:
+            if self.estimated_risk_roi_error[tdx] is False:
 
                 # determining the buy and sell amounts
                 results = self.get_current_buy_sell_amounts(
@@ -366,12 +370,14 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                 )
                 # record results
                 self.set_specific_period_action(tdx=tdx, results=results)
+
+                # buy and sell according results, shape: (n_stock, )
                 buy_amounts = results["buy_amounts"]
                 sell_amounts = results["sell_amounts"]
 
             # generating scenarios failed
             else:
-                # buy and sell nothing
+                # buy and sell nothing, shape:(n_stock, )
                 buy_amounts = pd.Series(np.zeros(self.n_stock),
                                         index=self.symbols)
                 sell_amounts = pd.Series(np.zeros(self.n_stock),
@@ -383,16 +389,16 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             self.sell_amounts_df.iloc[tdx] = sell_amounts
 
             # record the transaction loss
+            buy_amounts_sum = buy_amounts.sum()
+            sell_amounts_sum = sell_amounts.sum()
             self.trans_fee_loss += (
-                self.buy_amounts_df.iloc[tdx].sum() * self.buy_trans_fee +
-                self.sell_amounts_df.iloc[tdx].sum() * self.sell_trans_fee
+                buy_amounts_sum * self.buy_trans_fee +
+               sell_amounts_sum * self.sell_trans_fee
             )
 
             # buy and sell amounts consider the transaction cost
-            total_buy = (self.buy_amounts_df.iloc[tdx].sum() *
-                         (1 + self.buy_trans_fee))
-            total_sell = (self.sell_amounts_df.iloc[tdx].sum() *
-                          (1 - self.sell_trans_fee))
+            total_buy = (buy_amounts_sum * (1 + self.buy_trans_fee))
+            total_sell = ( sell_amounts_sum * (1 - self.sell_trans_fee))
 
             # capital allocation
             self.risk_wealth_df.iloc[tdx] = (
@@ -410,7 +416,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             allocated_risk_wealth = self.risk_wealth_df.iloc[tdx]
             allocated_risk_free_wealth = self.risk_free_wealth.iloc[tdx]
 
-            print "[{}/{}] {} {} OK, estimated error count:{} " \
+            print ("[{}/{}] {} {} OK, estimated error count:{} " \
                   "current_wealth:{}, {:.3f} secs".format(
                     tdx + 1, self.n_exp_period,
                     func_name,
@@ -418,12 +424,13 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                     estimated_risk_roi_error_count,
                     (self.risk_wealth_df.iloc[tdx].sum() +
                      self.risk_free_wealth.iloc[tdx]),
-                    time() - t1)
+                    time() - t1))
 
         # end of iterations, computing statistics
         final_wealth = (self.risk_wealth_df.iloc[-1].sum() +
                         self.risk_free_wealth[-1])
 
+        # get reports
         output, reports = self.get_performance_report(
             func_name,
             self.symbols,
@@ -446,15 +453,18 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         reports['estimated_risk_roi_error_count'] = \
             self.estimated_risk_roi_error.sum()
 
+        # add simulation time
+        reports['simulation_time'] = time() - t0
+
         # user specified  additional elements to reports
         reports = self.add_results_to_reports(reports)
 
         if self.verbose:
-            print output
-        print "{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
+            print (output)
+        print ("{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
             func_name, self.n_stock,
             self.exp_risk_rois.index[0],
             self.exp_risk_rois.index[-1],
-            time() - t0)
+            time() - t0))
 
         return reports
