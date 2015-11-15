@@ -12,7 +12,7 @@ from glob import glob
 import os
 import numpy as np
 import pandas as pd
-import csv
+import matplotlib.pyplot as plt
 from PySPPortfolio.pysp_portfolio import *
 
 
@@ -26,7 +26,7 @@ def data_strip(data):
     return data.strip()
 
 
-def csv_to_pkl(symbols = EXP_SYMBOLS):
+def csv_to_pkl(symbols=EXP_SYMBOLS):
     """
     extract data from csv
 
@@ -63,13 +63,120 @@ def csv_to_pkl(symbols = EXP_SYMBOLS):
                          )
 
         # output data file path
-        fout_path = os.path.join(SYMBOLS_PKL_DIR, '{}.pkl'.format(symbol))
+        fout_path = os.path.join(SYMBOLS_PKL_DIR, '{}_df.pkl'.format(symbol))
         df.to_pickle(fout_path)
 
         print ("[{}/{}]{}.csv to dataframe OK, {:.3f} secs".format(
-            rdx+1, len(csvs), symbol, time()-t0))
+            rdx + 1, len(csvs), symbol, time() - t0))
 
-    print ("csv_to_pkl OK, {:.3f} secs".format(time()-t0))
+    print ("csv_to_pkl OK, {:.3f} secs".format(time() - t0))
+
+
+def dataframe_to_panel(symbols=EXP_SYMBOLS):
+    """
+    aggregating and trimming data to a panel file
+    """
+    t0 = time()
+    start_date = date(2004, 1, 1)
+    end_date = END_DATE
+
+    # load first df to read the periods
+    fin_path = os.path.join(SYMBOLS_PKL_DIR, "{}_df.pkl".format(symbols[0]))
+    df = pd.read_pickle(fin_path)
+
+    # get trans_dates and columns
+    trans_dates = df[start_date:end_date].index
+    trans_dates.name = 'trans_dates'
+    minor_indices = ['close_price', 'simple_roi']
+
+    # setting panel
+    pnl = pd.Panel(
+        np.zeros((len(trans_dates), len(symbols), len(minor_indices))),
+        items=trans_dates,
+        major_axis=symbols,
+        minor_axis=minor_indices)
+
+    for sdx, symbol in enumerate(symbols):
+        t1 = time()
+        # read df
+        fin_path = os.path.join(SYMBOLS_PKL_DIR, "{}_df.pkl".format(symbol))
+        trimmed_df = pd.read_pickle(fin_path).loc[start_date:end_date]
+
+        # rename columns
+        trimmed_df['simple_roi_%'] /= 100.
+        trimmed_df.rename(columns={r'simple_roi_%': 'simple_roi'},
+                          inplace=True)
+
+        # note: pnl.loc[:, symbol, :], shape: (columns, n_exp_period)
+        pnl.loc[:, symbol, :] = trimmed_df.ix[:, ('close_price',
+                                                  'simple_roi')].T
+
+        print ("[{}/{}] {} load to panel OK, {:.3f} secs".format(
+            sdx, len(symbols), symbol, time() - t1))
+
+    # output data file path
+    fout_path = os.path.join(SYMBOLS_PKL_DIR,
+                             'TAIEX_2005_largest50cap_panel.pkl')
+    pnl.to_pickle(fout_path)
+
+    print ("all exp_symbols load to panel OK, {:.3f} secs".format(time()-t0))
+
+
+def plot_exp_symbol_roi():
+    """
+    plot the line and distribution charts
+
+    http://matplotlib.org/api/legend_api.html
+    legend location:
+        'best'         : 0, (only implemented for axes legends)
+        'upper right'  : 1,
+        'upper left'   : 2,
+        'lower left'   : 3,
+        'lower right'  : 4,
+        'right'        : 5,
+        'center left'  : 6,
+        'center right' : 7,
+        'lower center' : 8,
+        'upper center' : 9,
+        'center'       : 10,
+    """
+    fin_path = os.path.join(SYMBOLS_PKL_DIR,
+                             'TAIEX_2005_largest50cap_panel.pkl')
+    panel = pd.read_pickle(fin_path)
+
+    # shape: (5,5) * 2
+    symbols = EXP_SYMBOLS
+    n_row, n_col = 5, 5
+    if len(symbols) % (n_col * n_row) == 0:
+         n_figure = len(symbols) / (n_col * n_row)
+    else:
+         n_figure = len(symbols) / (n_col * n_row) + 1
+
+    plt.clf()
+    for fdx in xrange(n_figure):
+        sdx = fdx * n_row * n_col
+        edx = (fdx+1) * n_row * n_col
+        df = panel.ix[:20, symbols[sdx:edx], 'simple_roi'].T
+        axes_arr = df.plot(subplots=True, layout=(n_row, n_col),
+                           color='green', legend=False, sharex=True,
+                           sharey=True)
+
+        for rdx in xrange(n_row):
+            for cdx in xrange(n_col):
+                axes_arr[rdx,cdx].legend(loc='upper center',
+                                         bbox_to_anchor=(0.5, 1.2))
+
+    plt.show()
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
-    csv_to_pkl()
+    # csv_to_pkl()
+    # dataframe_to_panel()
+    plot_exp_symbol_roi()
