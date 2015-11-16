@@ -18,8 +18,9 @@ from PySPPortfolio.pysp_portfolio import *
 from statsmodels.stats.stattools import (jarque_bera, )
 from statsmodels.tsa.stattools import (adfuller, )
 from utils import (sharpe, sortino_full, sortino_partial, maximum_drawdown)
-from arch.bootstrap.multiple_comparrison import (SPA,)
+from arch.bootstrap.multiple_comparrison import (SPA, )
 from arch.unitroot.unitroot import (DFGLS, PhillipsPerron, KPSS)
+
 
 def cp950_to_utf8(data):
     ''' utility function in parsing csv '''
@@ -82,7 +83,7 @@ def verify_symbol_csv():
     csvs = glob(os.path.join(SYMBOLS_CSV_DIR, '*.csv'))
     for rdx, csv_path in enumerate(csvs):
         reader = csv.DictReader(open(csv_path), [
-            's', 'abbr','date', 'o', 'h', 'l', 'c',
+            's', 'abbr', 'date', 'o', 'h', 'l', 'c',
             'vol', 'val', 'r', 'to', 'cap', 'cr'])
         reader.next()
         for idx, row in enumerate(reader):
@@ -91,6 +92,7 @@ def verify_symbol_csv():
             except ValueError as e:
                 print e
                 print csv_path, idx, row['date'], float(row['r'])
+
 
 def dataframe_to_panel(symbols=EXP_SYMBOLS):
     """
@@ -134,7 +136,7 @@ def dataframe_to_panel(symbols=EXP_SYMBOLS):
         print ("[{}/{}] {} load to panel OK, {:.3f} secs".format(
             sdx, len(symbols), symbol, time() - t1))
 
-    #  # fill na with 0
+    # # fill na with 0
     # pnl = pnl.fillna(0)
 
     # output data file path
@@ -142,7 +144,7 @@ def dataframe_to_panel(symbols=EXP_SYMBOLS):
                              'TAIEX_2005_largest50cap_panel.pkl')
     pnl.to_pickle(fout_path)
 
-    print ("all exp_symbols load to panel OK, {:.3f} secs".format(time()-t0))
+    print ("all exp_symbols load to panel OK, {:.3f} secs".format(time() - t0))
 
 
 def plot_exp_symbol_roi(n_row=5, n_col=5, plot_kind='line'):
@@ -164,27 +166,33 @@ def plot_exp_symbol_roi(n_row=5, n_col=5, plot_kind='line'):
         'center'       : 10,
     """
     fin_path = os.path.join(SYMBOLS_PKL_DIR,
-                             'TAIEX_2005_largest50cap_panel.pkl')
+                            'TAIEX_2005_largest50cap_panel.pkl')
     panel = pd.read_pickle(fin_path)
+
+    assert panel.major_axis.tolist() == EXP_SYMBOLS
+    panel = panel.loc[date(2005, 1, 3):date(2014, 12, 31)]
+
+    # the roi in the first experiment date is zero
+    panel.loc[date(2005, 1, 3), :, 'simple_roi'] = 0.
 
     # shape: (5,5) * 2
     symbols = EXP_SYMBOLS
     if len(symbols) % (n_col * n_row) == 0:
-         n_figure = len(symbols) / (n_col * n_row)
+        n_figure = len(symbols) / (n_col * n_row)
     else:
-         n_figure = len(symbols) / (n_col * n_row) + 1
+        n_figure = len(symbols) / (n_col * n_row) + 1
 
     plt.clf()
     for fdx in xrange(n_figure):
         sdx = fdx * n_row * n_col
-        edx = (fdx+1) * n_row * n_col
+        edx = (fdx + 1) * n_row * n_col
         df = panel.ix[:, symbols[sdx:edx], 'simple_roi'].T
 
         if plot_kind == "line":
             axes_arr = df.plot(
                 kind=plot_kind,
                 subplots=True, layout=(n_row, n_col), figsize=(48, 36),
-                color='green', legend=False, sharex=True, sharey=True)
+                color='green', legend=False, sharex=False, sharey=False)
 
         elif plot_kind == "hist":
             axes_arr = df.plot(
@@ -192,10 +200,16 @@ def plot_exp_symbol_roi(n_row=5, n_col=5, plot_kind='line'):
                 subplots=True, layout=(n_row, n_col), figsize=(48, 36),
                 color='green', legend=False, sharex=False, sharey=False)
 
+        elif plot_kind == "kde":
+            axes_arr = df.plot(
+                kind=plot_kind,
+                subplots=True, layout=(n_row, n_col), figsize=(48, 36),
+                color='green', legend=False, sharex=False, sharey=False)
+
         for rdx in xrange(n_row):
             for cdx in xrange(n_col):
-                axes_arr[rdx,cdx].legend(loc='upper center',
-                                         bbox_to_anchor=(0.5, 1.0))
+                axes_arr[rdx, cdx].legend(loc='upper center',
+                                          bbox_to_anchor=(0.5, 1.0))
 
         img_path = os.path.join(DATA_DIR, 'roi_plot',
                                 'roi_{}_{}.pdf'.format(plot_kind, fdx))
@@ -206,24 +220,24 @@ def plot_exp_symbol_roi(n_row=5, n_col=5, plot_kind='line'):
 
 
 def exp_symbols_statistics(fout_path=os.path.join(
-                            DATA_DIR, 'exp_symbols_statistics.xlsx')):
+    DATA_DIR, 'exp_symbols_statistics.xlsx')):
     """
     statistics of experiment symbols
     output the results to xlsx
     """
     t0 = time()
     fin_path = os.path.join(SYMBOLS_PKL_DIR,
-                             'TAIEX_2005_largest50cap_panel.pkl')
+                            'TAIEX_2005_largest50cap_panel.pkl')
     # shape: (n_exp_period, n_stock, ('simple_roi', 'close_price'))
     panel = pd.read_pickle(fin_path)
 
     assert panel.major_axis.tolist() == EXP_SYMBOLS
-    panel = panel.loc[date(2005,1,3):date(2014,12,31)]
+    panel = panel.loc[date(2005, 1, 3):date(2014, 12, 31)]
 
     # the roi in the first experiment date is zero
-    panel.loc[date(2005,1,3), :, 'simple_roi'] = 0.
+    panel.loc[date(2005, 1, 3), :, 'simple_roi'] = 0.
 
-    stat_indices=(
+    stat_indices = (
         # basic information
         'start_date', 'end_date',
         'n_exp_period', 'n_period_up', 'n_period_down',
@@ -283,13 +297,13 @@ def exp_symbols_statistics(fout_path=os.path.join(
         stat_df.loc['n_period_down', symbol] = (rois < 0).sum()
 
         # roi
-        stat_df.loc['cum_roi', symbol] = (rois+1.).prod() - 1
-        stat_df.loc['daily_roi', symbol] = np.power((rois+1.).prod(),
-                                                    1./len(rois))-1
+        stat_df.loc['cum_roi', symbol] = (rois + 1.).prod() - 1
+        stat_df.loc['daily_roi', symbol] = np.power((rois + 1.).prod(),
+                                                    1. / len(rois)) - 1
         stat_df.loc['daily_mean_roi', symbol] = rois.mean()
         stat_df.loc['daily_std_roi', symbol] = rois.std()
         stat_df.loc['daily_skew_roi', symbol] = rois.skew()
-        stat_df.loc['daily_kurt_roi', symbol] = rois.kurt() # excess
+        stat_df.loc['daily_kurt_roi', symbol] = rois.kurt()  # excess
 
         # roi/risk indices
         stat_df.loc['sharpe', symbol] = sharpe(rois)
@@ -297,7 +311,8 @@ def exp_symbols_statistics(fout_path=os.path.join(
          stat_df.loc['sortino_full_semi_std', symbol]) = sortino_full(rois)
 
         (stat_df.loc['sortino_partial', symbol],
-         stat_df.loc['sortino_partial_semi_std', symbol]) = sortino_partial(rois)
+         stat_df.loc['sortino_partial_semi_std', symbol]) = sortino_partial(
+            rois)
 
         stat_df.loc['max_abs_drawdown', symbol] = maximum_drawdown(rois)
 
@@ -325,13 +340,13 @@ def exp_symbols_statistics(fout_path=os.path.join(
 
         dfgls_c_instance = DFGLS(rois, trend='c')
         dfgls_c, dfgls_c_pvalue = (dfgls_c_instance.stat,
-                                  dfgls_c_instance.pvalue)
+                                   dfgls_c_instance.pvalue)
         stat_df.loc['DFGLS_c', symbol] = dfgls_c
         stat_df.loc['DFGLS_c_pvalue', symbol] = dfgls_c_pvalue
 
         dfgls_ct_instance = DFGLS(rois, trend='ct')
         dfgls_ct, dfgls_ct_pvalue = (dfgls_ct_instance.stat,
-                                  dfgls_ct_instance.pvalue)
+                                     dfgls_ct_instance.pvalue)
         stat_df.loc['DFGLS_ct', symbol] = dfgls_ct
         stat_df.loc['DFGLS_ct_pvalue', symbol] = dfgls_ct_pvalue
 
@@ -366,11 +381,11 @@ def exp_symbols_statistics(fout_path=os.path.join(
         spa.seed(np.random.randint(0, 2 ** 31 - 1))
         spa.compute()
         stat_df.loc['SPA_l_pvalue', symbol] = spa.pvalues[0]
-        stat_df.loc['SPA_c_pvalue', symbol]= spa.pvalues[1]
+        stat_df.loc['SPA_c_pvalue', symbol] = spa.pvalues[1]
         stat_df.loc['SPA_u_pvalue', symbol] = spa.pvalues[2]
 
         print ("[{}/{}] {} roi statistics OK, {:.3f} secs".format(
-            rdx+1, len(EXP_SYMBOLS), symbol, time() - t1
+            rdx + 1, len(EXP_SYMBOLS), symbol, time() - t1
         ))
 
     # write to excel
@@ -379,7 +394,7 @@ def exp_symbols_statistics(fout_path=os.path.join(
     stat_df.to_excel(writer, sheet_name='stats')
 
     # Get the xlsxwriter workbook and worksheet objects.
-    workbook  = writer.book
+    workbook = writer.book
     worksheet = writer.sheets['stats']
 
     # basic formats.
@@ -419,9 +434,11 @@ def exp_symbols_statistics(fout_path=os.path.join(
 
 
 if __name__ == '__main__':
+    pass
     # csv_to_pkl()
     # dataframe_to_panel()
     # plot_exp_symbol_roi(plot_kind='line')
     # plot_exp_symbol_roi(plot_kind='hist')
+    # plot_exp_symbol_roi(plot_kind='kde')
     # exp_symbols_statistics()
-    verify_symbol_csv()
+    # verify_symbol_csv()
