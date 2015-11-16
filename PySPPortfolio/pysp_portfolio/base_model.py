@@ -77,8 +77,7 @@ class PortfolioReportMixin(object):
         reports['sortino_partial'], reports['sortino_partial_semi_std'] = \
             sortino_partial(wealth_daily_rois)
 
-        reports['max_drawdown'], reports['max_abs_drawdown'] = \
-            maximum_drawdown(wealth_arr)
+        reports['max_abs_drawdown'] = maximum_drawdown(wealth_arr)
 
         # statistics test
         # SPA test, benchmark is no action
@@ -113,7 +112,7 @@ class PortfolioReportMixin(object):
             reports['sortino_partial'], reports['sortino_partial_semi_std'])
 
         outputs += "mdd: {:.2%}, mad:{:.4f}\n".format(
-            reports['max_drawdown'], reports['max_abs_drawdown'])
+            reports['max_abs_drawdown'])
 
         outputs += "SPA_ pvalue: [{:.4%}, {:.4%}, {:.4%}]\n".format(
             reports['SPA_l_pvalue'], reports['SPA_c_pvalue'],

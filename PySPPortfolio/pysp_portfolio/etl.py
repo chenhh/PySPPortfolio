@@ -119,7 +119,7 @@ def dataframe_to_panel(symbols=EXP_SYMBOLS):
             sdx, len(symbols), symbol, time() - t1))
 
     #  # fill na with 0
-    pnl = pnl.fillna(0)
+    # pnl = pnl.fillna(0)
 
     # output data file path
     fout_path = os.path.join(SYMBOLS_PKL_DIR,
@@ -202,8 +202,7 @@ def exp_symbols_statistics(fout_path=os.path.join(
     panel = pd.read_pickle(fin_path)
 
     assert panel.major_axis.tolist() == EXP_SYMBOLS
-    panel = panel.loc[date(2005,1,3):date(2014,12,31)]
-
+    panel = panel.loc[date(2005,1,3):date(2013,12,31)]
 
     # the roi in the first experiment date is zero
     panel.loc[date(2005,1,3), :, 'simple_roi'] = 0.
@@ -212,20 +211,43 @@ def exp_symbols_statistics(fout_path=os.path.join(
         # basic information
         'start_date', 'end_date',
         'n_exp_period', 'n_period_up', 'n_period_down',
+
         # roi
         'cum_roi', 'daily_roi', 'daily_mean_roi',
         'daily_std_roi', 'daily_skew_roi', 'daily_kurt_roi',
+
         # roi/risk indices
         'sharpe', 'sortino_full', 'sortino_full_semi_std',
         'sortino_partial', 'sortino_partial_semi_std',
-        'max_drawdown', 'max_abs_drawdown',
+        'max_abs_drawdown',
+
         # normal tests
-        'JB_pvalue',
-        # uniroot tests
-        'ADF_c_pvalue', 'ADF_ct_pvalue', 'ADF_ctt_pvalue', 'ADF_nc_pvalue',
-        'DFGLS_c_pvalue', 'DFGLS_ct_pvalue',
-        'PP_c_pvalue', 'PP_ct_pvalue', 'PP_nc_pvalue',
-        'KPSS_c_pvalue', 'KPSS_ct_pvalue',
+        'JB', 'JB_pvalue',
+
+        # uni-root tests
+        'ADF_c',
+        'ADF_c_pvalue',
+        'ADF_ct',
+        'ADF_ct_pvalue',
+        'ADF_ctt',
+        'ADF_ctt_pvalue',
+        'ADF_nc',
+        'ADF_nc_pvalue',
+        'DFGLS_c',
+        'DFGLS_c_pvalue',
+        'DFGLS_ct',
+        'DFGLS_ct_pvalue',
+        'PP_c',
+        'PP_c_pvalue',
+        'PP_ct',
+        'PP_ct_pvalue',
+        'PP_nc',
+        'PP_nc_pvalue',
+        'KPSS_c',
+        'KPSS_c_pvalue',
+        'KPSS_ct',
+        'KPSS_ct_pvalue',
+
         # performance
         'SPA_l_pvalue', 'SPA_c_pvalue', 'SPA_u_pvalue'
     )
@@ -238,15 +260,15 @@ def exp_symbols_statistics(fout_path=os.path.join(
         t1 = time()
         rois = panel[:, symbol, 'simple_roi']
         # basic
-        stat_df.loc['start_date', symbol] = rois.index[0]
-        stat_df.loc['end_date', symbol] = rois.index[-1]
+        stat_df.loc['start_date', symbol] = rois.index[0].strftime("%Y/%b/%d")
+        stat_df.loc['end_date', symbol] = rois.index[-1].strftime("%Y/%b/%d")
         stat_df.loc['n_exp_period', symbol] = len(rois)
         stat_df.loc['n_period_up', symbol] = (rois > 0).sum()
         stat_df.loc['n_period_down', symbol] = (rois < 0).sum()
 
         # roi
-        stat_df.loc['cum_roi', symbol] = (rois+1).prod() - 1
-        stat_df.loc['daily_roi', symbol] = np.power((rois+1).prod(),
+        stat_df.loc['cum_roi', symbol] = (rois+1.).prod() - 1
+        stat_df.loc['daily_roi', symbol] = np.power((rois+1.).prod(),
                                                     1./len(rois))-1
         stat_df.loc['daily_mean_roi', symbol] = rois.mean()
         stat_df.loc['daily_std_roi', symbol] = rois.std()
@@ -260,33 +282,68 @@ def exp_symbols_statistics(fout_path=os.path.join(
 
         (stat_df.loc['sortino_partial', symbol],
          stat_df.loc['sortino_partial_semi_std', symbol]) = sortino_partial(rois)
-        print maximum_drawdown(rois)
-        (stat_df.loc['max_drawdown', symbol],
-         stat_df.loc['max_abs_drawdown', symbol]) = maximum_drawdown(rois)
+
+        stat_df.loc['max_abs_drawdown', symbol] = maximum_drawdown(rois)
 
         # normal tests
-        stat_df.loc['JB_pvalue', symbol] = jarque_bera(rois)[1]
+        jb = jarque_bera(rois)
+        stat_df.loc['JB', symbol] = jb[0]
+        stat_df.loc['JB_pvalue', symbol] = jb[1]
 
         # uniroot tests
-        stat_df.loc['ADF_c_pvalue', symbol] = \
-            adfuller(rois, regression='c')[1]
-        stat_df.loc['ADF_ct_pvalue', symbol] = \
-            adfuller(rois, regression='ct')[1]
-        stat_df.loc['ADF_ctt_pvalue', symbol] = \
-            adfuller(rois, regression='ctt')[1]
-        stat_df.loc['ADF_nc_pvalue', symbol] = \
-            adfuller(rois, regression='nc')[1]
+        adf_c = adfuller(rois, regression='c')
+        stat_df.loc['ADF_c', symbol] = adf_c[0]
+        stat_df.loc['ADF_c_pvalue', symbol] = adf_c[1]
 
-        stat_df.loc['DFGLS_c_pvalue', symbol] = DFGLS(rois, trend='c').pvalue
-        stat_df.loc['DFGLS_ct_pvalue', symbol] = DFGLS(rois, trend='ct').pvalue
-        stat_df.loc['PP_c_pvalue', symbol] = \
-            PhillipsPerron(rois, trend='c').pvalue
-        stat_df.loc['PP_ct_pvalue', symbol] = \
-            PhillipsPerron(rois, trend='ct').pvalue
-        stat_df.loc['PP_nc_pvalue', symbol] = \
-            PhillipsPerron(rois, trend='nc').pvalue
-        stat_df.loc['KPSS_c_pvalue', symbol] = KPSS(rois, trend='c').pvalue
-        stat_df.loc['KPSS_ct_pvalue', symbol] = KPSS(rois, trend='ct').pvalue
+        adf_ct = adfuller(rois, regression='ct')
+        stat_df.loc['ADF_ct', symbol] = adf_ct[0]
+        stat_df.loc['ADF_ct_pvalue', symbol] = adf_ct[1]
+
+        adf_ctt = adfuller(rois, regression='ctt')
+        stat_df.loc['ADF_ctt', symbol] = adf_ctt[0]
+        stat_df.loc['ADF_ctt_pvalue', symbol] = adf_ctt[1]
+
+        adf_nc = adfuller(rois, regression='nc')
+        stat_df.loc['ADF_nc', symbol] = adf_nc[0]
+        stat_df.loc['ADF_nc_pvalue', symbol] = adf_nc[1]
+
+        dfgls_c_instance = DFGLS(rois, trend='c')
+        dfgls_c, dfgls_c_pvalue = (dfgls_c_instance.stat,
+                                  dfgls_c_instance.pvalue)
+        stat_df.loc['DFGLS_c', symbol] = dfgls_c
+        stat_df.loc['DFGLS_c_pvalue', symbol] = dfgls_c_pvalue
+
+        dfgls_ct_instance = DFGLS(rois, trend='ct')
+        dfgls_ct, dfgls_ct_pvalue = (dfgls_ct_instance.stat,
+                                  dfgls_ct_instance.pvalue)
+        stat_df.loc['DFGLS_ct', symbol] = dfgls_ct
+        stat_df.loc['DFGLS_ct_pvalue', symbol] = dfgls_ct_pvalue
+
+        pp_c_instance = PhillipsPerron(rois, trend='c')
+        pp_c, pp_c_pvalue = (pp_c_instance.stat, pp_c_instance.pvalue)
+        stat_df.loc['PP_c', symbol] = pp_c
+        stat_df.loc['PP_c_pvalue', symbol] = pp_c_pvalue
+
+        pp_ct_instance = PhillipsPerron(rois, trend='ct')
+        pp_ct, pp_ct_pvalue = (pp_ct_instance.stat, pp_ct_instance.pvalue)
+        stat_df.loc['PP_ct', symbol] = pp_ct
+        stat_df.loc['PP_ct_pvalue', symbol] = pp_ct_pvalue
+
+        pp_nc_instance = PhillipsPerron(rois, trend='nc')
+        pp_nc, pp_nc_pvalue = (pp_nc_instance.stat, pp_nc_instance.pvalue)
+        stat_df.loc['PP_nc', symbol] = pp_nc
+        stat_df.loc['PP_nc_pvalue', symbol] = pp_nc_pvalue
+
+        kpss_c_instance = KPSS(rois, trend='c')
+        kpss_c, kpss_c_pvalue = (kpss_c_instance.stat, kpss_c_instance.pvalue)
+        stat_df.loc['KPSS_c', symbol] = kpss_c
+        stat_df.loc['KPSS_c_pvalue', symbol] = kpss_c_pvalue
+
+        kpss_ct_instance = KPSS(rois, trend='ct')
+        kpss_ct, kpss_ct_pvalue = (kpss_ct_instance.stat,
+                                   kpss_ct_instance.pvalue)
+        stat_df.loc['KPSS_ct', symbol] = kpss_ct
+        stat_df.loc['KPSS_ct_pvalue', symbol] = kpss_ct_pvalue
 
         # performance
         spa = SPA(rois, np.zeros(len(rois)), reps=5000)
@@ -302,19 +359,34 @@ def exp_symbols_statistics(fout_path=os.path.join(
 
     # write to excel
     writer = pd.ExcelWriter(fout_path, engine='xlsxwriter')
-
+    stat_df = stat_df.T
     stat_df.to_excel(writer, sheet_name='stats')
 
     # Get the xlsxwriter workbook and worksheet objects.
     workbook  = writer.book
     worksheet = writer.sheets['stats']
 
-    # Add some cell formats.
-    percent_fmt = workbook.add_format({'num_format': '0%'})
+    # Add formats.
+    percent_fmt = workbook.add_format({'num_format': '0.00%'})
     date_fmt = workbook.add_format({'num_format': 'yy/mmm/dd'})
 
-    worksheet.set_row('B2:AY3', 20, date_fmt)
-    worksheet.set_row('B7:AY13', 20, percent_fmt)
+    worksheet.set_column('B:C', 12, date_fmt)
+    worksheet.set_column('G:J', 8, percent_fmt)
+    worksheet.set_column('M:Q', 8, percent_fmt)
+
+    worksheet.set_column('T:T', 8, percent_fmt)
+    worksheet.set_column('V:V', 8, percent_fmt)
+    worksheet.set_column('X:X', 8, percent_fmt)
+    worksheet.set_column('Z:Z', 8, percent_fmt)
+    worksheet.set_column('AB:AB', 8, percent_fmt)
+    worksheet.set_column('AD:AD', 8, percent_fmt)
+    worksheet.set_column('AF:AF', 8, percent_fmt)
+    worksheet.set_column('AH:AH', 8, percent_fmt)
+    worksheet.set_column('AJ:AJ', 8, percent_fmt)
+    worksheet.set_column('AL:AL', 8, percent_fmt)
+    worksheet.set_column('AN:AN', 8, percent_fmt)
+    worksheet.set_column('AP:AP', 8, percent_fmt)
+    worksheet.set_column('AQ:AS', 8, percent_fmt)
 
     writer.save()
 
