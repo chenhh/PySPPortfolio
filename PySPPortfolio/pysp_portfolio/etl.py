@@ -20,7 +20,8 @@ from statsmodels.tsa.stattools import (adfuller, )
 from utils import (sharpe, sortino_full, sortino_partial, maximum_drawdown)
 from arch.bootstrap.multiple_comparrison import (SPA, )
 from arch.unitroot.unitroot import (DFGLS, PhillipsPerron, KPSS)
-
+from PySPPortfolio.pysp_portfolio.scenario.c_moment_matching import (
+    heuristic_moment_matching as c_HMM,)
 
 def cp950_to_utf8(data):
     ''' utility function in parsing csv '''
@@ -431,6 +432,38 @@ def exp_symbols_statistics(fout_path=os.path.join(
     writer.save()
 
     print ("all roi statistics OK, {:.3f} secs".format(time() - t0))
+
+
+def generating_scenarios(n_stock, win_length, n_scenario=200):
+    """
+    generating scenarios at once
+
+    Parameters:
+    ------------------
+    n_stock: integer, number of stocks in the EXP_SYMBOLS
+    win_length: integer, number of historical periods
+    n_scenario: integer, number of scenarios to generating
+    """
+    t0 = time()
+    fin_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    # shape: (n_exp_period, n_stock, ('simple_roi', 'close_price'))
+    panel = pd.read_pickle(fin_path)
+
+    assert panel.major_axis.tolist() == EXP_SYMBOLS
+    panel = panel.loc[date(2005, 1, 3):date(2014, 12, 31)]
+
+    # the roi in the first experiment date is zero
+    panel.loc[date(2005, 1, 3), :, 'simple_roi'] = 0.
+
+    n_exp_period = len(panel.items)
+    scenario_panel = pd.Panel(
+                        np.zeros((n_exp_period, n_stock, n_scenario)),
+                        items=panel.items,
+                        major_axis=panel.major_axis)
+
+    for tdx in xrange(n_exp_period):
+
 
 
 if __name__ == '__main__':
