@@ -2,7 +2,7 @@
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: infer_types=True
-
+#cython: nonecheck=False
 """
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
@@ -11,7 +11,8 @@ Høyland, K.; Kaut, M. & Wallace, S. W., "A heuristic for
 moment-matching scenario generation," Computational optimization
 and applications, vol. 24, pp 169-185, 2003.
 
-correlation, skewness, kurtosis does not affect by scale and shift.
+note: correlation, skewness, and kurtosis do not affected by scaling and
+    shifting.
 """
 
 from __future__ import division
@@ -22,9 +23,11 @@ import scipy.stats as spstats
 from time import time
 
 cimport numpy as cnp
+from numpy.math cimport INFINITY
 ctypedef cnp.float64_t FLOAT_t
 
-def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
+cpdef heuristic_moment_matching(
+                              cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                               cnp.ndarray[FLOAT_t, ndim=2] tgt_corrs,
                               int n_scenario=200,
                               double max_moment_err=1e-3,
@@ -46,48 +49,46 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
     -------------
     out_mtx: numpy.array, shape:(n_rv, n_scenario)
     """
-
     t0 = time()
-
     # parameters
-    cdef int n_rv = tgt_moments.shape[0]
+    cdef:
+        int n_rv = tgt_moments.shape[0]
 
-    # iteration for find good start samples
-    cdef int max_start_iter = 5
+        # iteration for find good start samples
+        int max_start_iter = 5
 
-    # cubic transform iteration
-    cdef int max_cubic_iter = 2
+        # cubic transform iteration
+        int max_cubic_iter = 2
 
-    # main iteration of moment matching loop
-    cdef int max_main_iter = 20
+        # main iteration of moment matching loop
+        int max_main_iter = 20
 
-    # out mtx, for storing scenarios
-    cdef cnp.ndarray[FLOAT_t, ndim=2] out_mtx = np.empty((n_rv, n_scenario))
+        # out mtx, for storing scenarios
+        cnp.ndarray[FLOAT_t, ndim=2] out_mtx = np.zeros((n_rv, n_scenario))
 
-    # to generate samples Y with zero mean, and unit variance,
-    # shape: (n_rv, 4)
-    cdef cnp.ndarray[FLOAT_t, ndim=2] y_moments = np.zeros((n_rv, 4))
+        # to generate samples Y with zero mean, and unit variance,
+        # shape: (n_rv, 4)
+        cnp.ndarray[FLOAT_t, ndim=2] y_moments = np.zeros((n_rv, 4))
 
+        double cubic_err, best_cub_err
+        double moment_err, corrs_err
+        int cub_iter
+
+        cnp.ndarray[FLOAT_t, ndim=1] ex = np.empty(4)
+        cnp.ndarray[FLOAT_t, ndim=1] ey = np.empty(12)
+        cnp.ndarray[FLOAT_t, ndim=1] tmp_out = np.zeros(n_scenario)
+        cnp.ndarray[FLOAT_t, ndim=1] x_init
+        cnp.ndarray[FLOAT_t, ndim=2] c_lower, out_corrs, co_inv, l_vec
+
+    # moments
     y_moments[:, 1] = 1
     y_moments[:, 2] = tgt_moments[:, 2]
     y_moments[:, 3] = tgt_moments[:, 3] + 3
 
-    # define variables
-    cdef:
-        double cubic_err, best_cub_err
-        int cub_iter
-
-        cnp.ndarray[FLOAT_t, ndim=1] ex
-        cnp.ndarray[FLOAT_t, ndim=1] ey
-        cnp.ndarray[FLOAT_t, ndim=1] tmp_out
-        cnp.ndarray[FLOAT_t, ndim=1] x_init
-        double moment_err, corrs_err
-        cnp.ndarray[FLOAT_t, ndim=2] c_lower, out_corrs, co_inv, l_vec
-
 
     # find good start moment matrix (with err_moment converge)
     for rv in xrange(n_rv):
-        cubic_err, best_cub_err = float('inf'), float('inf')
+        cubic_err, best_cub_err = INFINITY, INFINITY
 
         # loop until errMom converge
         for _ in xrange(max_start_iter):
@@ -101,8 +102,8 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
             for cub_iter in xrange(max_cubic_iter):
 
                 # 1~12th moments of the random samples
-                ex = np.fromiter(((tmp_out ** (idx + 1)).mean()
-                                  for idx in xrange(12)), np.float)
+                ex = np.asarray([(tmp_out ** (idx + 1)).mean()
+                                  for idx in xrange(12)])
 
                 # find corresponding cubic parameters
                 x_init = np.array([0., 1., 0., 0.])
@@ -119,11 +120,12 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                            cubic_params[3] * (tmp_out ** 3))
 
                 if cubic_err < max_cubic_err:
+                    # break starter loop
                     break
                 else:
                     if verbose:
-                        print "rv:{}, cubiter:{}, cubErr: {}, " \
-                              "not converge".format(rv, cub_iter, cubic_err)
+                        print ("rv:{}, cubiter:{}, cubErr: {}, "
+                              "not converge".format(rv, cub_iter, cubic_err))
 
             # accept current samples
             if cubic_err < best_cub_err:
@@ -131,13 +133,12 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                 out_mtx[rv, :] = tmp_out
 
     # computing starting properties and error
-    # correct moment, wrong correlation
-
+    # correct moment, but wrong correlation
     moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                               tgt_corrs)
     if verbose:
-        print 'start mtx (orig) moment_err:{}, corr_err:{}'.format(
-            moments_err, corrs_err)
+        print ('start mtx (orig) moment_err:{}, corr_err:{}'.format(
+            moments_err, corrs_err))
 
     # Cholesky decomposition of target corr mtx
     c_lower = la.cholesky(tgt_corrs)
@@ -157,21 +158,21 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
         moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                                   tgt_corrs)
         if verbose:
-            print 'main_iter:{} cholesky transform (orig) moment_err:{}, ' \
-                  'corr_err:{}'.format(main_iter, moments_err, corrs_err)
+            print ('main_iter:{} cholesky transform (orig) moment_err:{}, '
+                  'corr_err:{}'.format(main_iter, moments_err, corrs_err))
 
         # after Cholesky decompsition ,the corr_err converges,
         # but the moment error may enlarge, hence it requires
         # cubic transform
         for rv in xrange(n_rv):
-            cubic_err = float('inf')
+            cubic_err = INFINITY
             tmp_out = out_mtx[rv, :]
             ey = y_moments[rv, :]
 
             # loop until cubic transform erro converge
             for cub_iter in xrange(max_cubic_iter):
-                ex = np.fromiter(((tmp_out ** (idx + 1)).mean()
-                                  for idx in xrange(12)), np.float)
+                ex = np.asarray([(tmp_out ** (idx + 1)).mean()
+                                  for idx in xrange(12)])
                 X_init = np.array([0., 1., 0., 0.])
                 out = spopt.leastsq(cubic_function, X_init, args=(ex, ey),
                                     full_output=True, ftol=1E-12, xtol=1E-12)
@@ -188,22 +189,22 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                     break
                 else:
                     if verbose:
-                        print "main_iter:{}, rv: {}, " \
-                              "(orig) cub_iter:{}, " \
+                        print ("main_iter:{}, rv: {}, "
+                              "(orig) cub_iter:{}, "
                               "cubErr: {}, not converge".format(
-                            main_iter, rv, cub_iter, cubic_err)
+                            main_iter, rv, cub_iter, cubic_err))
 
         moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                                   tgt_corrs)
         if verbose:
-            print 'main_iter:{} cubic_transform, (orig) moment eror:{}, ' \
-                  'corr err: {}'.format(main_iter, moments_err, corrs_err)
+            print ('main_iter:{} cubic_transform, (orig) moment eror:{}, '
+                  'corr err: {}'.format(main_iter, moments_err, corrs_err))
 
     # rescale data to original moments
     out_mtx = (out_mtx * tgt_moments[:, 1][:, np.newaxis] +
                tgt_moments[:, 0][:, np.newaxis])
 
-    out_central_moments = np.empty((n_rv, 4))
+    cdef cnp.ndarray[FLOAT_t, ndim=2] out_central_moments = np.empty((n_rv, 4))
     out_central_moments[:, 0] = out_mtx.mean(axis=1)
     out_central_moments[:, 1] = out_mtx.std(axis=1)
     out_central_moments[:, 2] = spstats.skew(out_mtx, axis=1)
@@ -211,34 +212,34 @@ def heuristic_moment_matching(cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
     out_corrs = np.corrcoef(out_mtx)
 
     if verbose:
-        print "1st moments difference {}".format(
-            (tgt_moments[:, 0] - out_central_moments[:, 0]).sum()
+        print ("1st moments difference {}".format(
+            (tgt_moments[:, 0] - out_central_moments[:, 0]).sum())
         )
-        print "2nd moments difference {}".format(
-            (tgt_moments[:, 1] - out_central_moments[:, 1]).sum()
+        print ("2nd moments difference {}".format(
+            (tgt_moments[:, 1] - out_central_moments[:, 1]).sum())
         )
-        print "3th moments difference {}".format(
-            (tgt_moments[:, 2] - out_central_moments[:, 2]).sum()
+        print ("3th moments difference {}".format(
+            (tgt_moments[:, 2] - out_central_moments[:, 2]).sum())
         )
-        print "4th moments difference {}".format(
-            (tgt_moments[:, 3] - out_central_moments[:, 3]).sum()
+        print ("4th moments difference {}".format(
+            (tgt_moments[:, 3] - out_central_moments[:, 3]).sum())
         )
-        print "corr difference {}".format(
-            (tgt_corrs - np.corrcoef(out_mtx)).sum()
+        print ("corr difference {}".format(
+            (tgt_corrs - np.corrcoef(out_mtx)).sum())
         )
 
     moments_err = rmse(out_central_moments, tgt_moments)
     corrs_err = rmse(out_corrs, tgt_corrs)
     if verbose:
-        print 'sample central moment err:{}, corr err:{}'.format(
-            moments_err, corrs_err)
+        print ('sample central moment err:{}, corr err:{}'.format(
+            moments_err, corrs_err))
 
     if moments_err > max_moment_err or corrs_err > max_corr_err:
         raise ValueError("out mtx not converge, moment error: {}, "
                          "corr err:{}".format(moments_err, corrs_err))
     if verbose:
-        print "c_HeuristicMomentMatching elapsed {:.3f} secs".format(
-            time() - t0)
+        print ("c_HeuristicMomentMatching elapsed {:.3f} secs".format(
+            time() - t0))
     return out_mtx
 
 
@@ -309,7 +310,7 @@ cpdef cubic_function(cnp.ndarray[FLOAT_t, ndim=1] cubic_params,
     return v1, v2, v3, v4
 
 
-cpdef error_statistics( cnp.ndarray[FLOAT_t, ndim=2] out_mtx,
+cdef error_statistics( cnp.ndarray[FLOAT_t, ndim=2] out_mtx,
                         cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                         cnp.ndarray[FLOAT_t, ndim=2] tgt_corrs):
     """
@@ -321,9 +322,9 @@ cpdef error_statistics( cnp.ndarray[FLOAT_t, ndim=2] out_mtx,
     """
     cdef:
         int n_rv = out_mtx.shape[0]
-        cnp.ndarray[FLOAT_t, ndim=2] out_moments = np.empty((n_rv, 4))
+        cnp.ndarray[FLOAT_t, ndim=2] out_moments = np.zeros((n_rv, 4))
         cnp.ndarray[FLOAT_t, ndim=2] out_corrs = np.corrcoef(out_mtx)
-        double moments_err = 1e50, corrs_err = 1e50
+        double moments_err = INFINITY, corrs_err = INFINITY
         int idx
 
     for idx in xrange(4):
@@ -335,20 +336,30 @@ cpdef error_statistics( cnp.ndarray[FLOAT_t, ndim=2] out_mtx,
     return moments_err, corrs_err
 
 
-cpdef rmse(cnp.ndarray[FLOAT_t, ndim=2] src_arr,
+cdef rmse(cnp.ndarray[FLOAT_t, ndim=2] src_arr,
            cnp.ndarray[FLOAT_t, ndim=2] tgt_arr):
     """
-    src_arr:, numpy.array
-    tgt_arr:, numpy.array
+    root mean square error of two arrays
+
+    Parameters:
+    ---------------------------
+    src_arr: numpy.array
+    tgt_arr: numpy.array
     """
-    cdef double error=1e50
+    cdef double error=INFINITY
     error = np.sqrt(((src_arr - tgt_arr) ** 2).sum())
     return error
 
 
-cpdef central_to_orig_moment(cnp.ndarray[FLOAT_t, ndim=2] central_moments):
+cdef central_to_orig_moment(cnp.ndarray[FLOAT_t, ndim=2] central_moments):
     """
     central moments to original moments
+
+    Parameters:
+    ------------------
+    central_monents: numpy.array, shape:(n_data, 4)
+
+    -----------------------
     E[X] = samples.mean()
     std**2 = var = E[X**2] - E[X]*E[X]
 
