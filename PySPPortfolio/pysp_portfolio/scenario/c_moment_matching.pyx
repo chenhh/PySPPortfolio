@@ -3,6 +3,7 @@
 #cython: wraparound=False
 #cython: infer_types=True
 #cython: nonecheck=False
+
 """
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
@@ -25,6 +26,7 @@ from time import time
 cimport numpy as cnp
 from numpy.math cimport INFINITY
 ctypedef cnp.float64_t FLOAT_t
+ctypedef cnp.intp_t INTP_t
 
 cpdef heuristic_moment_matching(
                               cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
@@ -52,7 +54,7 @@ cpdef heuristic_moment_matching(
     t0 = time()
     # parameters
     cdef:
-        int n_rv = tgt_moments.shape[0]
+        INTP_t n_rv = tgt_moments.shape[0]
 
         # iteration for find good start samples
         int max_start_iter = 5
@@ -321,7 +323,7 @@ cdef error_statistics( cnp.ndarray[FLOAT_t, ndim=2] out_mtx,
     tgt_corrs: numpy.array, shape: (n_rv, n_rv)
     """
     cdef:
-        int n_rv = out_mtx.shape[0]
+        INTP_t n_rv = out_mtx.shape[0]
         cnp.ndarray[FLOAT_t, ndim=2] out_moments = np.zeros((n_rv, 4))
         cnp.ndarray[FLOAT_t, ndim=2] out_corrs = np.corrcoef(out_mtx)
         double moments_err = INFINITY, corrs_err = INFINITY
@@ -371,7 +373,7 @@ cdef central_to_orig_moment(cnp.ndarray[FLOAT_t, ndim=2] central_moments):
     kurt = m4/m2**2 -3
     """
     cdef:
-        int n_rv = central_moments.shape[0]
+        INTP_t n_rv = central_moments.shape[0]
         cnp.ndarray[FLOAT_t, ndim=2] orig_moments = np.empty((n_rv, 4))
 
     orig_moments[:, 0] = central_moments[:, 0]
