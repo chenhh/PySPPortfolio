@@ -9,6 +9,7 @@ extract-transform-load of data
 from datetime import date
 from time import time
 from glob import glob
+import csv
 import os
 import numpy as np
 import pandas as pd
@@ -75,6 +76,21 @@ def csv_to_pkl(symbols=EXP_SYMBOLS):
 
     print ("csv_to_pkl OK, {:.3f} secs".format(time() - t0))
 
+
+def verify_symbol_csv():
+    """ test if any nan data in csv """
+    csvs = glob(os.path.join(SYMBOLS_CSV_DIR, '*.csv'))
+    for rdx, csv_path in enumerate(csvs):
+        reader = csv.DictReader(open(csv_path), [
+            's', 'abbr','date', 'o', 'h', 'l', 'c',
+            'vol', 'val', 'r', 'to', 'cap', 'cr'])
+        reader.next()
+        for idx, row in enumerate(reader):
+            try:
+                roi = float(row['r'])
+            except ValueError as e:
+                print e
+                print csv_path, idx, row['date'], float(row['r'])
 
 def dataframe_to_panel(symbols=EXP_SYMBOLS):
     """
@@ -202,7 +218,7 @@ def exp_symbols_statistics(fout_path=os.path.join(
     panel = pd.read_pickle(fin_path)
 
     assert panel.major_axis.tolist() == EXP_SYMBOLS
-    panel = panel.loc[date(2005,1,3):date(2013,12,31)]
+    panel = panel.loc[date(2005,1,3):date(2014,12,31)]
 
     # the roi in the first experiment date is zero
     panel.loc[date(2005,1,3), :, 'simple_roi'] = 0.
@@ -256,7 +272,7 @@ def exp_symbols_statistics(fout_path=os.path.join(
                            index=stat_indices,
                            columns=EXP_SYMBOLS)
 
-    for rdx, symbol in enumerate(EXP_SYMBOLS[:2]):
+    for rdx, symbol in enumerate(EXP_SYMBOLS):
         t1 = time()
         rois = panel[:, symbol, 'simple_roi']
         # basic
@@ -366,11 +382,20 @@ def exp_symbols_statistics(fout_path=os.path.join(
     workbook  = writer.book
     worksheet = writer.sheets['stats']
 
-    # Add formats.
-    percent_fmt = workbook.add_format({'num_format': '0.00%'})
-    date_fmt = workbook.add_format({'num_format': 'yy/mmm/dd'})
+    # basic formats.
+    # set header
+    header_fmt = workbook.add_format()
+    header_fmt.set_text_wrap()
+    worksheet.set_row(0, 15, header_fmt)
 
+    # set date
+    date_fmt = workbook.add_format({'num_format': 'yy/mmm/dd'})
+    date_fmt.set_align('right')
     worksheet.set_column('B:C', 12, date_fmt)
+
+    # set percentage
+    percent_fmt = workbook.add_format({'num_format': '0.00%'})
+
     worksheet.set_column('G:J', 8, percent_fmt)
     worksheet.set_column('M:Q', 8, percent_fmt)
 
@@ -398,4 +423,5 @@ if __name__ == '__main__':
     # dataframe_to_panel()
     # plot_exp_symbol_roi(plot_kind='line')
     # plot_exp_symbol_roi(plot_kind='hist')
-    exp_symbols_statistics()
+    # exp_symbols_statistics()
+    verify_symbol_csv()
