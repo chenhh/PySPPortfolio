@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#!python
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: infer_types=True
@@ -74,7 +75,7 @@ cpdef heuristic_moment_matching(
 
         double cubic_err, best_cub_err
         double moment_err, corrs_err
-        int cub_iter
+        int cub_iter, idx
 
         cnp.ndarray[FLOAT_t, ndim=1] ex = np.empty(4)
         cnp.ndarray[FLOAT_t, ndim=1] ey = np.empty(12)
@@ -257,6 +258,11 @@ cpdef cubic_function(cnp.ndarray[FLOAT_t, ndim=1] cubic_params,
     """
     cdef:
         double a, b, c, d
+        double a2, a3, a4
+        double b2, b3, b4
+        double c2, c3, c4
+        double d2, d3, d4
+        double ab,ac, ad, bd, bc, bcd, cd
         cnp.ndarray[FLOAT_t, ndim=1] ex, ey
         double v1, v2, v3, v4
 
@@ -264,50 +270,65 @@ cpdef cubic_function(cnp.ndarray[FLOAT_t, ndim=1] cubic_params,
     ex = sample_moments
     ey = tgt_moments
 
+    a2 = a*a
+    a3 = a2*a
+    a4 = a2*a2
+
+    b2 = b*b
+    b3 = b2*b
+    b4 = b2*b2
+
+    c2 = c*c
+    c3 = c2 * c
+    c4 = c2*c2
+
+    d2 = d*d
+    d3 = d2*d
+    d4 = d2*d2
+
+    ab = a*b
+    ac = a*c
+    ad = a*d
+    bd = b*d
+    bc = b*c
+    bcd = bc*d
+    cd = c*d
+
     v1 = (a + b * ex[0] + c * ex[1] + d * ex[2] - ey[0])
 
-    v2 = ((d * d) * ex[5] +
+    v2 = (d2 * ex[5] +
           2 * c * d * ex[4] +
-          (2 * b * d + c * c) * ex[3] +
-          (2 * a * d + 2 * b * c) * ex[2] +
-          (2 * a * c + b * b) * ex[1] +
-          2 * a * b * ex[0] +
-          a * a - ey[1])
+          (2 * bd + c2) * ex[3] +
+          (2 * ad + 2 * bc) * ex[2] +
+          (2 * ac + b2) * ex[1] +
+          2 * ab * ex[0] +
+          a2 - ey[1])
 
-    v3 = ((d * d * d) * ex[8] +
-          (3 * c * d * d) * ex[7] +
-          (3 * b * d * d + 3 * c * c * d) * ex[6] +
-          (3 * a * d * d + 6 * b * c * d + c * c * c) * ex[5] +
-          (6 * a * c * d + 3 * b * b * d + 3 * b * c * c) * ex[4] +
-          (a * (6 * b * d + 3 * c * c) + 3 * b * b * c) * ex[3] +
-          (3 * a * a * d + 6 * a * b * c + b * b * b) * ex[2] +
-          (3 * a * a * c + 3 * a * b * b) * ex[1] +
-          3 * a * a * b * ex[0] +
-          a * a * a - ey[2])
+    v3 = ((d3) * ex[8] +
+          (3 * c * d2) * ex[7] +
+          (3 * b * d2 + 3 * c2 * d) * ex[6] +
+          (3 * a * d2 + 6 * bcd + c3) * ex[5] +
+          (6 * ac * d + 3 * b2 * d + 3 * b * c2) * ex[4] +
+          (a * (6 * bd + 3 * c2) + 3 * b2 * c) * ex[3] +
+          (3 * a2 * d + 6 * a * bc + b3) * ex[2] +
+          (3 * a2 * c + 3 * a * b2) * ex[1] +
+           3 * a2 * b * ex[0] +
+           a3 - ey[2])
 
-    v4 = ((d * d * d * d) * ex[11] +
-          (4 * c * d * d * d) * ex[10] +
-          (4 * b * d * d * d + 6 * c * c * d * d) * ex[9] +
-          (4 * a * d * d * d + 12 * b * c * d * d + 4 * c * c * c * d) * ex[8] +
-          (
-              12 * a * c * d * d + 6 * b * b * d * d + 12 * b * c * c * d + c * c * c * c) *
-          ex[7] +
-          (a * (
-              12 * b * d * d + 12 * c * c * d) + 12 * b * b * c * d + 4 * b * c * c * c) *
-          ex[6] +
-          (6 * a * a * d * d + a * (
-              24 * b * c * d + 4 * c * c * c) + 4 * b * b * b * d + 6 * b * b * c * c) *
-          ex[5] +
-          (12 * a * a * c * d + a * (
-              12 * b * b * d + 12 * b * c * c) + 4 * b * b * b * c) * ex[4] +
-          (a * a * (
-              12 * b * d + 6 * c * c) + 12 * a * b * b * c + b * b * b * b) *
-          ex[
-              3] +
-          (4 * a * a * a * d + 12 * a * a * b * c + 4 * a * b * b * b) * ex[2] +
-          (4 * a * a * a * c + 6 * a * a * b * b) * ex[1] +
-          (4 * a * a * a * b) * ex[0] +
-          a * a * a * a - ey[3])
+    v4 = (d4 * ex[11] +
+          (4 * cd * d2) * ex[10] +
+          (4 * bd * d2 + 6 * c2 * d2) * ex[9] +
+          4 * (ad * d2+ 3 * bc * d2 + c3 * d) * ex[8] +
+          (12 * ac * d2 + 6 * b2 * d2 + 12 * bd * c2 + c4) * ex[7] +
+          4 * (3 * ad * (bd + c2) + bc * (3 * bd + c2)) * ex[6] +
+          (6 * a2 * d2 + ac * (24 * bd + 4 * c2) +
+           4 * b3 * d + 6 * b2 * c2) * ex[5] +
+          (12 * a2 * cd +  12 * ab * (bd + c2) + 4 * b2 * bc) * ex[4] +
+          (a2 * (12 * bd + 6 * c2) + 12 * ac * b2  + b4) * ex[3] +
+          4 * a * (a * ad + 3 * a * bc + b3) * ex[2] +
+          a2 * (4 * ac + 6 * b2) * ex[1] +
+          (4 * a2 * ab) * ex[0] +
+          a4 - ey[3])
 
     return v1, v2, v3, v4
 
@@ -374,7 +395,7 @@ cdef central_to_orig_moment(cnp.ndarray[FLOAT_t, ndim=2] central_moments):
     """
     cdef:
         INTP_t n_rv = central_moments.shape[0]
-        cnp.ndarray[FLOAT_t, ndim=2] orig_moments = np.empty((n_rv, 4))
+        cnp.ndarray[FLOAT_t, ndim=2] orig_moments = np.zeros((n_rv, 4))
 
     orig_moments[:, 0] = central_moments[:, 0]
 

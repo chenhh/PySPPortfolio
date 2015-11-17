@@ -23,6 +23,7 @@ from time import time
 
 
 def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
+                              bias=True,
                               max_moment_err=1e-3, max_corr_err=1e-3,
                               max_cubic_err=1e-5, verbose=False):
     """
@@ -31,6 +32,9 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     tgt_moments:, numpy.array,shape: (n_rv * 4), 1~4 central moments
     tgt_corrs:, numpy.array, size: shape: (n_rv * n_rv), correlation matrix
     n_scenario:, positive integer, number of scenario to generate
+    bias: boolean,
+        - True means population estimators,
+        - False means sample estimators
     max_err_moment: float, max moment of error between tgt_moments and
         sample moments
     max_err_corr: float, max moment of error between tgt_corrs and
@@ -61,8 +65,13 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     # out mtx, for storing scenarios
     out_mtx = np.empty((n_rv, n_scenario))
 
-    # to generate samples Y with zero mean, and unit variance,
-    # shape: (n_rv, 4)
+    # ***********************************************************
+    # sample target moments Y shape: (n_rv, 4) with
+    # zero mean, and unit variance,
+    # the same 3rd, 4th moments as target moments.
+    # After generating samples X, we can transform W = aX+b
+    # where the 1~4 moments of W are the same as tgt_moments
+    # ***********************************************************
     y_moments = np.zeros((n_rv, 4))
     y_moments[:, 1] = 1
     y_moments[:, 2] = tgt_moments[:, 2]
@@ -102,11 +111,12 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
                            cubic_params[3] * (tmp_out ** 3))
 
                 if cubic_err < max_cubic_err:
+                    # find good samples
                     break
                 else:
                     if verbose:
-                        print "rv:{}, cubiter:{}, cubErr: {}, " \
-                              "not converge".format(rv, cub_iter, cubic_err)
+                        print ("rv:{}, cubiter:{}, cubErr: {}, "
+                              "not converge".format(rv, cub_iter, cubic_err))
 
             # accept current samples
             if cubic_err < best_cub_err:
@@ -119,8 +129,8 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                               tgt_corrs)
     if verbose:
-        print 'start mtx (orig) moment_err:{}, corr_err:{}'.format(
-            moments_err, corrs_err)
+        print ('start mtx (orig) moment_err:{}, corr_err:{}'.format(
+            moments_err, corrs_err))
 
     # Cholesky decomposition of target corr mtx
     c_lower = la.cholesky(tgt_corrs)
@@ -130,28 +140,28 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
         if moments_err < max_moment_err and corrs_err < max_corr_err:
             break
 
-        # transfer mtx
+        # transform matrix
         out_corrs = np.corrcoef(out_mtx)
         co_inv = la.inv(la.cholesky(out_corrs))
         l_vec = np.dot(c_lower, co_inv)
         out_mtx = np.dot(l_vec, out_mtx)
 
-        # wrong moment, correct correlation
+        # wrong moment, but correct correlation
         moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                                   tgt_corrs)
         if verbose:
-            print 'main_iter:{} cholesky transform (orig) moment_err:{}, ' \
-                  'corr_err:{}'.format(main_iter, moments_err, corrs_err)
+            print ('main_iter:{} cholesky transform (orig) moment_err:{}, '
+                  'corr_err:{}'.format(main_iter, moments_err, corrs_err))
 
         # after Cholesky decompsition ,the corr_err converges,
         # but the moment error may enlarge, hence it requires
-        # cubic transform
+        # cubic transform again
         for rv in xrange(n_rv):
             cubic_err = float('inf')
             tmp_out = out_mtx[rv, :]
             ey = y_moments[rv, :]
 
-            # loop until cubic transform erro converge
+            # loop until cubic transform error converge
             for cub_iter in xrange(max_cubic_iter):
                 ex = np.fromiter(((tmp_out ** (idx + 1)).mean()
                                   for idx in xrange(12)), np.float)
@@ -171,16 +181,16 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
                     break
                 else:
                     if verbose:
-                        print "main_iter:{}, rv: {}, " \
-                              "(orig) cub_iter:{}, " \
+                        print ("main_iter:{}, rv: {}, "
+                              "(orig) cub_iter:{}, "
                               "cubErr: {}, not converge".format(
-                            main_iter, rv, cub_iter, cubic_err)
+                            main_iter, rv, cub_iter, cubic_err))
 
         moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                                   tgt_corrs)
         if verbose:
-            print 'main_iter:{} cubic_transform, (orig) moment eror:{}, ' \
-                  'corr err: {}'.format(main_iter, moments_err, corrs_err)
+            print ('main_iter:{} cubic_transform, (orig) moment eror:{}, '
+                  'corr err: {}'.format(main_iter, moments_err, corrs_err))
 
     # rescale data to original moments
     out_mtx = (out_mtx * tgt_moments[:, 1][:, np.newaxis] +
@@ -194,34 +204,29 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     out_corrs = np.corrcoef(out_mtx)
 
     if verbose:
-        print "1st moments difference {}".format(
-            (tgt_moments[:, 0] - out_central_moments[:, 0]).sum()
-        )
-        print "2nd moments difference {}".format(
-            (tgt_moments[:, 1] - out_central_moments[:, 1]).sum()
-        )
-        print "3th moments difference {}".format(
-            (tgt_moments[:, 2] - out_central_moments[:, 2]).sum()
-        )
-        print "4th moments difference {}".format(
-            (tgt_moments[:, 3] - out_central_moments[:, 3]).sum()
-        )
-        print "corr difference {}".format(
-            (tgt_corrs - np.corrcoef(out_mtx)).sum()
-        )
+        print ("1st moments difference {}".format(
+            (tgt_moments[:, 0] - out_central_moments[:, 0]).sum()))
+        print ("2nd moments difference {}".format(
+            (tgt_moments[:, 1] - out_central_moments[:, 1]).sum()))
+        print ("3th moments difference {}".format(
+            (tgt_moments[:, 2] - out_central_moments[:, 2]).sum()))
+        print ("4th moments difference {}".format(
+            (tgt_moments[:, 3] - out_central_moments[:, 3]).sum()))
+        print ("corr difference {}".format(
+            (tgt_corrs - np.corrcoef(out_mtx)).sum()))
 
     moments_err = rmse(out_central_moments, tgt_moments)
     corrs_err = rmse(out_corrs, tgt_corrs)
     if verbose:
-        print 'sample central moment err:{}, corr err:{}'.format(
-            moments_err, corrs_err)
+        print ('sample central moment err:{}, corr err:{}'.format(
+            moments_err, corrs_err))
 
     if moments_err > max_moment_err or corrs_err > max_corr_err:
         raise ValueError("out mtx not converge, moment error: {}, "
                          "corr err:{}".format(moments_err, corrs_err))
     if verbose:
-        print "HeuristicMomentMatching elapsed {:.3f} secs".format(
-            time() - t0)
+        print ("HeuristicMomentMatching elapsed {:.3f} secs".format(
+            time() - t0))
     return out_mtx
 
 
@@ -237,50 +242,65 @@ def cubic_function(cubic_params, sample_moments, tgt_moments):
     ex = sample_moments
     ey = tgt_moments
 
+    a2 = a*a
+    a3 = a2*a
+    a4 = a2*a2
+
+    b2 = b*b
+    b3 = b2*b
+    b4 = b2*b2
+
+    c2 = c*c
+    c3 = c2 * c
+    c4 = c2*c2
+
+    d2 = d*d
+    d3 = d2*d
+    d4 = d2*d2
+
+    ab = a*b
+    ac = a*c
+    ad = a*d
+    bd = b*d
+    bc = b*c
+    bcd = bc*d
+    cd = c*d
+
     v1 = (a + b * ex[0] + c * ex[1] + d * ex[2] - ey[0])
 
-    v2 = ((d * d) * ex[5] +
+    v2 = (d2 * ex[5] +
           2 * c * d * ex[4] +
-          (2 * b * d + c * c) * ex[3] +
-          (2 * a * d + 2 * b * c) * ex[2] +
-          (2 * a * c + b * b) * ex[1] +
-          2 * a * b * ex[0] +
-          a * a - ey[1])
+          (2 * bd + c2) * ex[3] +
+          (2 * ad + 2 * bc) * ex[2] +
+          (2 * ac + b2) * ex[1] +
+          2 * ab * ex[0] +
+          a2 - ey[1])
 
-    v3 = ((d * d * d) * ex[8] +
-          (3 * c * d * d) * ex[7] +
-          (3 * b * d * d + 3 * c * c * d) * ex[6] +
-          (3 * a * d * d + 6 * b * c * d + c * c * c) * ex[5] +
-          (6 * a * c * d + 3 * b * b * d + 3 * b * c * c) * ex[4] +
-          (a * (6 * b * d + 3 * c * c) + 3 * b * b * c) * ex[3] +
-          (3 * a * a * d + 6 * a * b * c + b * b * b) * ex[2] +
-          (3 * a * a * c + 3 * a * b * b) * ex[1] +
-          3 * a * a * b * ex[0] +
-          a * a * a - ey[2])
+    v3 = ((d3) * ex[8] +
+          (3 * c * d2) * ex[7] +
+          (3 * b * d2 + 3 * c2 * d) * ex[6] +
+          (3 * a * d2 + 6 * bcd + c3) * ex[5] +
+          (6 * ac * d + 3 * b2 * d + 3 * b * c2) * ex[4] +
+          (a * (6 * bd + 3 * c2) + 3 * b2 * c) * ex[3] +
+          (3 * a2 * d + 6 * a * bc + b3) * ex[2] +
+          (3 * a2 * c + 3 * a * b2) * ex[1] +
+           3 * a2 * b * ex[0] +
+           a3 - ey[2])
 
-    v4 = ((d * d * d * d) * ex[11] +
-          (4 * c * d * d * d) * ex[10] +
-          (4 * b * d * d * d + 6 * c * c * d * d) * ex[9] +
-          (4 * a * d * d * d + 12 * b * c * d * d + 4 * c * c * c * d) * ex[8] +
-          (
-              12 * a * c * d * d + 6 * b * b * d * d + 12 * b * c * c * d + c * c * c * c) *
-          ex[7] +
-          (a * (
-              12 * b * d * d + 12 * c * c * d) + 12 * b * b * c * d + 4 * b * c * c * c) *
-          ex[6] +
-          (6 * a * a * d * d + a * (
-              24 * b * c * d + 4 * c * c * c) + 4 * b * b * b * d + 6 * b * b * c * c) *
-          ex[5] +
-          (12 * a * a * c * d + a * (
-              12 * b * b * d + 12 * b * c * c) + 4 * b * b * b * c) * ex[4] +
-          (a * a * (
-              12 * b * d + 6 * c * c) + 12 * a * b * b * c + b * b * b * b) *
-          ex[
-              3] +
-          (4 * a * a * a * d + 12 * a * a * b * c + 4 * a * b * b * b) * ex[2] +
-          (4 * a * a * a * c + 6 * a * a * b * b) * ex[1] +
-          (4 * a * a * a * b) * ex[0] +
-          a * a * a * a - ey[3])
+    v4 = (d4 * ex[11] +
+          (4 * cd * d2) * ex[10] +
+          (4 * bd * d2 + 6 * c2 * d2) * ex[9] +
+          4 * (ad * d2+ 3 * bc * d2 + c3 * d) * ex[8] +
+          (12 * ac * d2 + 6 * b2 * d2 + 12 * bd * c2 + c4) * ex[7] +
+          4 * (3 * ad * (bd + c2) + bc * (3 * bd + c2)) * ex[6] +
+          (6 * a2 * d2 + ac * (24 * bd + 4 * c2) +
+           4 * b3 * d + 6 * b2 * c2) * ex[5] +
+          (12 * a2 * cd +  12 * ab * (bd + c2) + 4 * b2 * bc) * ex[4] +
+          (a2 * (12 * bd + 6 * c2) + 12 * ac * b2  + b4) * ex[3] +
+          4 * a * (a * ad + 3 * a * bc + b3) * ex[2] +
+          a2 * (4 * ac + 6 * b2) * ex[1] +
+          (4 * a2 * ab) * ex[0] +
+          a4 - ey[3])
 
     return v1, v2, v3, v4
 
@@ -319,40 +339,48 @@ def rmse(src_arr, tgt_arr):
     return error
 
 
-def central_to_orig_moment(central_moments):
+def central_to_orig_moment(central_moments, bias=True):
     '''
     central moments to original moments
-    E[X] = samples.mean()
-    std**2 = var = E[X**2] - E[X]*E[X]
-    
-    scipy.stats.skew, scipy.stats.kurtosis equations:
-    m2 = np.mean((d - d.mean())**2)
-    m3 = np.mean((d - d.mean())**3)
-    m4 = np.mean((d - d.mean())**4)
-    skew =  m3/np.sqrt(m2)**3
-    kurt = m4/m2**2 -3
+
+    for bias estimators:
+        E[X] = samples.mean()
+        std**2 = var = E[X**2] - E[X]*E[X]
+
+        scipy.stats.skew, scipy.stats.kurtosis bias equations:
+        m2 = np.mean((d - d.mean())**2)
+        m3 = np.mean((d - d.mean())**3)
+        m4 = np.mean((d - d.mean())**4)
+        skew =  m3/np.sqrt(m2)**3
+        kurt = m4/m2**2 -3
+
+    for unbias estimators:
+
+
     '''
     n_rv = central_moments.shape[0]
     orig_moments = np.empty((n_rv, 4))
-    orig_moments[:, 0] = central_moments[:, 0]
+    if bias is True:
+        orig_moments[:, 0] = central_moments[:, 0]
 
-    orig_moments[:, 1] = (central_moments[:, 1] ** 2
-                          + central_moments[:, 0] ** 2)
+        orig_moments[:, 1] = (central_moments[:, 1] ** 2
+                              + central_moments[:, 0] ** 2)
 
-    orig_moments[:, 2] = (central_moments[:, 2] *
-                          central_moments[:, 1] ** 3 +
-                          central_moments[:, 0] ** 3 +
-                          3 * central_moments[:, 0] *
-                          central_moments[:, 1] ** 2)
-    orig_moments[:, 3] = ((central_moments[:, 3] + 3) *
-                          central_moments[:, 1] ** 4 -
-                          central_moments[:, 0] ** 4 +
-                          4 * central_moments[:, 0] ** 4 -
-                          6 * central_moments[:, 0] ** 2 *
-                          orig_moments[:, 1] +
-                          4 * central_moments[:, 0] *
-                          orig_moments[:, 2])
-
+        orig_moments[:, 2] = (central_moments[:, 2] *
+                              central_moments[:, 1] ** 3 +
+                              central_moments[:, 0] ** 3 +
+                              3 * central_moments[:, 0] *
+                              central_moments[:, 1] ** 2)
+        orig_moments[:, 3] = ((central_moments[:, 3] + 3) *
+                              central_moments[:, 1] ** 4 -
+                              central_moments[:, 0] ** 4 +
+                              4 * central_moments[:, 0] ** 4 -
+                              6 * central_moments[:, 0] ** 2 *
+                              orig_moments[:, 1] +
+                              4 * central_moments[:, 0] *
+                              orig_moments[:, 2])
+    else:
+        pass
     return orig_moments
 
 
@@ -391,51 +419,7 @@ def test_moment_matching():
     print "HMM OK, {:.3f} secs".format(time()-t0)
 
 
-def plot_moment_matching():
-    """
-    Wireframe plots
-    http://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
-    :return:
-    """
-    from ipro.dev import (STOCK_PKL_DIR, )
-
-    stock_panel = pd.read_pickle(os.path.join(STOCK_PKL_DIR,
-                                              "panel_largest50stocks.pkl"))
-    symbols = ['2002', '2412', ]
-    n_stock = len(symbols)
-    start_date = date(2006, 12, 27)
-    n_scenario = 1000
-
-    # shape: (n_stock,)
-    risk_rois = stock_panel.loc[start_date].loc[symbols]['adj_roi']
-
-    # shape: (n_period, n_stock)
-    pre_risk_rois = stock_panel.loc[date(2005,1,1):start_date,symbols,
-                    'adj_roi'].T
-
-
-    pre_risk_rois.plot(kind='hist', subplots=True, bins=100, title="original "
-                                                                   "distribution")
-    pre_risk_rois.plot(symbols[0], symbols[1], kind='scatter', title="orignal correlation")
-
-    tgt_moments = np.zeros((n_stock, 4))
-    tgt_moments[:, 0] = pre_risk_rois.mean(axis=0)
-    tgt_moments[:, 1] = pre_risk_rois.std(axis=0)
-    tgt_moments[:, 2] = spstats.skew(pre_risk_rois, axis=0)
-    tgt_moments[:, 3] = spstats.kurtosis(pre_risk_rois, axis=0)
-    corr_mtx = np.corrcoef(pre_risk_rois.T)
-
-    # shape: (n_stock, n_scenario)
-    scenarios = heuristic_moment_matching(tgt_moments, corr_mtx,  n_scenario= n_scenario)
-    predict_risk_rois = pd.DataFrame(scenarios.T, columns=symbols)
-    print predict_risk_rois
-    predict_risk_rois.plot(kind='hist', subplots=True, bins=100,
-                           title='sample distribution')
-    predict_risk_rois.plot(symbols[0], symbols[1], kind='scatter',
-                            title="sample  correlation")
-    plt.show()
-
-
 if __name__ == '__main__':
+    pass
     # test_moment_matching()
-    plot_moment_matching()
+
