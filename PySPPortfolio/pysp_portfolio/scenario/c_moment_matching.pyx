@@ -33,6 +33,8 @@ cpdef heuristic_moment_matching(
                               cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                               cnp.ndarray[FLOAT_t, ndim=2] tgt_corrs,
                               int n_scenario=200,
+                              int n_data=0,
+                              int bias=True,
                               double max_moment_err=1e-3,
                               double max_corr_err=1e-3,
                               double max_cubic_err=1e-5,
@@ -53,6 +55,10 @@ cpdef heuristic_moment_matching(
     out_mtx: numpy.array, shape:(n_rv, n_scenario)
     """
     t0 = time()
+
+    if not bias and n_data <= 0:
+            raise ValueError("n_data should be have positive value while "
+                             "unbiased.")
     # parameters
     cdef:
         INTP_t n_rv = tgt_moments.shape[0]

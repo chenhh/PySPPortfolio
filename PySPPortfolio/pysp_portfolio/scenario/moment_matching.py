@@ -7,7 +7,6 @@ Høyland, K.; Kaut, M. & Wallace, S. W., "A heuristic for
 moment-matching scenario generation," Computational optimization
 and applications, vol. 24, pp 169-185, 2003.
 
-correlation, skewness, kurtosis does not affect by scale and shift.
 """
 
 from __future__ import division
@@ -22,8 +21,8 @@ import matplotlib.pyplot as plt
 from time import time
 
 
-def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
-                              bias=True,
+def heuristic_moment_matching(tgt_moments, tgt_corrs,
+                              n_scenario=200, n_data=0, bias=True,
                               max_moment_err=1e-3, max_corr_err=1e-3,
                               max_cubic_err=1e-5, verbose=False):
     """
@@ -32,6 +31,8 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     tgt_moments:, numpy.array,shape: (n_rv * 4), 1~4 central moments
     tgt_corrs:, numpy.array, size: shape: (n_rv * n_rv), correlation matrix
     n_scenario:, positive integer, number of scenario to generate
+    n_data: positive integer, number of data (window length) for estimating
+        moments, it is required while bias is False.
     bias: boolean,
         - True means population estimators,
         - False means sample estimators
@@ -49,6 +50,9 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     assert n_scenario >= 0
     assert tgt_moments.shape[0] == tgt_corrs.shape[0] == tgt_corrs.shape[1]
     t0 = time()
+
+    if not bias and n_data <= 0:
+        raise ValueError('n_data should be positive value')
 
     # parameters
     n_rv = tgt_moments.shape[0]
@@ -75,7 +79,11 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     y_moments = np.zeros((n_rv, 4))
     y_moments[:, 1] = 1
     y_moments[:, 2] = tgt_moments[:, 2]
-    y_moments[:, 3] = tgt_moments[:, 3] + 3
+    if bias:
+        y_moments[:, 3] = tgt_moments[:, 3] + 3
+    else:
+        y_moments[:, 3] = (tgt_moments[:, 3] +
+                           3.*(n_data-1)**2/(n_data-2)/(n_data-3))
 
     # find good start moment matrix (with err_moment converge)
     for rv in xrange(n_rv):
@@ -93,8 +101,8 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
             for cub_iter in xrange(max_cubic_iter):
 
                 # 1~12th moments of the random samples
-                ex = np.fromiter(((tmp_out ** (idx + 1)).mean()
-                                  for idx in xrange(12)), np.float)
+                ex = np.array([(tmp_out ** (idx + 1)).mean()
+                                  for idx in xrange(12)])
 
                 # find corresponding cubic parameters
                 x_init = np.array([0., 1., 0., 0.])
@@ -163,8 +171,8 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
 
             # loop until cubic transform error converge
             for cub_iter in xrange(max_cubic_iter):
-                ex = np.fromiter(((tmp_out ** (idx + 1)).mean()
-                                  for idx in xrange(12)), np.float)
+                ex = np.array([(tmp_out ** (idx + 1)).mean()
+                                  for idx in xrange(12)])
                 X_init = np.array([0., 1., 0., 0.])
                 out = spopt.leastsq(cubic_function, X_init, args=(ex, ey),
                                     full_output=True, ftol=1E-12, xtol=1E-12)
@@ -192,15 +200,20 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
             print ('main_iter:{} cubic_transform, (orig) moment eror:{}, '
                   'corr err: {}'.format(main_iter, moments_err, corrs_err))
 
-    # rescale data to original moments
+    # rescale data to original moments, out_mtx shape:(n_rv, n_scenario)
     out_mtx = (out_mtx * tgt_moments[:, 1][:, np.newaxis] +
                tgt_moments[:, 0][:, np.newaxis])
 
     out_central_moments = np.empty((n_rv, 4))
     out_central_moments[:, 0] = out_mtx.mean(axis=1)
-    out_central_moments[:, 1] = out_mtx.std(axis=1)
-    out_central_moments[:, 2] = spstats.skew(out_mtx, axis=1)
-    out_central_moments[:, 3] = spstats.kurtosis(out_mtx, axis=1)
+    if bias:
+        out_central_moments[:, 1] = out_mtx.std(axis=1)
+        out_central_moments[:, 2] = spstats.skew(out_mtx, axis=1)
+        out_central_moments[:, 3] = spstats.kurtosis(out_mtx, axis=1)
+    else:
+        out_central_moments[:, 1] = out_mtx.std(axis=1, ddof=1)
+        out_central_moments[:, 2] = spstats.skew(out_mtx, axis=1, bias=False)
+        out_central_moments[:, 3] = spstats.kurtosis(out_mtx, axis=1,bias=False)
     out_corrs = np.corrcoef(out_mtx)
 
     if verbose:
@@ -220,13 +233,13 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs, n_scenario=200,
     if verbose:
         print ('sample central moment err:{}, corr err:{}'.format(
             moments_err, corrs_err))
+        print ("HeuristicMomentMatching elapsed {:.3f} secs".format(
+            time() - t0))
 
     if moments_err > max_moment_err or corrs_err > max_corr_err:
         raise ValueError("out mtx not converge, moment error: {}, "
                          "corr err:{}".format(moments_err, corrs_err))
-    if verbose:
-        print ("HeuristicMomentMatching elapsed {:.3f} secs".format(
-            time() - t0))
+
     return out_mtx
 
 
@@ -339,8 +352,8 @@ def rmse(src_arr, tgt_arr):
     return error
 
 
-def central_to_orig_moment(central_moments, bias=True):
-    '''
+def central_to_orig_moment(central_moments, n_data=0, bias=True):
+    """
     central moments to original moments
 
     for bias estimators:
@@ -354,31 +367,24 @@ def central_to_orig_moment(central_moments, bias=True):
         skew =  m3/np.sqrt(m2)**3
         kurt = m4/m2**2 -3
 
-    for unbias estimators:
-
-
-    '''
+    for unbiased estimators:
+    """
     n_rv = central_moments.shape[0]
+    m1, m2, m3, m4 = (central_moments[:, 0], central_moments[:, 1],
+                      central_moments[:, 2], central_moments[:, 3])
     orig_moments = np.empty((n_rv, 4))
-    if bias is True:
-        orig_moments[:, 0] = central_moments[:, 0]
+    orig_moments[:, 0] = m1
 
-        orig_moments[:, 1] = (central_moments[:, 1] ** 2
-                              + central_moments[:, 0] ** 2)
-
-        orig_moments[:, 2] = (central_moments[:, 2] *
-                              central_moments[:, 1] ** 3 +
-                              central_moments[:, 0] ** 3 +
-                              3 * central_moments[:, 0] *
-                              central_moments[:, 1] ** 2)
-        orig_moments[:, 3] = ((central_moments[:, 3] + 3) *
-                              central_moments[:, 1] ** 4 -
-                              central_moments[:, 0] ** 4 +
-                              4 * central_moments[:, 0] ** 4 -
-                              6 * central_moments[:, 0] ** 2 *
-                              orig_moments[:, 1] +
-                              4 * central_moments[:, 0] *
-                              orig_moments[:, 2])
+    if bias:
+        orig_moments[:, 1] = (m2 ** 2 + m1 ** 2)
+        orig_moments[:, 2] = (m3 * m2 ** 3 +
+                              m1 ** 3 +
+                              3 *m1 * m2 ** 2)
+        orig_moments[:, 3] = ((m4 + 3) * m2 ** 4 -
+                              m1 ** 4 +
+                              4 * m1 ** 4 -
+                              6 * m1 ** 2 * orig_moments[:, 1] +
+                              4 * m1 * orig_moments[:, 2])
     else:
         pass
     return orig_moments
