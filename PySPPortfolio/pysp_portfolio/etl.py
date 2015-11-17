@@ -447,22 +447,55 @@ def generating_scenarios(n_stock, win_length, n_scenario=200):
     t0 = time()
     fin_path = os.path.join(SYMBOLS_PKL_DIR,
                             'TAIEX_2005_largest50cap_panel.pkl')
-    # shape: (n_exp_period, n_stock, ('simple_roi', 'close_price'))
+
+    # shape: (n_period, n_stock, ('simple_roi', 'close_price'))
     panel = pd.read_pickle(fin_path)
 
-    assert panel.major_axis.tolist() == EXP_SYMBOLS
-    panel = panel.loc[date(2005, 1, 3):date(2014, 12, 31)]
+    # symbols
+    symbols = EXP_SYMBOLS[:n_stock]
 
-    # the roi in the first experiment date is zero
-    panel.loc[date(2005, 1, 3), :, 'simple_roi'] = 0.
+    # all trans_date
+    trans_dates = panel.items
 
-    n_exp_period = len(panel.items)
-    scenario_panel = pd.Panel(
-                        np.zeros((n_exp_period, n_stock, n_scenario)),
-                        items=panel.items,
-                        major_axis=panel.major_axis)
+    # experiment trans_dates
+    exp_start_date, exp_end_date = date(2005, 1, 3), date(2014, 12, 31)
+    exp_start_idx = trans_dates.get_loc(exp_start_date)
+    exp_end_idx = trans_dates.get_loc(exp_end_date)
+    exp_trans_dates = trans_dates[exp_start_idx: exp_end_idx+1]
 
-    for tdx in xrange(n_exp_period):
+    # the roi at the first experiment date is zero
+    panel.loc[exp_start_date, :, 'simple_roi'] = 0.
+
+    # estimating moments and correlation matrix
+    est_moments = pd.DataFrame(np.zeros((n_stock, 4)), index=symbols)
+    est_corrs = pd.DataFrame(np.zeros((n_stock, n_stock)),
+                             index=symbols, columns=symbols)
+
+    for tdx, exp_date in enumerate(exp_trans_dates):
+        # rolling historical window indices, containing today
+        est_start_idx = exp_start_idx + tdx - win_length + 1
+        est_end_idx = exp_start_idx + tdx + 1
+        hist_interval = trans_dates[est_start_idx:est_end_idx]
+        # hist_data, shape: (n_stock, win_length)
+        hist_data = panel.loc[hist_interval, symbols, 'simple_roi']
+
+        # est moments and corrs
+        est_moments.iloc[:, 0] = hist_data.mean(axis=1)
+        est_moments.iloc[:, 1] = hist_data.std(axis=1)
+        est_moments.iloc[:, 2] = hist_data.skew(axis=1)
+        est_moments.iloc[:, 3] = hist_data.kurt(axis=1)
+        est_corrs = (hist_data.T).cov()
+        print est_corrs
+        # generating scenario
+        print tdx
+        scenario_df = c_HMM(est_moments.as_matrix(), est_corrs.as_matrix(),
+                            n_scenario)
+
+        # clear est data
+
+
+
+
 
 
 
@@ -475,3 +508,4 @@ if __name__ == '__main__':
     # plot_exp_symbol_roi(plot_kind='kde')
     # exp_symbols_statistics()
     # verify_symbol_csv()
+    generating_scenarios(5, 20)
