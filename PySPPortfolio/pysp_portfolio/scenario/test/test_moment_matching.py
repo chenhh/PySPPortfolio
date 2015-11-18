@@ -3,6 +3,8 @@
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
 """
+
+from __future__ import division
 from time import time
 import numpy as np
 import scipy.stats as spstats
@@ -63,12 +65,17 @@ def test_unbiased_HMM(precision=2):
     tgt_corrs = np.corrcoef(data)
 
     t0 = time()
-    py_scenarios = HMM(tgt_moments, tgt_corrs, n_scenario, n_sample,
-                       bias=False, verbose=True)
+    print "python unbiased HMM"
+    py_scenarios = HMM(tgt_moments, tgt_corrs, n_scenario, bias=False)
     print "python unbiased HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
         n_rv, n_scenario, time()-t0)
 
-    for scenarios in (py_scenarios, ):
+    t1 = time()
+    c_scenarios = c_HMM(tgt_moments, tgt_corrs, n_scenario, bias=False)
+    print "c unbiased HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
+        n_rv, n_scenario, time()-t1)
+
+    for scenarios in (py_scenarios,  c_scenarios):
         # scenarios statistics
         res_moments = np.zeros((n_rv, 4))
         res_moments[:, 0] = scenarios.mean(axis=1)
@@ -126,18 +133,18 @@ def test_skew():
     # biased estimator
     b_skew = spstats.skew(x, bias=True)
 
-    s4 = sum((v-x.mean())**3 for v in x)/n
+    s3 = sum((v-x.mean())**3 for v in x)/n
     s2 = sum((v-x.mean())**2 for v in x)/n
-    b_skew2 = s4/np.power(s2, 1.5)
+    b_skew2 = s3/np.power(s2, 1.5)
     print b_skew2
     np.testing.assert_allclose(b_skew, b_skew2)
 
     # unbiased estimator
     ub_skew = spstats.skew(x, bias=False)
 
-    s4 = sum((v-x.mean())**3 for v in x)/n
+    s3 = sum((v-x.mean())**3 for v in x)/n
     s2 = sum((v-x.mean())**2 for v in x)/(n-1)
-    ub_skew2 = s4/np.power(s2, 1.5) * n*n/(n-1)/(n-2)
+    ub_skew2 = s3/np.power(s2, 1.5) * n*n/(n-1)/(n-2)
     print ub_skew2
     np.testing.assert_allclose(ub_skew, ub_skew2)
 
@@ -161,11 +168,34 @@ def test_kurtosis():
     k2 = sum((v-x.mean())**2 for v in x)/n
     ub_kurt2 = 1.0/(n-2)/(n-3) * ((n**2-1.0)*k4/k2**2.0 - 3*(n-1)**2.0)
     print ub_kurt2
+
+    k2 = sum((v-x.mean())**2 for v in x)/(n-1)
+    ub_kurt3 = 1/(n-2)/(n-3) *((n**2-1.0)*(n/(n-1))**2. *k4/k2**2.0- 3*(
+        n-1)**2.0)
+    print ub_kurt3
     np.testing.assert_allclose(ub_kurt, ub_kurt2)
+    np.testing.assert_allclose(ub_kurt, ub_kurt3)
+
+
+def test_kurtosis2():
+    n = 100
+    x = np.random.rand(n)
+
+    z = (x-x.mean())/x.std(ddof=1)
+
+    ub_kurt_x = spstats.kurtosis(x, bias=False)
+    ub_kurt_z = spstats.kurtosis(z, bias=False)
+    print ub_kurt_x, ub_kurt_z
+
+    m4 = sum(v**4 for v in z)/len(z)
+
+    print m4
+    print (ub_kurt_x+3*(n-1)**2/(n-2)/(n-3))*(n-1)**2*(n-2)*(n-3)/(n*n-1)/n/n
 
 if __name__ == '__main__':
-    test_biased_HMM()
-    # test_unbiased_HMM()
+    # test_biased_HMM()
+    test_unbiased_HMM()
 #     # test_moments()
 #     test_skew()
 #     test_kurtosis()
+#     test_kurtosis2()
