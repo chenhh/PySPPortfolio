@@ -22,7 +22,7 @@ from time import time
 
 
 def heuristic_moment_matching(tgt_moments, tgt_corrs,
-                              n_scenario=200, n_data=0, bias=True,
+                              n_scenario=200, n_obs=0, bias=True,
                               max_moment_err=1e-3, max_corr_err=1e-3,
                               max_cubic_err=1e-5, verbose=False):
     """
@@ -51,7 +51,7 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
     assert tgt_moments.shape[0] == tgt_corrs.shape[0] == tgt_corrs.shape[1]
     t0 = time()
 
-    if not bias and n_data <= 0:
+    if not bias and n_obs <= 0:
         raise ValueError('n_data should be positive value')
 
     # parameters
@@ -77,13 +77,20 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
     # where the 1~4 moments of W are the same as tgt_moments
     # ***********************************************************
     y_moments = np.zeros((n_rv, 4))
-    y_moments[:, 1] = 1
-    y_moments[:, 2] = tgt_moments[:, 2]
+
     if bias:
+        y_moments[:, 1] = 1
+        y_moments[:, 2] = tgt_moments[:, 2]
         y_moments[:, 3] = tgt_moments[:, 3] + 3
     else:
-        y_moments[:, 3] = (tgt_moments[:, 3] +
-                           3.*(n_data-1)**2/(n_data-2)/(n_data-3))
+        y_moments[:, 1] = (n_obs -1)/n_obs
+        y_moments[:, 2] = (tgt_moments[:, 2] * (n_obs-1)*
+                                                (n_obs-2)/n_obs**2)
+        y_moments[:, 3] = ((tgt_moments[:, 3] +
+                           3*(n_obs-1)**2/(n_obs-2)/(n_obs-3)) *
+                           (n_obs-2)*(n_obs-3)*(n_obs-1)**2 /
+                           (n_obs*n_obs-1)/n_obs/n_obs
+                           )
 
     # find good start moment matrix (with err_moment converge)
     for rv in xrange(n_rv):
@@ -137,7 +144,7 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
     moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                               tgt_corrs)
     if verbose:
-        print ('start mtx (orig) moment_err:{}, corr_err:{}'.format(
+        print ('start mtx (orig) y_moment_err:{}, corr_err:{}'.format(
             moments_err, corrs_err))
 
     # Cholesky decomposition of target corr mtx
@@ -158,7 +165,7 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
         moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                                   tgt_corrs)
         if verbose:
-            print ('main_iter:{} cholesky transform (orig) moment_err:{}, '
+            print ('main_iter:{} cholesky transform (orig) y_moment_err:{}, '
                   'corr_err:{}'.format(main_iter, moments_err, corrs_err))
 
         # after Cholesky decompsition ,the corr_err converges,
@@ -197,7 +204,7 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
         moments_err, corrs_err = error_statistics(out_mtx, y_moments,
                                                   tgt_corrs)
         if verbose:
-            print ('main_iter:{} cubic_transform, (orig) moment eror:{}, '
+            print ('main_iter:{} cubic_transform, (orig) y_moment eror:{}, '
                   'corr err: {}'.format(main_iter, moments_err, corrs_err))
 
     # rescale data to original moments, out_mtx shape:(n_rv, n_scenario)
@@ -217,15 +224,15 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
     out_corrs = np.corrcoef(out_mtx)
 
     if verbose:
-        print ("1st moments difference {}".format(
+        print ("1st tgt moments difference {}".format(
             (tgt_moments[:, 0] - out_central_moments[:, 0]).sum()))
-        print ("2nd moments difference {}".format(
+        print ("2nd tgt moments difference {}".format(
             (tgt_moments[:, 1] - out_central_moments[:, 1]).sum()))
-        print ("3th moments difference {}".format(
+        print ("3th tgt moments difference {}".format(
             (tgt_moments[:, 2] - out_central_moments[:, 2]).sum()))
-        print ("4th moments difference {}".format(
+        print ("4th tgt moments difference {}".format(
             (tgt_moments[:, 3] - out_central_moments[:, 3]).sum()))
-        print ("corr difference {}".format(
+        print ("tgt corr difference {}".format(
             (tgt_corrs - np.corrcoef(out_mtx)).sum()))
 
     moments_err = rmse(out_central_moments, tgt_moments)
@@ -274,6 +281,7 @@ def cubic_function(cubic_params, sample_moments, tgt_moments):
     ab = a*b
     ac = a*c
     ad = a*d
+    acd = ac*d
     bd = b*d
     bc = b*c
     bcd = bc*d
@@ -282,30 +290,30 @@ def cubic_function(cubic_params, sample_moments, tgt_moments):
     v1 = (a + b * ex[0] + c * ex[1] + d * ex[2] - ey[0])
 
     v2 = (d2 * ex[5] +
-          2 * c * d * ex[4] +
-          (2 * bd + c2) * ex[3] +
-          (2 * ad + 2 * bc) * ex[2] +
-          (2 * ac + b2) * ex[1] +
+          2 * cd * ex[4] +
+         (2 * bd + c2) * ex[3] +
+          2* (ad +  bc) * ex[2] +
+         (2 * ac + b2) * ex[1] +
           2 * ab * ex[0] +
           a2 - ey[1])
 
     v3 = ((d3) * ex[8] +
           (3 * c * d2) * ex[7] +
-          (3 * b * d2 + 3 * c2 * d) * ex[6] +
+           3* (b * d2 + c2 * d) * ex[6] +
           (3 * a * d2 + 6 * bcd + c3) * ex[5] +
-          (6 * ac * d + 3 * b2 * d + 3 * b * c2) * ex[4] +
+           3* (2 * acd + b2 * d + b * c2) * ex[4] +
           (a * (6 * bd + 3 * c2) + 3 * b2 * c) * ex[3] +
           (3 * a2 * d + 6 * a * bc + b3) * ex[2] +
-          (3 * a2 * c + 3 * a * b2) * ex[1] +
+           3* (a2 * c + a * b2) * ex[1] +
            3 * a2 * b * ex[0] +
            a3 - ey[2])
 
     v4 = (d4 * ex[11] +
           (4 * cd * d2) * ex[10] +
           (4 * bd * d2 + 6 * c2 * d2) * ex[9] +
-          4 * (ad * d2+ 3 * bc * d2 + c3 * d) * ex[8] +
+           4 * (ad * d2+ 3 * bc * d2 + c3 * d) * ex[8] +
           (12 * ac * d2 + 6 * b2 * d2 + 12 * bd * c2 + c4) * ex[7] +
-          4 * (3 * ad * (bd + c2) + bc * (3 * bd + c2)) * ex[6] +
+           4 * (3 * ad * (bd + c2) + bc * (3 * bd + c2)) * ex[6] +
           (6 * a2 * d2 + ac * (24 * bd + 4 * c2) +
            4 * b3 * d + 6 * b2 * c2) * ex[5] +
           (12 * a2 * cd +  12 * ab * (bd + c2) + 4 * b2 * bc) * ex[4] +
@@ -350,82 +358,4 @@ def rmse(src_arr, tgt_arr):
     assert src_arr.shape == tgt_arr.shape
     error = np.sqrt(((src_arr - tgt_arr) ** 2).sum())
     return error
-
-
-def central_to_orig_moment(central_moments, n_data=0, bias=True):
-    """
-    central moments to original moments
-
-    for bias estimators:
-        E[X] = samples.mean()
-        std**2 = var = E[X**2] - E[X]*E[X]
-
-        scipy.stats.skew, scipy.stats.kurtosis bias equations:
-        m2 = np.mean((d - d.mean())**2)
-        m3 = np.mean((d - d.mean())**3)
-        m4 = np.mean((d - d.mean())**4)
-        skew =  m3/np.sqrt(m2)**3
-        kurt = m4/m2**2 -3
-
-    for unbiased estimators:
-    """
-    n_rv = central_moments.shape[0]
-    m1, m2, m3, m4 = (central_moments[:, 0], central_moments[:, 1],
-                      central_moments[:, 2], central_moments[:, 3])
-    orig_moments = np.empty((n_rv, 4))
-    orig_moments[:, 0] = m1
-
-    if bias:
-        orig_moments[:, 1] = (m2 ** 2 + m1 ** 2)
-        orig_moments[:, 2] = (m3 * m2 ** 3 +
-                              m1 ** 3 +
-                              3 *m1 * m2 ** 2)
-        orig_moments[:, 3] = ((m4 + 3) * m2 ** 4 -
-                              m1 ** 4 +
-                              4 * m1 ** 4 -
-                              6 * m1 ** 2 * orig_moments[:, 1] +
-                              4 * m1 * orig_moments[:, 2])
-    else:
-        pass
-    return orig_moments
-
-
-def test_moment_matching():
-    t0 = time()
-    n_rv = 20
-    n_scenario = 200
-    data = np.random.randn(n_rv, 1000)
-
-    tgt_moments = np.zeros((n_rv, 4))
-    tgt_moments[:, 0] = data.mean(axis=1)
-    tgt_moments[:, 1] = data.std(axis=1)
-    tgt_moments[:, 2] = spstats.skew(data, axis=1)
-    tgt_moments[:, 3] = spstats.kurtosis(data, axis=1)
-    corr_mtx = np.corrcoef(data)
-
-    out_mtx = heuristic_moment_matching(tgt_moments, corr_mtx,
-                                        n_scenario=n_scenario, verbose=True)
-
-    print "1st moments difference {}".format(
-        (tgt_moments[:, 0] - out_mtx.mean(axis=1)).sum()
-    )
-    print "2nd moments difference {}".format(
-        (tgt_moments[:, 1] - out_mtx.std(axis=1)).sum()
-    )
-    print "3th moments difference {}".format(
-        (tgt_moments[:, 2] - spstats.skew(out_mtx, axis=1)).sum()
-    )
-    print "4th moments difference {}".format(
-        (tgt_moments[:, 3] - spstats.kurtosis(out_mtx, axis=1)).sum()
-    )
-
-    print "corr difference {}".format(
-        (corr_mtx - np.corrcoef(out_mtx)).sum()
-    )
-    print "HMM OK, {:.3f} secs".format(time()-t0)
-
-
-if __name__ == '__main__':
-    pass
-    # test_moment_matching()
 
