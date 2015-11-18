@@ -18,7 +18,7 @@ from time import time
 
 
 def heuristic_moment_matching(tgt_moments, tgt_corrs,
-                              n_scenario=200, bias=True,
+                              n_scenario=200, bias=False,
                               max_moment_err=1e-3, max_corr_err=1e-3,
                               max_cubic_err=1e-5, verbose=False):
     """
@@ -27,11 +27,9 @@ def heuristic_moment_matching(tgt_moments, tgt_corrs,
     tgt_moments:, numpy.array,shape: (n_rv * 4), 1~4 central moments
     tgt_corrs:, numpy.array, size: shape: (n_rv * n_rv), correlation matrix
     n_scenario:, positive integer, number of scenario to generate
-    n_data: positive integer, number of data (window length) for estimating
-        moments, it is required while bias is False.
     bias: boolean,
-        - True means population estimators,
-        - False means sample estimators
+        - True means biased estimators,
+        - False means unbiased estimators
     max_err_moment: float, max moment of error between tgt_moments and
         sample moments
     max_err_corr: float, max moment of error between tgt_corrs and

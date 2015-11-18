@@ -33,7 +33,7 @@ cpdef heuristic_moment_matching(
                               cnp.ndarray[FLOAT_t, ndim=2] tgt_moments,
                               cnp.ndarray[FLOAT_t, ndim=2] tgt_corrs,
                               int n_scenario=200,
-                              int bias=True,
+                              int bias=False,
                               double max_moment_err=1e-3,
                               double max_corr_err=1e-3,
                               double max_cubic_err=1e-5,
@@ -44,6 +44,9 @@ cpdef heuristic_moment_matching(
     tgt_moments:, numpy.array,shape: (n_rv * 4), 1~4 central moments
     tgt_corrs:, numpy.array, size: shape: (n_rv * n_rv), correlation matrix
     n_scenario:, positive integer, number of scenario to generate
+    bias: boolean,
+        - True means biased estimators,
+        - False means unbiased estimators
     max_err_moment: float, max moment of error between tgt_moments and
         sample moments
     max_err_corr: float, max moment of error between tgt_corrs and
