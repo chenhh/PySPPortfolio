@@ -100,16 +100,17 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         # storing a dict, {key: param, value: platform_name}
         log_file = 'working.pkl'
 
-    unfinished_params = all_parameters_combination()
-
     # reading working pkl
     log_path = os.path.join(scenario_path, log_file)
+
+    params1 = checking_generated_scenarios(scenario_path)
+    params2 = checking_working_parameters(scenario_path, log_file)
+    unfinished_params = params1.intersection(params2)
 
     while len(unfinished_params) > 0:
         params1 = checking_generated_scenarios(scenario_path)
         params2 = checking_working_parameters(scenario_path, log_file)
-        unfinished_params.remove(params1)
-        unfinished_params.remove(params2)
+        unfinished_params = params1.intersection(params2)
 
         param = unfinished_params.pop()
         _, _, stock, win, scenario, biased, _ = param.split('_')
@@ -134,7 +135,10 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
             print param, e
         finally:
             working_dict = pd.read_pickle(log_path)
-            del working_dict[param]
+            if param in working_dict.keys():
+                del working_dict[param]
+            else:
+                print ("can't find {} in working dict.".format(param))
             pd.to_pickle(working_dict, log_path)
 
 if __name__ == '__main__':
