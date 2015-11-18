@@ -434,7 +434,8 @@ def exp_symbols_statistics(fout_path=os.path.join(
     print ("all roi statistics OK, {:.3f} secs".format(time() - t0))
 
 
-def generating_scenarios(n_stock, win_length, n_scenario=200):
+def generating_scenarios(n_stock, win_length, n_scenario=200, bias=False,
+                         scenario_error_retry=3):
     """
     generating scenarios at once
 
@@ -443,6 +444,10 @@ def generating_scenarios(n_stock, win_length, n_scenario=200):
     n_stock: integer, number of stocks in the EXP_SYMBOLS
     win_length: integer, number of historical periods
     n_scenario: integer, number of scenarios to generating
+    bias: boolean,
+        - False: unbiased estimator of moments
+        - True: biased estimator of moments
+    scenario_error_retry: integer, maximum retry of scenarios
     """
     t0 = time()
     fin_path = os.path.join(SYMBOLS_PKL_DIR,
@@ -458,45 +463,114 @@ def generating_scenarios(n_stock, win_length, n_scenario=200):
     trans_dates = panel.items
 
     # experiment trans_dates
-    exp_start_date, exp_end_date = date(2005, 1, 3), date(2014, 12, 31)
+    exp_start_date, exp_end_date = date(2005, 1, 3), date(2005, 1, 31)
     exp_start_idx = trans_dates.get_loc(exp_start_date)
     exp_end_idx = trans_dates.get_loc(exp_end_date)
     exp_trans_dates = trans_dates[exp_start_idx: exp_end_idx+1]
-
-    # the roi at the first experiment date is zero
-    panel.loc[exp_start_date, :, 'simple_roi'] = 0.
+    n_exp_period = len(exp_trans_dates)
 
     # estimating moments and correlation matrix
     est_moments = pd.DataFrame(np.zeros((n_stock, 4)), index=symbols)
-    est_corrs = pd.DataFrame(np.zeros((n_stock, n_stock)),
-                             index=symbols, columns=symbols)
+
+    parameters = "m{}_w{}_s{}_{}".format(n_stock, win_length, n_scenario,
+                                         "biased" if bias else "unbiased")
+
+    # output scenario panel
+    scenario_panel = pd.Panel(np.zeros((n_exp_period, n_stock, n_scenario)),
+                              items= exp_trans_dates,
+                              major_axis=symbols)
 
     for tdx, exp_date in enumerate(exp_trans_dates):
+        t1 = time()
+
         # rolling historical window indices, containing today
         est_start_idx = exp_start_idx + tdx - win_length + 1
         est_end_idx = exp_start_idx + tdx + 1
         hist_interval = trans_dates[est_start_idx:est_end_idx]
+
+        assert len(hist_interval) == win_length
+        assert hist_interval[-1] == exp_date
+
         # hist_data, shape: (n_stock, win_length)
         hist_data = panel.loc[hist_interval, symbols, 'simple_roi']
-
         # est moments and corrs
         est_moments.iloc[:, 0] = hist_data.mean(axis=1)
-        est_moments.iloc[:, 1] = hist_data.std(axis=1)
-        est_moments.iloc[:, 2] = hist_data.skew(axis=1)
-        est_moments.iloc[:, 3] = hist_data.kurt(axis=1)
-        est_corrs = (hist_data.T).cov()
-        print est_corrs
-        # generating scenario
-        print tdx
-        scenario_df = c_HMM(est_moments.as_matrix(), est_corrs.as_matrix(),
-                            n_scenario)
+        if bias:
+            est_moments.iloc[:, 1] = hist_data.std(axis=1, ddof=0)
+            est_moments.iloc[:, 2] = hist_data.skew(axis=1, bias=True)
+            est_moments.iloc[:, 3] = hist_data.kurt(axis=1, bias=True)
+        else:
+            est_moments.iloc[:, 1] = hist_data.std(axis=1, ddof=1)
+            est_moments.iloc[:, 2] = hist_data.skew(axis=1, bias=False)
+            est_moments.iloc[:, 3] = hist_data.kurt(axis=1, bias=False)
+        est_corrs = (hist_data.T).corr("pearson")
+
+        # generating unbiased scenario
+        for error_count in xrange(scenario_error_retry):
+            try:
+                for error_exponent in xrange(-3, 0):
+                    try:
+                        # default moment and corr errors (1e-3, 1e-3)
+                        # df shape: (n_stock, n_scenario)
+                        max_moment_err = 10 **(error_exponent)
+                        max_corr_err = 10 **(error_exponent)
+                        scenario_df = c_HMM(est_moments.as_matrix(),
+                                            est_corrs.as_matrix(),
+                                            n_scenario, bias,
+                                            max_moment_err,
+                                            max_corr_err)
+                    except ValueError as e:
+                        print ("relaxing max err: {}_{}_max_mom_err:{}, "
+                               "max_corr_err{}".format( exp_date, parameters,
+                                max_moment_err, max_corr_err))
+                    else:
+                        # generating scenarios success
+                        break
+
+            except Exception as e:
+                # catch any other exception
+                if error_count == scenario_error_retry - 1:
+                    raise Exception(e)
+            else:
+                # generating scenarios success
+                break
+
+        # store scenarios
+        scenario_panel.loc[exp_date, :, :] = scenario_df
 
         # clear est data
+        print ("[{}/{}][{}_{}] {}: {} scenarios OK, {:.3f} secs".format(
+            tdx+1, n_exp_period,
+            exp_start_date.strftime("%y%m%d"),
+            exp_end_date.strftime("%y%m%d"),
+            exp_date.strftime("%Y-%m-%d"),
+            parameters, time() - t1))
 
+    # scenario dir
+    scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
+    if not os.path.exists(scenario_path):
+        os.makedirs(scenario_path)
 
+    # check file name
+    for file_cnt in xrange(1, 10):
+        file_name = "{}_{}_{}_{}.pkl".format(
+            exp_start_date.strftime('%Y%m%d'),
+            exp_end_date.strftime('%Y%m%d'), parameters, file_cnt)
+        file_path = os.path.join(scenario_path, file_name)
+        if os.path.exists(file_path):
+            file_cnt += 1
+            if file_cnt == 10:
+                raise ValueError('maximum file count limited, {}'.format(
+                    file_path))
+        else:
+            # store file
+            scenario_panel.to_pickle(file_path)
+            break
 
-
-
+    print ("generating scenarios {}-{}, {} OK, {:.3f} secs \n {}".format(
+        exp_start_date.strftime('%Y%m%d'),
+        exp_end_date.strftime('%Y%m%d'),
+        parameters, time() - t0, file_path))
 
 
 if __name__ == '__main__':
@@ -508,4 +582,4 @@ if __name__ == '__main__':
     # plot_exp_symbol_roi(plot_kind='kde')
     # exp_symbols_statistics()
     # verify_symbol_csv()
-    generating_scenarios(5, 20)
+    generating_scenarios(10, 60)
