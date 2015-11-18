@@ -5,7 +5,6 @@ License: GPL v2
 
 extract-transform-load of data
 """
-
 from datetime import date
 from time import time
 from glob import glob
