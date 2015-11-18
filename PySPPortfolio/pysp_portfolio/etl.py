@@ -462,7 +462,7 @@ def generating_scenarios(n_stock, win_length, n_scenario=200, bias=False,
     trans_dates = panel.items
 
     # experiment trans_dates
-    exp_start_date, exp_end_date = date(2005, 1, 3), date(2005, 1, 31)
+    exp_start_date, exp_end_date = START_DATE, END_DATE
     exp_start_idx = trans_dates.get_loc(exp_start_date)
     exp_end_idx = trans_dates.get_loc(exp_end_date)
     exp_trans_dates = trans_dates[exp_start_idx: exp_end_idx+1]
@@ -551,14 +551,14 @@ def generating_scenarios(n_stock, win_length, n_scenario=200, bias=False,
         os.makedirs(scenario_path)
 
     # check file name
-    for file_cnt in xrange(1, 10):
+    max_file_cnt = 3
+    for file_cnt in xrange(1, max_file_cnt+1):
         file_name = "{}_{}_{}_{}.pkl".format(
             exp_start_date.strftime('%Y%m%d'),
             exp_end_date.strftime('%Y%m%d'), parameters, file_cnt)
         file_path = os.path.join(scenario_path, file_name)
         if os.path.exists(file_path):
-            file_cnt += 1
-            if file_cnt == 10:
+            if file_cnt == max_file_cnt:
                 raise ValueError('maximum file count limited, {}'.format(
                     file_path))
         else:
