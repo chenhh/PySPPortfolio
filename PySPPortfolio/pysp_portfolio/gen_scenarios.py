@@ -29,7 +29,7 @@ def all_parameters_combination():
                 exp_end_date.strftime("%Y%m%d"),
                 n_stock, win_length, n_scenario,bias, cnt)
                   for cnt in xrange(1, 4)
-                  for bias in ("unbiased", "biased")
+                  for bias in ("unbiased",)
                   for n_scenario in (200,)
                   for win_length in xrange(50, 240 + 10, 10)
                   for n_stock in xrange(5, 50 + 5, 5)
@@ -106,21 +106,20 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
 
     # reading working pkl
     log_path = os.path.join(scenario_path, log_file)
-    if not os.path.exists(log_path):
-        working_dict = {}
-    else:
-        working_dict = pd.read_pickle(log_path)
-
 
     for param in unfinished_params:
-        _, _, stock, win, scenario, biased, cnt = param.split('_')
+        _, _, stock, win, scenario, biased, _ = param.split('_')
         n_stock =int(stock[stock.rfind('m')+1:])
         win_length = int(win[win.rfind('w')+1:])
         n_scenario = int(scenario[scenario.rfind('s')+1:])
         bias = True if biased == "biased" else False
-        cnt = int(cnt)
 
         # log  parameter to file
+        if not os.path.exists(log_path):
+            working_dict = {}
+        else:
+            working_dict = pd.read_pickle(log_path)
+
         working_dict[param] = platform.node()
         pd.to_pickle(working_dict, log_path)
 
