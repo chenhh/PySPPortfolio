@@ -100,14 +100,18 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         # storing a dict, {key: param, value: platform_name}
         log_file = 'working.pkl'
 
-    params1 = checking_generated_scenarios(scenario_path)
-    params2 = checking_working_parameters(scenario_path, log_file)
-    unfinished_params = params1.intersection(params2)
+    unfinished_params = all_parameters_combination()
 
     # reading working pkl
     log_path = os.path.join(scenario_path, log_file)
 
-    for param in unfinished_params:
+    while len(unfinished_params) > 0:
+        params1 = checking_generated_scenarios(scenario_path)
+        params2 = checking_working_parameters(scenario_path, log_file)
+        unfinished_params.remove(params1)
+        unfinished_params.remove(params2)
+
+        param = unfinished_params.pop()
         _, _, stock, win, scenario, biased, _ = param.split('_')
         n_stock =int(stock[stock.rfind('m')+1:])
         win_length = int(win[win.rfind('w')+1:])
