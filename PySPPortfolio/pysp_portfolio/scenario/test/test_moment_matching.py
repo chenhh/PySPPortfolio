@@ -30,13 +30,13 @@ def test_biased_HMM(precision=2):
 
     t0 = time()
     py_scenarios = HMM(tgt_moments, tgt_corrs, n_scenario)
-    print "python HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
-        n_rv, n_scenario, time()-t0)
+    print ("python HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
+        n_rv, n_scenario, time()-t0))
 
     t1 = time()
     c_scenarios = c_HMM(tgt_moments, tgt_corrs, n_scenario)
-    print "c HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
-        n_rv, n_scenario, time()-t1)
+    print ("c HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
+        n_rv, n_scenario, time()-t1))
 
     for scenarios in (py_scenarios, c_scenarios):
         # scenarios statistics
@@ -52,7 +52,7 @@ def test_biased_HMM(precision=2):
 
 
 def test_unbiased_HMM(precision=2):
-    n_rv, n_sample = 50, 100
+    n_rv, n_sample = 10, 100
     n_scenario = 500
     data = np.random.rand(n_rv, n_sample)
 
@@ -65,15 +65,14 @@ def test_unbiased_HMM(precision=2):
     tgt_corrs = np.corrcoef(data)
 
     t0 = time()
-    print "python unbiased HMM"
     py_scenarios = HMM(tgt_moments, tgt_corrs, n_scenario, bias=False)
-    print "python unbiased HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
-        n_rv, n_scenario, time()-t0)
+    print ("python unbiased HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
+        n_rv, n_scenario, time()-t0))
 
     t1 = time()
     c_scenarios = c_HMM(tgt_moments, tgt_corrs, n_scenario, bias=False)
-    print "c unbiased HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
-        n_rv, n_scenario, time()-t1)
+    print ("c unbiased HMM (n_rv, n_scenario):({}, {}) {:.4f} secs".format(
+        n_rv, n_scenario, time()-t1))
 
     for scenarios in (py_scenarios,  c_scenarios):
         # scenarios statistics
@@ -88,6 +87,7 @@ def test_unbiased_HMM(precision=2):
         np.testing.assert_array_almost_equal(tgt_corrs, res_corrs, precision)
 
 def test_moments():
+    """ test equation of 1~4 th moments of scipy and padnas """
     n_rv, n_sample = 50, 100
     data = np.random.rand(n_rv, n_sample)
     pd_data = pd.DataFrame(data)
@@ -125,8 +125,8 @@ def test_moments():
     np.testing.assert_array_almost_equal(tgt_corrs, pd_corrs)
 
 
-
 def test_skew():
+    """ test equation of skew in scipy """
     n = 100
     x = np.random.rand(n)
 
@@ -136,7 +136,7 @@ def test_skew():
     s3 = sum((v-x.mean())**3 for v in x)/n
     s2 = sum((v-x.mean())**2 for v in x)/n
     b_skew2 = s3/np.power(s2, 1.5)
-    print b_skew2
+    print ("biased skew:", b_skew2)
     np.testing.assert_allclose(b_skew, b_skew2)
 
     # unbiased estimator
@@ -145,10 +145,11 @@ def test_skew():
     s3 = sum((v-x.mean())**3 for v in x)/n
     s2 = sum((v-x.mean())**2 for v in x)/(n-1)
     ub_skew2 = s3/np.power(s2, 1.5) * n*n/(n-1)/(n-2)
-    print ub_skew2
+    print ("ub biased skew:", ub_skew2)
     np.testing.assert_allclose(ub_skew, ub_skew2)
 
 def test_kurtosis():
+    """ test equation of kurtosis in scipy """
     n = 100
     x = np.random.rand(n)
 
@@ -158,7 +159,7 @@ def test_kurtosis():
     k4 = sum((v-x.mean())**4 for v in x)/n
     k2 = sum((v-x.mean())**2 for v in x)/n
     b_kurt2 = k4/k2**2 - 3
-    print b_kurt2
+    print ("biased kurtosis:", b_kurt2)
     np.testing.assert_allclose(b_kurt, b_kurt2)
 
     # unbiased estimator
@@ -167,34 +168,19 @@ def test_kurtosis():
     k4 = sum((v-x.mean())**4 for v in x)/n
     k2 = sum((v-x.mean())**2 for v in x)/n
     ub_kurt2 = 1.0/(n-2)/(n-3) * ((n**2-1.0)*k4/k2**2.0 - 3*(n-1)**2.0)
-    print ub_kurt2
+    print ("ubbiased kurtosis:", ub_kurt2)
 
     k2 = sum((v-x.mean())**2 for v in x)/(n-1)
     ub_kurt3 = 1/(n-2)/(n-3) *((n**2-1.0)*(n/(n-1))**2. *k4/k2**2.0- 3*(
         n-1)**2.0)
-    print ub_kurt3
+    print ("ubbiased kurtosis:", ub_kurt3)
     np.testing.assert_allclose(ub_kurt, ub_kurt2)
     np.testing.assert_allclose(ub_kurt, ub_kurt3)
 
-
-def test_kurtosis2():
-    n = 100
-    x = np.random.rand(n)
-
-    z = (x-x.mean())/x.std(ddof=1)
-
-    ub_kurt_x = spstats.kurtosis(x, bias=False)
-    ub_kurt_z = spstats.kurtosis(z, bias=False)
-    print ub_kurt_x, ub_kurt_z
-
-    m4 = sum(v**4 for v in z)/len(z)
-
-    print m4
-    print (ub_kurt_x+3*(n-1)**2/(n-2)/(n-3))*(n-1)**2*(n-2)*(n-3)/(n*n-1)/n/n
-
 if __name__ == '__main__':
+    pass
     # test_biased_HMM()
-    test_unbiased_HMM()
+    # test_unbiased_HMM()
 #     # test_moments()
 #     test_skew()
 #     test_kurtosis()
