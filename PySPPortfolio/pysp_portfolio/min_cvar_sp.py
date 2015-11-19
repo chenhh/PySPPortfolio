@@ -12,7 +12,7 @@ import pandas as pd
 import scipy.stats as spstats
 from pyomo.environ import *
 
-from . import *
+from PySPPortfolio.pysp_portfolio import *
 from scenario.c_moment_matching import heuristic_moment_matching
 from base_model import SPTradingPortfolio
 
@@ -171,14 +171,15 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         super(MinCVaRSPPortfolio, self).__init__(
            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
-            start_date, end_date, window_length, verbose)
+            start_date, end_date, window_length, n_scenario, bias, verbose)
 
         self.alpha = float(alpha)
 
         # try to load generated scenario panel
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
         start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
-            len(symbols), window_length, n_scenario, bias, scenario_cnt)
+            len(symbols), window_length, n_scenario,
+            "biased" if bias else "unbiased", scenario_cnt)
 
         scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                  scenario_name)
@@ -224,8 +225,11 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         """
         # current index in the exp_period
         tdx, trans_date = kwargs['tdx'], kwargs['trans_date']
-        if self.scenario_panel:
-            return self.scenario_panel.loc[trans_date]
+        if self.scenario_panel is not None:
+            df = self.scenario_panel.loc[trans_date]
+            assert self.symbols == df.index.tolist()
+            print trans_date, df.shape
+            return df
 
         else:
             # because we trade stock on the after-hour market, we known today
@@ -237,18 +241,24 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
             # shape: (window_length, n_stock)
             hist_data = self.risk_rois.iloc[hist_start_idx:hist_end_idx]
             if self.verbose:
-                print "HMM current: {} hist_data:[{}-{}]".format(
+                print ("HMM current: {} hist_data:[{}-{}]".format(
                                     self.exp_risk_rois.index[tdx],
                                     self.risk_rois.index[hist_start_idx],
-                                    self.risk_rois.index[hist_end_idx])
+                                    self.risk_rois.index[hist_end_idx]))
 
             # 1-4 th moments of historical data, shape: (n_stock, 4)
             tgt_moments = np.zeros((self.n_stock, 4))
             tgt_moments[:, 0] = hist_data.mean(axis=0)
-            # the 2nd moment must be standard deviation, not the variance
-            tgt_moments[:, 1] = hist_data.std(axis=0)
-            tgt_moments[:, 2] = spstats.skew(hist_data, axis=0)
-            tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0)
+            if self.bias_estimator:
+                # the 2nd moment must be standard deviation, not the variance
+                tgt_moments[:, 1] = hist_data.std(axis=0)
+                tgt_moments[:, 2] = spstats.skew(hist_data, axis=0)
+                tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0)
+            else:
+                tgt_moments[:, 1] = hist_data.std(axis=0, ddof=1)
+                tgt_moments[:, 2] = spstats.skew(hist_data, axis=0, bias=False)
+                tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0,bias=False)
+
             corr_mtx = np.corrcoef(hist_data.T)
 
             # scenarios shape: (n_stock, n_scenario)
@@ -258,17 +268,18 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                     max_moment_err = 10**error_order
                     max_corr_err = 10**error_order
                     scenarios = heuristic_moment_matching(
-                                    tgt_moments, corr_mtx, self.n_scenario,
+                                    tgt_moments, corr_mtx,
+                                    self.n_scenario,
+                                    self.bias_estimator,
                                     max_moment_err, max_corr_err)
                     break
                 except ValueError as e:
                     print e
                     if idx >= 2:
                         raise ValueError('{}: {} HMM not converge.'.format(
-                        self.get_trading_func_name(),
+                            self.get_trading_func_name(),
                             self.exp_risk_rois.index[tdx]
                         ))
-
             return pd.DataFrame(scenarios, index=self.symbols)
 
 

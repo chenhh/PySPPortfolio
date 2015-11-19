@@ -12,6 +12,7 @@ import pandas as pd
 from arch.bootstrap.multiple_comparrison import (SPA,)
 from utils import (sharpe, sortino_full, sortino_partial, maximum_drawdown)
 
+
 class PortfolioReportMixin(object):
 
     @staticmethod
@@ -349,12 +350,15 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
         # count of generating scenario error
         estimated_risk_roi_error_count = 0
+
         for tdx in xrange(self.n_exp_period):
             t1 = time()
             # estimating next period rois, shape: (n_stock, n_scenario)
             try:
                 estimated_risk_rois = self.get_estimated_risk_rois(
-                    tdx=tdx, n_stock=self.n_stock,
+                    tdx=tdx,
+                    trans_date=self.exp_risk_rois.index[tdx],
+                    n_stock=self.n_stock,
                     window_length=self.window_length,
                     n_scenario=self.n_scenario,
                     bias=self.bias_estimator)
@@ -366,9 +370,10 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
             estimated_risk_free_rois = self.get_estimated_risk_free_rois(
                 tdx=tdx, n_stock=self.n_stock,
-                    window_length=self.window_length,
-                    n_scenario=self.n_scenario,
-                    bias=self.bias_estimator)
+                trans_date=self.exp_risk_rois.index[tdx],
+                window_length=self.window_length,
+                n_scenario=self.n_scenario,
+                bias=self.bias_estimator)
 
             # generating scenarios success
             if self.estimated_risk_roi_error[tdx] is False:
@@ -430,11 +435,11 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             allocated_risk_wealth = self.risk_wealth_df.iloc[tdx]
             allocated_risk_free_wealth = self.risk_free_wealth.iloc[tdx]
 
-            print ("[{}/{}] {} {} OK, estimated error count:{} " \
+            print ("[{}/{}] {} {} OK, estimated error count:{} "
                   "current_wealth:{}, {:.3f} secs".format(
                     tdx + 1, self.n_exp_period,
-                    func_name,
                     self.exp_risk_rois.index[tdx],
+                    func_name,
                     estimated_risk_roi_error_count,
                     (self.risk_wealth_df.iloc[tdx].sum() +
                      self.risk_free_wealth.iloc[tdx]),
