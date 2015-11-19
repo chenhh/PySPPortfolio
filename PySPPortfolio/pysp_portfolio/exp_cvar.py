@@ -6,11 +6,12 @@ License: GPL v2
 
 import os
 import pandas as pd
-from . import *
+from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio,)
 
 
-def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
+def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
+                               bias=False, scenario_cnt=1, alpha=0.95):
     """
     2nd stage SP simulation
 
@@ -18,19 +19,43 @@ def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
     -------------------
     n_stock: integer, number of stocks of the EXP_SYMBOLS to the portfolios
     window_length: integer, number of periods for estimating scenarios
-    alpha: float, for conditional risk
     n_scenario, int, number of scenarios
+    bias: bool, biased moment estimators or not
+    scenario_cnt: count of generated scenarios, default = 1
+    alpha: float, for conditional risk
 
     Returns:
     --------------------
     reports
     """
-
-    n_stock, window_length = int(n_stock), int(window_length)
-    alpha = float(alpha)
+    n_stock, win_length,  = int(n_stock), int(win_length)
+    n_scenario, alpha = int(n_scenario), float(alpha)
 
     # getting experiment symbols
     symbols = EXP_SYMBOLS[:n_stock]
+    param = "{}_{}_m{}_w{}_s{}_{}_{}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+            n_stock, win_length, n_scenario, bias, scenario_cnt)
+
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # read scenarios panel
+    scenario_path = os.path.join(EXP_SCENARIO_DIR, "{}.pkl".format(param))
+
+    if not os.path.exists(scenario_path):
+        raise ValueError("{} scenario not exists.".format(scenario_path))
+
+    # shape: (n_exp_period, n_stock, n_scenario)
+    scenario_panel = pd.read_pickle(scenario_path)
+
+    # results data
     risk_rois = generate_rois_df(symbols)
 
     exp_risk_rois = risk_rois.loc[start_date:end_date]
@@ -51,7 +76,7 @@ def run_min_cvar_sp_simulation(n_stock, window_length, alpha, n_scenario=200):
         exp_risk_rois.index[0].strftime("%Y%m%d"),
         exp_risk_rois.index[-1].strftime("%Y%m%d"),
         len(symbols),
-        window_length,
+        win_length,
         alpha,
         n_scenario)
 

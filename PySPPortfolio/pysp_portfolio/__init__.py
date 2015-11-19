@@ -20,16 +20,20 @@ os_type = platform.system()
 if os_type == 'Linux':
     EXP_SP_PORTFOLIO_DIR = os.path.join(r'/home/chenhh/Dropbox',
                                   'financial_experiment', 'pysp_portfolio')
+    TMP_DIR = r'/tmp'
 
 elif os_type == 'Windows':
     EXP_SP_PORTFOLIO_DIR = os.path.join(r'C:\Users\chen1\Dropbox',
                                   'financial_experiment',
                                   'pysp_portfolio')
+    TMP_DIR = 'E:\\'
 else:
     raise ValueError('unknown os platform:{}'.format(os_type))
 
 if not os.path.exists(EXP_SP_PORTFOLIO_DIR):
     os.makedirs(EXP_SP_PORTFOLIO_DIR)
+
+EXP_SCENARIO_DIR = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
 
 # experiment global setting
 DEFAULT_SOLVER = 'cplex'
@@ -37,8 +41,9 @@ BUY_TRANS_FEE = 0.001425
 SELL_TRANS_FEE = 0.004425
 START_DATE = date(2005, 1, 3)
 END_DATE = date(2014, 12, 31)
-N_SCENARIO = 200
 WINDOW_LENGTH = 200
+N_SCENARIO = 200
+BIAS_ESTIMATOR = False # using unbiased estimator
 
 
 EXP_SYMBOLS = [
@@ -55,7 +60,7 @@ EXP_SYMBOLS = [
 ]
 
 __all__ = ['PROJECT_DIR','DATA_DIR', 'SYMBOLS_CSV_DIR', 'SYMBOLS_PKL_DIR',
-           'EXP_SP_PORTFOLIO_DIR',
+           'EXP_SP_PORTFOLIO_DIR', 'TMP_DIR', 'EXP_SCENARIO_DIR',
            'DEFAULT_SOLVER', 'BUY_TRANS_FEE', 'SELL_TRANS_FEE',
            'START_DATE', 'END_DATE', "N_SCENARIO", 'WINDOW_LENGTH',
-           'EXP_SYMBOLS']
+           'BIAS_ESTIMATOR', 'EXP_SYMBOLS']

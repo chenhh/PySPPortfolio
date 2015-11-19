@@ -161,8 +161,9 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
     def __init__(self, symbols, risk_rois, risk_free_rois,
                  initial_risk_wealth, initial_risk_free_wealth,
                  buy_trans_fee=0.001425, sell_trans_fee=0.004425,
-                 start_date=date(2005, 1, 1), end_date=date(2015, 4, 30),
-                 window_length=200, verbose=False):
+                 start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
+                 window_length=200, n_scenario=200, bias=False,
+                 verbose=False):
         """
         stepwise stochastic programming trading portfolio
 
@@ -179,6 +180,8 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         start_date: datetime.date, first date of simulation
         end_date: datetime.date, last date of simulation
         window_length: integer, historical periods for estimated parameters
+        n_scenario: integer, number of scenarios to generated
+        bias: boolean, biased moment estimators or not
         verbose: boolean
 
         Data
@@ -220,7 +223,9 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         self.n_stock = self.exp_risk_rois.shape[1]
 
         # date index in total data
-        self.window_length = window_length
+        self.window_length = int(window_length)
+        self.n_scenario = int(n_scenario)
+        self.bias_estimator = bias
         self.start_date_idx = self.risk_rois.index.get_loc(
             self.exp_risk_rois.index[0])
 
@@ -348,14 +353,22 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             t1 = time()
             # estimating next period rois, shape: (n_stock, n_scenario)
             try:
-                estimated_risk_rois = self.get_estimated_risk_rois(tdx=tdx)
+                estimated_risk_rois = self.get_estimated_risk_rois(
+                    tdx=tdx, n_stock=self.n_stock,
+                    window_length=self.window_length,
+                    n_scenario=self.n_scenario,
+                    bias=self.bias_estimator)
+
             except ValueError as e:
                 print ("generating scenario error: {}, {}".format(
                     self.exp_risk_rois.index[tdx], e))
                 self.estimated_risk_roi_error[tdx] = True
 
             estimated_risk_free_rois = self.get_estimated_risk_free_rois(
-                tdx=tdx)
+                tdx=tdx, n_stock=self.n_stock,
+                    window_length=self.window_length,
+                    n_scenario=self.n_scenario,
+                    bias=self.bias_estimator)
 
             # generating scenarios success
             if self.estimated_risk_roi_error[tdx] is False:
@@ -363,6 +376,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                 # determining the buy and sell amounts
                 results = self.get_current_buy_sell_amounts(
                     tdx=tdx,
+                    trans_date=self.exp_risk_rois.index[tdx],
                     estimated_risk_rois=estimated_risk_rois,
                     estimated_risk_free_roi=estimated_risk_free_rois,
                     allocated_risk_wealth=allocated_risk_wealth,

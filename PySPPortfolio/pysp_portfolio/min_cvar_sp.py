@@ -6,15 +6,14 @@ License: GPL v2
 
 from __future__ import division
 from time import time
-from datetime import (date,)
-
+import os
 import numpy as np
 import pandas as pd
 import scipy.stats as spstats
 from pyomo.environ import *
 
 from . import *
-from scenario.moment_matching import heuristic_moment_matching
+from scenario.c_moment_matching import heuristic_moment_matching
 from base_model import SPTradingPortfolio
 
 
@@ -153,15 +152,15 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                  initial_risk_wealth, initial_risk_free_wealth,
                  buy_trans_fee=BUY_TRANS_FEE, sell_trans_fee=SELL_TRANS_FEE,
                  start_date=START_DATE, end_date=END_DATE,
-                 window_length=WINDOW_LENGTH, alpha=0.05,
-                 n_scenario=N_SCENARIO, verbose=False):
+                 window_length=WINDOW_LENGTH, n_scenario=N_SCENARIO,
+                 bias=BIAS_ESTIMATOR, alpha=0.05, scenario_cnt = 1,
+                 verbose=False):
         """
         2nd-stage SP
 
         Parameters:
          -----------------------
         alpha: float, 0<=value<0.5, 1-alpha is the confidence level of risk
-        n_scenario: integer, number of scenarios in a period
 
         Data:
         -------------
@@ -174,16 +173,35 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
             start_date, end_date, window_length, verbose)
 
-        self.alpha = alpha
-        self.n_scenario = int(n_scenario)
+        self.alpha = float(alpha)
+
+        # try to load generated scenario panel
+        scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
+        start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+            len(symbols), window_length, n_scenario, bias, scenario_cnt)
+
+        scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
+                                 scenario_name)
+
+        if not os.path.exists(scenario_path):
+            print ("{} not exists.".format(scenario_name))
+            self.scenario_panel = None
+            self.scenario_cnt = 0
+        else:
+            self.scenario_panel = pd.read_pickle(scenario_path)
+            self.scenario_cnt = scenario_cnt
+
+        # additional results
         self.var_arr = pd.Series(np.zeros(self.n_exp_period),
                                 index=self.exp_risk_rois.index)
         self.cvar_arr = pd.Series(np.zeros(self.n_exp_period),
                                   index = self.exp_risk_rois.index)
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSP_M{}_W{}_a{}_s{}".format(
-            self.n_stock, self.window_length, self.alpha, self.n_scenario)
+        return "MinCVaRSP_M{}_W{}_a{}_s{}_{}_{}".format(
+            self.n_stock, self.window_length, self.alpha, self.n_scenario,
+             "biased" if self.bias_estimator else "unbiased",
+             self.scenario_cnt)
 
     def add_results_to_reports(self, reports):
         """ add additional items to reports """
@@ -199,57 +217,59 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
 
     def get_estimated_risk_rois(self, *args, **kwargs):
         """
-        heuristic moment matching
 
         Returns:
         -----------
         estimated_risk_rois, numpy.array, shape: (n_stock, n_scenario)
         """
         # current index in the exp_period
-        tdx = kwargs['tdx']
+        tdx, trans_date = kwargs['tdx'], kwargs['trans_date']
+        if self.scenario_panel:
+            return self.scenario_panel.loc[trans_date]
 
-        # because we trade stock on the after-hour market, we known today
-        # market information, therefore the historical interval contain
-        # current day
-        hist_end_idx = self.start_date_idx + tdx + 1
-        hist_start_idx = self.start_date_idx + tdx - self.window_length + 1
+        else:
+            # because we trade stock on the after-hour market, we known today
+            # market information, therefore the historical interval contain
+            # current day
+            hist_end_idx = self.start_date_idx + tdx + 1
+            hist_start_idx = self.start_date_idx + tdx - self.window_length + 1
 
-        # shape: (window_length, n_stock)
-        hist_data = self.risk_rois.iloc[hist_start_idx:hist_end_idx]
-        if self.verbose:
-            print "HMM current: {} hist_data:[{}-{}]".format(
-                                self.exp_risk_rois.index[tdx],
-                                self.risk_rois.index[hist_start_idx],
-                                self.risk_rois.index[hist_end_idx])
+            # shape: (window_length, n_stock)
+            hist_data = self.risk_rois.iloc[hist_start_idx:hist_end_idx]
+            if self.verbose:
+                print "HMM current: {} hist_data:[{}-{}]".format(
+                                    self.exp_risk_rois.index[tdx],
+                                    self.risk_rois.index[hist_start_idx],
+                                    self.risk_rois.index[hist_end_idx])
 
-        # 1-4 th moments of historical data, shape: (n_stock, 4)
-        tgt_moments = np.zeros((self.n_stock, 4))
-        tgt_moments[:, 0] = hist_data.mean(axis=0)
-        # the 2nd moment must be standard deviation, not the variance
-        tgt_moments[:, 1] = hist_data.std(axis=0)
-        tgt_moments[:, 2] = spstats.skew(hist_data, axis=0)
-        tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0)
-        corr_mtx = np.corrcoef(hist_data.T)
+            # 1-4 th moments of historical data, shape: (n_stock, 4)
+            tgt_moments = np.zeros((self.n_stock, 4))
+            tgt_moments[:, 0] = hist_data.mean(axis=0)
+            # the 2nd moment must be standard deviation, not the variance
+            tgt_moments[:, 1] = hist_data.std(axis=0)
+            tgt_moments[:, 2] = spstats.skew(hist_data, axis=0)
+            tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0)
+            corr_mtx = np.corrcoef(hist_data.T)
 
-        # scenarios shape: (n_stock, n_scenario)
-        for idx, error_order in enumerate(xrange(-3, 0)):
-            # if the HMM is not converge, relax the tolerance error
-            try:
-                max_moment_err = 10**error_order
-                max_corr_err = 10**error_order
-                scenarios = heuristic_moment_matching(
-                                tgt_moments, corr_mtx, self.n_scenario,
-                                max_moment_err, max_corr_err)
-                break
-            except ValueError as e:
-                print e
-                if idx >= 2:
-                    raise ValueError('{}: {} HMM not converge.'.format(
-                    self.get_trading_func_name(),
-                        self.exp_risk_rois.index[tdx]
-                    ))
+            # scenarios shape: (n_stock, n_scenario)
+            for idx, error_order in enumerate(xrange(-3, 0)):
+                # if the HMM is not converge, relax the tolerance error
+                try:
+                    max_moment_err = 10**error_order
+                    max_corr_err = 10**error_order
+                    scenarios = heuristic_moment_matching(
+                                    tgt_moments, corr_mtx, self.n_scenario,
+                                    max_moment_err, max_corr_err)
+                    break
+                except ValueError as e:
+                    print e
+                    if idx >= 2:
+                        raise ValueError('{}: {} HMM not converge.'.format(
+                        self.get_trading_func_name(),
+                            self.exp_risk_rois.index[tdx]
+                        ))
 
-        return pd.DataFrame(scenarios, index=self.symbols)
+            return pd.DataFrame(scenarios, index=self.symbols)
 
 
     def set_specific_period_action(self, *args, **kwargs):

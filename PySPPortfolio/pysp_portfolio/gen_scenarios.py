@@ -14,8 +14,9 @@ from PySPPortfolio.pysp_portfolio import *
 from PySPPortfolio.pysp_portfolio.etl import generating_scenarios
 
 
-def all_parameters_combination():
+def all_parameters_combination_name():
     """
+    file_name of all experiment parameters
     n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
     win_length: {50, 60, ..., 240}
     n_scenario:  200
@@ -28,7 +29,7 @@ def all_parameters_combination():
                 exp_start_date.strftime("%Y%m%d"),
                 exp_end_date.strftime("%Y%m%d"),
                 n_stock, win_length, n_scenario,bias, cnt)
-                  for cnt in xrange(1, 4)
+                  for cnt in xrange(1, 3+1)
                   for bias in ("unbiased",)
                   for n_scenario in (200,)
                   for win_length in xrange(50, 240 + 10, 10)
@@ -38,13 +39,13 @@ def all_parameters_combination():
 
 def checking_generated_scenarios(scenario_path=None):
     """
-    checking unfinished experiment parameters.
+    return unfinished experiment parameters.
     """
     if scenario_path is None:
-        scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
+        scenario_path = EXP_SCENARIO_DIR
 
     # get all params
-    all_params = all_parameters_combination()
+    all_params = all_parameters_combination_name()
 
     pkls = glob.glob(os.path.join(scenario_path, "*.pkl"))
     for pkl in pkls:
@@ -65,13 +66,13 @@ def checking_working_parameters(scenario_path=None, log_file=None):
     it is recorded to a file
     """
     if scenario_path is None:
-        scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
+        scenario_path = EXP_SCENARIO_DIR
 
     if log_file is None:
         log_file = 'working.pkl'
 
     # get all params
-    all_params = all_parameters_combination()
+    all_params = all_parameters_combination_name()
 
     # storing a dict, key: param, value: platform_name
     file_path = os.path.join(scenario_path, log_file)
@@ -94,7 +95,7 @@ def checking_working_parameters(scenario_path=None, log_file=None):
 def dispatch_scenario_parameters(scenario_path=None, log_file=None):
 
     if scenario_path is None:
-        scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
+        scenario_path = EXP_SCENARIO_DIR
 
     if log_file is None:
         # storing a dict, {key: param, value: platform_name}
@@ -108,6 +109,7 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
     unfinished_params = params1.intersection(params2)
 
     while len(unfinished_params) > 0:
+        # each loop we have to
         params1 = checking_generated_scenarios(scenario_path)
         params2 = checking_working_parameters(scenario_path, log_file)
         unfinished_params = params1.intersection(params2)
@@ -128,12 +130,14 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         working_dict[param] = platform.node()
         for retry in xrange(3):
             try:
+                # preventing multi-process write file at the same time
                 pd.to_pickle(working_dict, log_path)
             except IOError as e:
                 if retry == 2:
                     raise Exception(e)
                 else:
-                    time.sleep(1)
+                    print ("working retry: {}, {}".format(retry+1, e))
+                    time.sleep(2)
 
         # generating scenarios
         try:
@@ -148,12 +152,14 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
                 print ("can't find {} in working dict.".format(param))
             for retry in xrange(3):
                 try:
+                    # preventing multi-process write file at the same time
                     pd.to_pickle(working_dict, log_path)
                 except IOError as e:
                     if retry == 2:
                         raise Exception(e)
                     else:
-                        time.sleep(1)
+                        print ("finally retry: {}, {}".format(retry+1, e))
+                        time.sleep(2)
 
 
 def read_working_parameters():
