@@ -7,7 +7,7 @@ License: GPL v2
 import platform
 import pandas as pd
 from datetime import date
-import atexit
+import time
 import glob
 import os
 from PySPPortfolio.pysp_portfolio import *
@@ -126,7 +126,14 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
             working_dict = pd.read_pickle(log_path)
 
         working_dict[param] = platform.node()
-        pd.to_pickle(working_dict, log_path)
+        for retry in xrange(3):
+            try:
+                pd.to_pickle(working_dict, log_path)
+            except IOError as e:
+                if retry == 2:
+                    raise Exception(e)
+                else:
+                    time.sleep(1)
 
         # generating scenarios
         try:
@@ -139,7 +146,28 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
                 del working_dict[param]
             else:
                 print ("can't find {} in working dict.".format(param))
-            pd.to_pickle(working_dict, log_path)
+            for retry in xrange(3):
+                try:
+                    pd.to_pickle(working_dict, log_path)
+                except IOError as e:
+                    if retry == 2:
+                        raise Exception(e)
+                    else:
+                        time.sleep(1)
+
+
+def read_working_parameters():
+    scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
+    log_file = 'working.pkl'
+    file_path = os.path.join(scenario_path, log_file)
+
+    if not os.path.exists(file_path):
+        print ("{} not exists.".format(file_path))
+    else:
+        working_dict = pd.read_pickle(file_path)
+        for param, node in working_dict.items():
+            print param, node
 
 if __name__ == '__main__':
-    dispatch_scenario_parameters()
+    # dispatch_scenario_parameters()
+    read_working_parameters()
