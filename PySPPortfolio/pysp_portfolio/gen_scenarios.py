@@ -108,6 +108,8 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
     params2 = checking_working_parameters(scenario_path, log_file)
     unfinished_params = params1.intersection(params2)
 
+    print ("initial unfinished params: {}".format(len(unfinished_params)))
+    
     while len(unfinished_params) > 0:
         # each loop we have to
         params1 = checking_generated_scenarios(scenario_path)
