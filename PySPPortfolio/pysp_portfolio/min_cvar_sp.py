@@ -48,26 +48,26 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
         scenario_probs = np.ones(n_scenario, dtype=np.float) / n_scenario
 
     # Model
-    model = ConcreteModel()
+    instance = ConcreteModel()
 
     # Set
-    model.symbols = symbols
-    model.scenarios = np.arange(n_scenario)
+    instance.symbols = symbols
+    instance.scenarios = np.arange(n_scenario)
 
     # decision variables
     # first stage
-    model.buy_amounts = Var(model.symbols, within=NonNegativeReals)
-    model.sell_amounts = Var(model.symbols, within=NonNegativeReals)
+    instance.buy_amounts = Var(instance.symbols, within=NonNegativeReals)
+    instance.sell_amounts = Var(instance.symbols, within=NonNegativeReals)
 
     # second stage
-    model.risk_wealth = Var(model.symbols, within=NonNegativeReals)
-    model.risk_free_wealth = Var(within=NonNegativeReals)
+    instance.risk_wealth = Var(instance.symbols, within=NonNegativeReals)
+    instance.risk_free_wealth = Var(within=NonNegativeReals)
 
     # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
-    model.Z = Var()
+    instance.Z = Var()
 
     # aux variable, portfolio wealth less than than VaR (Z)
-    model.Ys = Var(model.scenarios, within=NonNegativeReals)
+    instance.Ys = Var(instance.scenarios, within=NonNegativeReals)
 
     # constraint
     def risk_wealth_constraint_rule(model, mdx):
@@ -83,8 +83,8 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                 (1. + risk_rois[mdx]) * allocated_risk_wealth[mdx] +
                 model.buy_amounts[mdx] - model.sell_amounts[mdx])
 
-    model.risk_wealth_constraint = Constraint(
-        model.symbols, rule=risk_wealth_constraint_rule)
+    instance.risk_wealth_constraint = Constraint(
+        instance.symbols, rule=risk_wealth_constraint_rule)
 
     # constraint
     def risk_free_wealth_constraint_rule(model):
@@ -97,7 +97,7 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                 (1. + risk_free_roi) * allocated_risk_free_wealth +
                 total_sell - total_buy)
 
-    model.risk_free_wealth_constraint = Constraint(
+    instance.risk_free_wealth_constraint = Constraint(
         rule=risk_free_wealth_constraint_rule)
 
     # constraint
@@ -108,7 +108,7 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                      for mdx in model.symbols)
         return model.Ys[sdx] >= (model.Z - wealth)
 
-    model.cvar_constraint = Constraint(model.scenarios,
+    instance.cvar_constraint = Constraint(instance.scenarios,
                                        rule=cvar_constraint_rule)
 
     # objective
@@ -117,13 +117,12 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                                     for sdx in xrange(n_scenario))
         return model.Z - 1. / (1. - alpha) * scenario_expectation
 
-    model.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+    instance.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
-    instance = model.create()
     results = opt.solve(instance)
-    instance.load(results)
+    instance.solutions.load_from(results)
     if verbose:
         display(instance)
 
@@ -143,7 +142,7 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
         "buy_amounts": buy_amounts,
         "sell_amounts": sell_amounts,
         "estimated_var": estimated_var,
-        "estimated_cvar": model.cvar_objective()
+        "estimated_cvar": instance.cvar_objective()
     }
 
 
@@ -153,7 +152,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                  buy_trans_fee=BUY_TRANS_FEE, sell_trans_fee=SELL_TRANS_FEE,
                  start_date=START_DATE, end_date=END_DATE,
                  window_length=WINDOW_LENGTH, n_scenario=N_SCENARIO,
-                 bias=BIAS_ESTIMATOR, alpha=0.05, scenario_cnt = 1,
+                 bias=BIAS_ESTIMATOR, alpha=0.05, scenario_cnt=1,
                  verbose=False):
         """
         2nd-stage SP
@@ -199,10 +198,10 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                                   index = self.exp_risk_rois.index)
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSP_M{}_W{}_a{}_s{}_{}_{}".format(
-            self.n_stock, self.window_length, self.alpha, self.n_scenario,
+        return "MinCVaRSP_m{}_w{}_s{}_{}_{}_a{}".format(
+            self.n_stock, self.window_length, self.n_scenario,
              "biased" if self.bias_estimator else "unbiased",
-             self.scenario_cnt)
+             self.scenario_cnt, self.alpha)
 
     def add_results_to_reports(self, reports):
         """ add additional items to reports """
@@ -228,9 +227,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         if self.scenario_panel is not None:
             df = self.scenario_panel.loc[trans_date]
             assert self.symbols == df.index.tolist()
-            print trans_date, df.shape
             return df
-
         else:
             # because we trade stock on the after-hour market, we known today
             # market information, therefore the historical interval contain
@@ -256,9 +253,10 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                 tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0)
             else:
                 tgt_moments[:, 1] = hist_data.std(axis=0, ddof=1)
-                tgt_moments[:, 2] = spstats.skew(hist_data, axis=0, bias=False)
-                tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0,bias=False)
-
+                tgt_moments[:, 2] = spstats.skew(hist_data, axis=0,
+                                                 bias=False)
+                tgt_moments[:, 3] = spstats.kurtosis(hist_data, axis=0,
+                                                     bias=False)
             corr_mtx = np.corrcoef(hist_data.T)
 
             # scenarios shape: (n_stock, n_scenario)
@@ -321,7 +319,8 @@ def multi_stage_scenarios_min_cvar_sp_portfolio(symbols, risk_rois,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,
                           predict_risk_free_roi, n_scenario,
-                          scenario_probs=None, solver=DEFAULT_SOLVER, verbose=False
+                          scenario_probs=None, solver=DEFAULT_SOLVER,
+                                                verbose=False
     ):
     """
     after generating all scenarios, solving the SP at once

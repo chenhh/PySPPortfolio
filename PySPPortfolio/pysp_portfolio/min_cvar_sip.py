@@ -6,9 +6,10 @@ License: GPL v2
 
 
 from __future__ import division
+import os
 from time import time
-from datetime import (date,)
-from . import *
+from PySPPortfolio.pysp_portfolio import *
+
 
 import numpy as np
 import pandas as pd
@@ -169,7 +170,8 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
                  initial_risk_free_wealth, buy_trans_fee=BUY_TRANS_FEE,
                  sell_trans_fee=SELL_TRANS_FEE, start_date=START_DATE,
                  end_date=END_DATE, window_length=WINDOW_LENGTH,
-                 alpha=0.05, n_scenario=N_SCENARIO, verbose=False):
+                 n_scenario=N_SCENARIO, bias=BIAS_ESTIMATOR, alpha=0.05,
+                 scenario_cnt=1, verbose=False):
         """
         Parameters:
          -----------------------
@@ -183,14 +185,30 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
         cvar_arr: pandas.Series, conditional value at risk of each period
         """
 
-        self.alpha = alpha
-        self.n_scenario = n_scenario
         self.max_portfolio_size = max_portfolio_size
 
         super(MinCVaRSIPPortfolio, self).__init__(
             symbols, risk_rois, risk_free_rois, initial_risk_wealth,
             initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
-            start_date, end_date, window_length, verbose)
+            start_date, end_date, window_length, n_scenario, bias,
+            alpha, scenario_cnt, verbose)
+
+        # overwrite scenario panel
+        scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
+        start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+            max_portfolio_size, window_length, n_scenario,
+            "biased" if bias else "unbiased", scenario_cnt)
+
+        scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
+                                 scenario_name)
+
+        if not os.path.exists(scenario_path):
+            print ("{} not exists.".format(scenario_name))
+            self.scenario_panel = None
+            self.scenario_cnt = 0
+        else:
+            self.scenario_panel = pd.read_pickle(scenario_path)
+            self.scenario_cnt = scenario_cnt
 
         self.var_arr = pd.Series(np.zeros(self.n_exp_period),
                                 index=self.exp_risk_rois.index)
@@ -203,13 +221,12 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
                              'stock {} in the candidate set.'.format(
                 self.max_portfolio_size, self.n_stock))
 
-        if not (0 <= self.alpha <= 1):
-            raise ValueError('error alpha value: {}'.format(self.alpha))
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSIP_M{}_MC{}_W{}_a{}_s{}".format(
-            self.max_portfolio_size, self.n_stock, self.window_length,
-            self.alpha, self.n_scenario)
+        return "MinCVaRSIP_all{}_m{}_w{}_s{}_{}_{}_a{}".format(
+            self.max_portfolio_size, self.n_stock,  self.window_length,
+            self.n_scenario, "biased" if self.bias_estimator else "unbiased",
+            self.scenario_cnt, self.alpha)
 
     def add_results_to_reports(self, reports):
         reports['alpha'] = self.alpha

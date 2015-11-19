@@ -112,8 +112,7 @@ class PortfolioReportMixin(object):
         outputs += "Sortino partial: ({:.6%}, {:.6%}\n".format(
             reports['sortino_partial'], reports['sortino_partial_semi_std'])
 
-        outputs += "mdd: {:.2%}, mad:{:.4f}\n".format(
-            reports['max_abs_drawdown'])
+        outputs += "mad:{:.4f}\n".format(reports['max_abs_drawdown'])
 
         outputs += "SPA_ pvalue: [{:.4%}, {:.4%}, {:.4%}]\n".format(
             reports['SPA_l_pvalue'], reports['SPA_c_pvalue'],
@@ -204,7 +203,8 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         self.risk_free_rois = risk_free_rois
 
         # valid number of symbols
-        self.valid_dimension("n_symbol", len(symbols), len(initial_risk_wealth))
+        self.valid_dimension("n_symbol", len(symbols),
+                             len(initial_risk_wealth))
         self.initial_risk_wealth = initial_risk_wealth
         self.initial_risk_free_wealth = initial_risk_free_wealth
 
@@ -376,7 +376,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                 bias=self.bias_estimator)
 
             # generating scenarios success
-            if self.estimated_risk_roi_error[tdx] is False:
+            if self.estimated_risk_roi_error[tdx] == False:
 
                 # determining the buy and sell amounts
                 results = self.get_current_buy_sell_amounts(
@@ -435,10 +435,10 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             allocated_risk_wealth = self.risk_wealth_df.iloc[tdx]
             allocated_risk_free_wealth = self.risk_free_wealth.iloc[tdx]
 
-            print ("[{}/{}] {} {} OK, estimated error count:{} "
-                  "current_wealth:{}, {:.3f} secs".format(
+            print ("[{}/{}] {} {} OK, scenario error count:{} "
+                  "current_wealth:{:.2f}, {:.3f} secs".format(
                     tdx + 1, self.n_exp_period,
-                    self.exp_risk_rois.index[tdx],
+                    self.exp_risk_rois.index[tdx].strftime("%Y%m%d"),
                     func_name,
                     estimated_risk_roi_error_count,
                     (self.risk_wealth_df.iloc[tdx].sum() +
