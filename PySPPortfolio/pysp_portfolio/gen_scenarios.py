@@ -116,6 +116,8 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         params2 = checking_working_parameters(scenario_path, log_file)
         unfinished_params = params1.intersection(params2)
 
+        print ("current unfinished params: {}".format(len(unfinished_params)))
+
         param = unfinished_params.pop()
         _, _, stock, win, scenario, biased, _ = param.split('_')
         n_stock =int(stock[stock.rfind('m')+1:])

@@ -151,6 +151,8 @@ def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
     print ("min cvar sip {} OK, {:.3f} secs".format(param, time()-t0))
 
+    return reports
+
 
 def analysis_results(prob_type, n_stock, win_length, n_scenario=200,
                      bias=False, scenario_cnt=1, alpha=0.95):
@@ -192,21 +194,10 @@ def analysis_results(prob_type, n_stock, win_length, n_scenario=200,
 
 
 if __name__ == '__main__':
-    import sys
-    import argparse
-
+    pass
     # run_min_cvar_sp_simulation(5, 50, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
     # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
-
-    analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
-                     bias=False, scenario_cnt=1, alpha=0.95)
-
-    # parser.add_argument("-m", "--n_stock", required=True, type=int,
-    #                     choices=range(5, 55, 5))
-    # parser.add_argument("-w", "--win_length", required=True, type=int)
-    # parser.add_argument("-a", "--alpha", required=True)
-    # args = parser.parse_args()
-    #
-    # run_min_cvar_sp_simulation(args.n_stock, args.win_length, args.alpha)
+    # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
+    #                  bias=False, scenario_cnt=1, alpha=0.95)
