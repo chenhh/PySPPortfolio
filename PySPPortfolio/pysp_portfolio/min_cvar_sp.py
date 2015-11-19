@@ -198,7 +198,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                                   index = self.exp_risk_rois.index)
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSP_m{}_w{}_s{}_{}_{}_a{}".format(
+        return "MinCVaRSP_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             self.n_stock, self.window_length, self.n_scenario,
              "biased" if self.bias_estimator else "unbiased",
              self.scenario_cnt, self.alpha)

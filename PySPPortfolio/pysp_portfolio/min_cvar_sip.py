@@ -223,7 +223,7 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
 
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSIP_all{}_m{}_w{}_s{}_{}_{}_a{}".format(
+        return "MinCVaRSIP_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             self.n_stock, self.max_portfolio_size,
             self.window_length,
             self.n_scenario, "biased" if self.bias_estimator else "unbiased",
