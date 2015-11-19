@@ -47,29 +47,29 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
         scenario_probs = np.ones(n_scenario, dtype=np.float) / n_scenario
 
     # concrete model
-    model = ConcreteModel()
+    instance = ConcreteModel()
 
     # Set
-    model.symbols = symbols
-    model.scenarios = np.arange(n_scenario)
+    instance.symbols = symbols
+    instance.scenarios = np.arange(n_scenario)
 
     # decision variables
     # first stage
-    model.buy_amounts = Var(model.symbols, within=NonNegativeReals)
-    model.sell_amounts = Var(model.symbols, within=NonNegativeReals)
+    instance.buy_amounts = Var(instance.symbols, within=NonNegativeReals)
+    instance.sell_amounts = Var(instance.symbols, within=NonNegativeReals)
 
     # second stage
-    model.risk_wealth = Var(model.symbols, within=NonNegativeReals)
-    model.risk_free_wealth = Var(within=NonNegativeReals)
+    instance.risk_wealth = Var(instance.symbols, within=NonNegativeReals)
+    instance.risk_free_wealth = Var(within=NonNegativeReals)
 
     # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
-    model.Z = Var()
+    instance.Z = Var()
 
     # aux variable, portfolio wealth less than than VaR (Z)
-    model.Ys = Var(model.scenarios, within=NonNegativeReals)
+    instance.Ys = Var(instance.scenarios, within=NonNegativeReals)
 
     # aux variable, switching stock variable
-    model.chosen = Var(model.symbols, within=Binary)
+    instance.chosen = Var(instance.symbols, within=Binary)
 
     # constraint
     def risk_wealth_constraint_rule(model, mdx):
@@ -84,8 +84,8 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
                 (1. + risk_rois[mdx]) * allocated_risk_wealth[mdx] +
                 model.buy_amounts[mdx] - model.sell_amounts[mdx])
 
-    model.risk_wealth_constraint = Constraint(
-        model.symbols, rule=risk_wealth_constraint_rule)
+    instance.risk_wealth_constraint = Constraint(
+        instance.symbols, rule=risk_wealth_constraint_rule)
 
     # constraint
     def risk_free_wealth_constraint_rule(model):
@@ -98,7 +98,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
                 (1. + risk_free_roi) * allocated_risk_free_wealth +
                 total_sell - total_buy)
 
-    model.risk_free_wealth_constraint = Constraint(
+    instance.risk_free_wealth_constraint = Constraint(
         rule=risk_free_wealth_constraint_rule)
 
     # constraint
@@ -109,7 +109,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
                      for mdx in model.symbols)
         return model.Ys[sdx] >= (model.Z - wealth)
 
-    model.cvar_constraint = Constraint(model.scenarios,
+    instance.cvar_constraint = Constraint(instance.scenarios,
                                        rule=cvar_constraint_rule)
 
     # constraint
@@ -117,7 +117,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
         total_wealth = sum(allocated_risk_wealth) + allocated_risk_free_wealth
         return model.risk_wealth[mdx] <= model.chosen[mdx] * total_wealth
 
-    model.chosen_constraint = Constraint(model.symbols,
+    instance.chosen_constraint = Constraint(instance.symbols,
                                          rule=chosen_constraint_rule)
 
     # constraint
@@ -125,7 +125,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
         return sum(
             model.chosen[mdx] for mdx in model.symbols) <= max_portfolio_size
 
-    model.portfolio_size_constraint = Constraint(
+    instance.portfolio_size_constraint = Constraint(
         rule=portfolio_size_constraint_rule)
 
     # objective
@@ -134,13 +134,12 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
                                     for sdx in xrange(n_scenario))
         return model.Z - 1 / (1 - alpha) * scenario_expectation
 
-    model.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+    instance.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
-    instance = model.create()
     results = opt.solve(instance)
-    instance.load(results)
+    instance.solutions.load_from(results)
     if verbose:
         display(instance)
 
@@ -160,12 +159,12 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
         "buy_amounts": buy_amounts,
         "sell_amounts": sell_amounts,
         "estimated_var": estimated_var,
-        "estimated_cvar": model.cvar_objective()
+        "estimated_cvar": instance.cvar_objective()
     }
 
 
 class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
-    def __init__(self, symbols, max_portfolio_size, risk_rois,
+    def __init__(self, candidate_symbols, max_portfolio_size, risk_rois,
                  risk_free_rois, initial_risk_wealth,
                  initial_risk_free_wealth, buy_trans_fee=BUY_TRANS_FEE,
                  sell_trans_fee=SELL_TRANS_FEE, start_date=START_DATE,
@@ -173,6 +172,9 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
                  n_scenario=N_SCENARIO, bias=BIAS_ESTIMATOR, alpha=0.05,
                  scenario_cnt=1, verbose=False):
         """
+        the n_stock in SIP model represents the size of candidate stocks,
+        not the portfolio size.
+
         Parameters:
          -----------------------
         max_portfolio_size: integer, maximum number of stocks in the portfolio
@@ -185,19 +187,21 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
         cvar_arr: pandas.Series, conditional value at risk of each period
         """
 
-        self.max_portfolio_size = max_portfolio_size
+        self.max_portfolio_size = int(max_portfolio_size)
 
         super(MinCVaRSIPPortfolio, self).__init__(
-            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
+            candidate_symbols, risk_rois, risk_free_rois, initial_risk_wealth,
             initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
             start_date, end_date, window_length, n_scenario, bias,
             alpha, scenario_cnt, verbose)
 
-        # overwrite scenario panel
+        assert self.n_stock == 50
+
+        # overwrite scenario panel, load 50 stocks
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
         start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
-            max_portfolio_size, window_length, n_scenario,
-            "biased" if bias else "unbiased", scenario_cnt)
+            self.n_stock, window_length,
+            n_scenario, "biased" if bias else "unbiased", scenario_cnt)
 
         scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                  scenario_name)
@@ -210,10 +214,6 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
             self.scenario_panel = pd.read_pickle(scenario_path)
             self.scenario_cnt = scenario_cnt
 
-        self.var_arr = pd.Series(np.zeros(self.n_exp_period),
-                                index=self.exp_risk_rois.index)
-        self_cvar_arr = pd.Series(np.zeros(self.n_exp_period),
-                                index=self.exp_risk_rois.index)
 
     def valid_specific_parameters(self, *args, **kwargs):
         if self.max_portfolio_size > self.n_stock:
@@ -224,7 +224,8 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
 
     def get_trading_func_name(self, *args, **kwargs):
         return "MinCVaRSIP_all{}_m{}_w{}_s{}_{}_{}_a{}".format(
-            self.max_portfolio_size, self.n_stock,  self.window_length,
+            self.n_stock, self.max_portfolio_size,
+            self.window_length,
             self.n_scenario, "biased" if self.bias_estimator else "unbiased",
             self.scenario_cnt, self.alpha)
 

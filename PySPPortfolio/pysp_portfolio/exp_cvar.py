@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio,)
+from min_cvar_sip import (MinCVaRSIPPortfolio,)
 
 
 def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
@@ -61,10 +62,10 @@ def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 
     instance = MinCVaRSPPortfolio(symbols, risk_rois, risk_free_rois,
                            initial_risk_wealth, initial_risk_free_wealth,
-                           alpha=alpha, verbose=verbose)
-
+                           window_length=win_length, n_scenario=n_scenario,
+                           bias=bias, alpha=alpha, scenario_cnt=scenario_cnt,
+                           verbose=verbose)
     reports = instance.run()
-    print reports
 
     file_name = 'min_cvar_sp_{}.pkl'.format(param)
 
@@ -79,62 +80,84 @@ def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 
 def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
                                 n_scenario=200, bias=False, scenario_cnt=1,
-                                alpha=0.95):
+                                alpha=0.95, verbose=False):
     """
-    :return: reports
-    """
+    2nd stage SIP simulation
+    in the model, all stocks are used as candidate symbols.
 
+    Parameters:
+    -------------------
+    max_portfolio_size: integer, number of stocks in the portfolio.
+    window_length: integer, number of periods for estimating scenarios
+    n_scenario, int, number of scenarios
+    bias: bool, biased moment estimators or not
+    scenario_cnt: count of generated scenarios, default = 1
+    alpha: float, for conditional risk
+
+    Returns:
+    --------------------
+    reports
+    """
+    t0 = time()
     max_portfolio_size = int(max_portfolio_size)
     window_length = int(window_length)
+    n_scenario = int(n_scenario)
     alpha = float(alpha)
 
     symbols = EXP_SYMBOLS
     n_stock = len(symbols)
-    risk_rois = generate_rois_df(symbols)
-    start_date = date(2005, 1, 1)
-    end_date = date(2015, 4, 30)
+    param = "{}_{}_all{}_m{}_w{}_s{}_{}_{}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        len(symbols), max_portfolio_size, window_length, n_scenario,
+        "biased" if bias else "unbiased", scenario_cnt)
 
-    exp_risk_rois = risk_rois.loc[start_date:end_date]
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # shape: (n_period, n_stock)
+    risk_rois =roi_panel.loc[:, symbols, 'simple_roi'].T
+    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols, 'simple_roi'].T
     n_period = exp_risk_rois.shape[0]
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
     initial_risk_free_wealth = 1e6
 
-    obj = MinCVaRSIPPortfolio(symbols, max_portfolio_size,
+    instance = MinCVaRSIPPortfolio(symbols, max_portfolio_size,
                             risk_rois, risk_free_rois,
                             initial_risk_wealth,
-                            initial_risk_free_wealth, start_date=start_date,
-                            end_date=end_date, window_length=window_length,
-                            alpha=alpha, n_scenario=n_scenario, verbose=False)
+                            initial_risk_free_wealth,
+                            window_length=window_length,
+                            n_scenario=n_scenario,
+                            bias=bias,
+                            alpha=alpha,
+                            scenario_cnt=scenario_cnt,
+                            verbose=verbose)
 
-    reports = obj.run()
-    print reports
+    reports = instance.run()
 
-    file_name = '{}_SIP_{}-{}_m{}_mc{}_w{}_a{:.2f}_s{}.pkl'.format(
-        datetime.now().strftime("%Y%m%d_%H%M%S"),
-        exp_risk_rois.index[0].strftime("%Y%m%d"),
-        exp_risk_rois.index[-1].strftime("%Y%m%d"),
-        max_portfolio_size,
-        len(symbols),
-        window_length,
-        alpha,
-        n_scenario)
-
-    file_dir = os.path.join(DROPBOX_UP_EXPERIMENT_DIR, 'cvar_sip')
+    file_name = 'min_cvar_sip_{}.pkl'.format(param)
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'cvar_sip')
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
-
-    return reports
-
+    print ("min cvar sip {} OK, {:.3f} secs".format(param, time()-t0))
 
 
 if __name__ == '__main__':
     import sys
     import argparse
 
-    run_min_cvar_sp_simulation(5, 50, scenario_cnt=1, alpha=0.95,
+    # run_min_cvar_sp_simulation(5, 50, scenario_cnt=1, alpha=0.95,
+    #                            verbose=True)
+    run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
                                verbose=True)
 
     # parser.add_argument("-m", "--n_stock", required=True, type=int,
