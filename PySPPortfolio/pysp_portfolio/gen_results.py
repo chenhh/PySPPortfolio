@@ -132,7 +132,10 @@ def checking_working_parameters(prob_type):
 
     # have working parameters
     data = pd.read_pickle(file_path)
-    for param, node in data.items():
+    for param_key, node in data.items():
+        keys =  param_key.split('|')
+        param = (int(keys[0]),int(keys[1]),int(keys[2]),keys[3],
+                 int(keys[4]), keys[5])
         if param in all_params:
             all_params.remove(param)
             print ("{}: {} under processing on {}.".format(
