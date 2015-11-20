@@ -230,7 +230,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
 
 if __name__ == '__main__':
     import argparse
-    dispatch_experiment_parameters('min_cvar_sip')
+    # dispatch_experiment_parameters('min_cvar_sip')
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--prob_type", required=True, type=str)
