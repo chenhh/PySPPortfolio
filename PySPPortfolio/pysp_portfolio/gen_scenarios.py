@@ -130,6 +130,7 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
 
         # don't do this parameter, because don't have enought win_length
         if n_stock == 50 and win_length == 50:
+            print ("passing m50_w50")
             continue
 
         # log  parameter to file
