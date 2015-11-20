@@ -207,7 +207,7 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
                                  scenario_name)
 
         if not os.path.exists(scenario_path):
-            print ("{} not exists.".format(scenario_name))
+            raise ValueError("{} not exists.".format(scenario_name))
             self.scenario_panel = None
             self.scenario_cnt = 0
         else:

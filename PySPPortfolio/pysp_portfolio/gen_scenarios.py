@@ -117,6 +117,9 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         unfinished_params = params1.intersection(params2)
 
         print ("current unfinished params: {}".format(len(unfinished_params)))
+        if len(unfinished_params) <= 100:
+            for u_param in unfinished_params:
+                print u_param
 
         param = unfinished_params.pop()
         _, _, stock, win, scenario, biased, _ = param.split('_')

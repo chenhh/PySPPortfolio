@@ -70,7 +70,7 @@ def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 
     file_name = 'min_cvar_sp_{}.pkl'.format(param)
 
-    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'cvar_sp')
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_cvar_sp')
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
@@ -144,7 +144,7 @@ def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
     reports = instance.run()
 
     file_name = 'min_cvar_sip_{}.pkl'.format(param)
-    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'cvar_sip')
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_cvar_sip')
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
@@ -195,8 +195,19 @@ def analysis_results(prob_type, n_stock, win_length, n_scenario=200,
 
 if __name__ == '__main__':
     pass
-    # run_min_cvar_sp_simulation(5, 50, scenario_cnt=1, alpha=0.95,
-    #                            verbose=True)
+    params = [(10, 80, 0.5), (15, 80, 0.5), (20, 110, 0.5),
+              (25, 100, 0.55), (30, 110, 0.6),
+              (35, 110, 0.5), (40, 110, 0.5), (45, 120, 0.55),
+              (50, 120, 0.5)]
+
+    for m, w, a in params:
+        for cnt in xrange(1, 3+1):
+            try:
+                run_min_cvar_sp_simulation(m, w, scenario_cnt=cnt, alpha=a,
+                               verbose=True)
+            except ValueError as e:
+                print e
+                continue
     # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
