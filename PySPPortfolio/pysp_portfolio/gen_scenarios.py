@@ -152,6 +152,7 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
 
         # generating scenarios
         try:
+            print ("gen scenario: {}".format(param))
             generating_scenarios(n_stock, win_length, n_scenario, bias)
         except Exception as e:
             print param, e
