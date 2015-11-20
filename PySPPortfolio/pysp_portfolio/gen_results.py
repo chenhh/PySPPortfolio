@@ -39,17 +39,23 @@ def all_experiment_parameters():
 
     """
     # combinations: 18 * 20 * 3 * 11 = 11880
-    all_params = [
-        (n_stock, win_length, n_scenario, bias, cnt, alpha)
-                    for alpha in ('0.5', '0.55', '0.6', '0.65', '0.7',
-                                  '0.75', '0.8', '0.85', '0.9', '0.95',
-                                  '0.99')
-                  for cnt in xrange(1, 3+1)
-                  for bias in ("unbiased",)
-                  for n_scenario in (200,)
-                  for win_length in xrange(50, 240 + 10, 10)
-                  for n_stock in xrange(5, 50 + 5, 5)
-                  ]
+    all_params = []
+    for n_stock in xrange(5, 50 + 5, 5):
+        for win_length in xrange(50, 240 + 10, 10):
+            # preclude m50_w50
+            if n_stock == 50 and win_length == 50:
+                continue
+
+            for n_scenario in (200,):
+                for bias in ("unbiased",):
+                    for cnt in xrange(1, 3+1):
+                        for alpha in ('0.5', '0.55', '0.6', '0.65',
+                                      '0.7', '0.75', '0.8', '0.85',
+                                      '0.9', '0.95', '0.99'):
+                            all_params.append(
+                               (n_stock, win_length,
+                                n_scenario,bias, cnt, alpha))
+
     return set(all_params)
 
 
@@ -165,7 +171,11 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
         unfinished_params = params1.intersection(params2)
 
         print ("{} current unfinished params: {}".format(
-        prob_type, len(unfinished_params)))
+            prob_type, len(unfinished_params)))
+
+        if len(unfinished_params) <= 100:
+            for u_param in unfinished_params:
+                print ("unfinished: {}".format(u_param))
 
         param = unfinished_params.pop()
         n_stock, win_length, n_scenario, bias, cnt, alpha = param
