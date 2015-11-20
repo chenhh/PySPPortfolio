@@ -141,6 +141,7 @@ def checking_working_parameters(prob_type, log_file=None):
                 prob_type, param, node))
         else:
             print ("{}: {} not in exp parameters.".format(prob_type, param))
+    print ("workging params: {}".format(len(data)))
 
     # unfinished params
     return all_params
