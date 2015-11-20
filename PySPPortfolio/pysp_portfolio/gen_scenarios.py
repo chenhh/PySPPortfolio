@@ -128,6 +128,10 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         n_scenario = int(scenario[scenario.rfind('s')+1:])
         bias = True if biased == "biased" else False
 
+        # don't do this parameter, because don't have enought win_length
+        if n_stock == 50 and win_length == 50:
+            continue
+
         # log  parameter to file
         if not os.path.exists(log_path):
             working_dict = {}
