@@ -35,6 +35,10 @@ def all_parameters_combination_name():
                   for win_length in xrange(50, 240 + 10, 10)
                   for n_stock in xrange(5, 50 + 5, 5)
                   ]
+    # preclude m50_w50
+    all_params.remove('20050103_20141231_m50_w50_s200_unbiased_1')
+    all_params.remove('20050103_20141231_m50_w50_s200_unbiased_2')
+    all_params.remove('20050103_20141231_m50_w50_s200_unbiased_3')
     return set(all_params)
 
 def checking_generated_scenarios(scenario_path=None):
@@ -128,10 +132,6 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None):
         n_scenario = int(scenario[scenario.rfind('s')+1:])
         bias = True if biased == "biased" else False
 
-        # don't do this parameter, because don't have enought win_length
-        if n_stock == 50 and win_length == 50:
-            print ("passing m50_w50")
-            continue
 
         # log  parameter to file
         if not os.path.exists(log_path):
