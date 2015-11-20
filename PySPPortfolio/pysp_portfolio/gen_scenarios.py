@@ -22,7 +22,7 @@ def all_parameters_combination_name():
     n_scenario:  200
     biased: {unbiased, bias}
     cnt: {1,2,3}
-
+    combinations: 10 * 20 * 3 = 600 (only unbiased)
     """
     exp_start_date, exp_end_date = START_DATE, END_DATE
     all_params = ["{}_{}_m{}_w{}_s{}_{}_{}".format(
@@ -179,5 +179,5 @@ def read_working_parameters():
             print param, node
 
 if __name__ == '__main__':
-    # dispatch_scenario_parameters()
-    read_working_parameters()
+    dispatch_scenario_parameters()
+    # read_working_parameters()
