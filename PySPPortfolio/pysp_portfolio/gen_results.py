@@ -51,7 +51,7 @@ def all_experiment_parameters():
                     for cnt in xrange(1, 3+1):
                         for alpha in ('0.5', '0.55', '0.6', '0.65',
                                       '0.7', '0.75', '0.8', '0.85',
-                                      '0.9', '0.95', '0.99'):
+                                      '0.9', '0.95'):
                             all_params.append(
                                (n_stock, win_length,
                                 n_scenario,bias, cnt, alpha))
