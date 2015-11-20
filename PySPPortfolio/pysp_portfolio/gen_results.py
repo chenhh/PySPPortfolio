@@ -112,15 +112,13 @@ def checking_finished_parameters(prob_type):
     return all_params
 
 
-def checking_working_parameters(prob_type, log_file=None):
+def checking_working_parameters(prob_type):
     """
     if a parameter is under working and not write to pkl,
     it is recorded to a file
     """
     dir_path = get_results_dir(prob_type)
-
-    if log_file is None:
-        log_file = '{}_working.pkl'.format(prob_type)
+    log_file = '{}_working.pkl'.format(prob_type)
 
     # get all params
     all_params = all_experiment_parameters()
@@ -159,7 +157,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
     log_path = os.path.join(dir_path, log_file)
 
     params1 = checking_finished_parameters(prob_type)
-    params2 = checking_working_parameters(prob_type, log_file)
+    params2 = checking_working_parameters(prob_type)
     unfinished_params = params1.intersection(params2)
 
     print ("{} initial unfinished params: {}".format(
@@ -168,7 +166,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
     while len(unfinished_params) > 0:
         # each loop we have to
         params1 = checking_finished_parameters(prob_type)
-        params2 = checking_working_parameters(prob_type, log_file)
+        params2 = checking_working_parameters(prob_type)
         unfinished_params = params1.intersection(params2)
 
         print ("{} current unfinished params: {}".format(
@@ -231,7 +229,6 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
 
 if __name__ == '__main__':
     import argparse
-    # dispatch_experiment_parameters('min_cvar_sip')
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--prob_type", required=True, type=str)
