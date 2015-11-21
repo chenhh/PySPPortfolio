@@ -36,9 +36,9 @@ def all_parameters_combination_name():
                   for n_stock in xrange(5, 50 + 5, 5)
                   ]
     # preclude m50_w50
-    all_params.remove('20050103_20141231_m50_w50_s200_unbiased_1')
-    all_params.remove('20050103_20141231_m50_w50_s200_unbiased_2')
-    all_params.remove('20050103_20141231_m50_w50_s200_unbiased_3')
+    all_params.remove('20050103_20141231_m50_w50_s200_biased_1')
+    all_params.remove('20050103_20141231_m50_w50_s200_biased_2')
+    all_params.remove('20050103_20141231_m50_w50_s200_biased_3')
     return set(all_params)
 
 def checking_generated_scenarios(scenario_path=None):
