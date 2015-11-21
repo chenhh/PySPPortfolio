@@ -30,7 +30,7 @@ def all_parameters_combination_name():
                 exp_end_date.strftime("%Y%m%d"),
                 n_stock, win_length, n_scenario,bias, cnt)
                   for cnt in xrange(1, 3+1)
-                  for bias in ("unbiased",)
+                  for bias in ("biased",)
                   for n_scenario in (200,)
                   for win_length in xrange(50, 240 + 10, 10)
                   for n_stock in xrange(5, 50 + 5, 5)
