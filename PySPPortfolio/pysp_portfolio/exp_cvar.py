@@ -154,44 +154,6 @@ def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
     return reports
 
 
-def analysis_results(prob_type, n_stock, win_length, n_scenario=200,
-                     bias=False, scenario_cnt=1, alpha=0.95):
-    """
-    Parameters:
-    -----------------------------------------------------
-    prob_type: str, {min_cvar_sp, min_cvar_sip}
-    n_stock: integer
-    win_length: integer
-    n_scenario: integer
-    bias: boolean
-    scenario_cnt: integer
-    alpha: float
-
-    """
-    if prob_type == "min_cvar_sp":
-        param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-        n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
-        scenario_cnt, alpha)
-    elif prob_type == "min_cvar_sip":
-        param = "{}_{}_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-        len(EXP_SYMBOLS), n_stock, win_length, n_scenario,
-        "biased" if bias else "unbiased", scenario_cnt, alpha)
-    else:
-        raise ValueError('unknown prob_type: {}'.format(prob_type))
-
-    # read results
-    file_name = '{}_{}.pkl'.format(prob_type, param)
-    file_path = os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type, file_name)
-    if not os.path.exists(file_path):
-        print ("results {} not exists.".format(file_path))
-        return
-
-    results = pd.read_pickle(file_path)
-    print results
-
-
 
 if __name__ == '__main__':
     pass

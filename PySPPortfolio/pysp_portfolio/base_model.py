@@ -465,6 +465,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             None)
 
         # model additional elements to reports
+        reports['window_length'] = self.window_length
         reports['risk_free_wealth'] = self.risk_free_wealth
         reports['buy_amounts_df'] = self.buy_amounts_df
         reports['sell_amounts_df'] = self.sell_amounts_df
