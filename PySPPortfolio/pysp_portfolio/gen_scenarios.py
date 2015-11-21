@@ -14,7 +14,7 @@ from PySPPortfolio.pysp_portfolio import *
 from PySPPortfolio.pysp_portfolio.etl import generating_scenarios
 
 
-def all_parameters_combination_name():
+def all_parameters_combination_name(bias_estimator=True):
     """
     file_name of all experiment parameters
     n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
@@ -24,21 +24,25 @@ def all_parameters_combination_name():
     cnt: {1,2,3}
     combinations: 10 * 20 * 3 = 600 (only unbiased)
     """
+    if bias_estimator:
+        bias = 'biased'
+    else:
+        bias ='unbiased'
+
     exp_start_date, exp_end_date = START_DATE, END_DATE
     all_params = ["{}_{}_m{}_w{}_s{}_{}_{}".format(
                 exp_start_date.strftime("%Y%m%d"),
                 exp_end_date.strftime("%Y%m%d"),
                 n_stock, win_length, n_scenario,bias, cnt)
                   for cnt in xrange(1, 3+1)
-                  for bias in ("biased",)
                   for n_scenario in (200,)
                   for win_length in xrange(50, 240 + 10, 10)
                   for n_stock in xrange(5, 50 + 5, 5)
                   ]
     # preclude m50_w50
-    all_params.remove('20050103_20141231_m50_w50_s200_biased_1')
-    all_params.remove('20050103_20141231_m50_w50_s200_biased_2')
-    all_params.remove('20050103_20141231_m50_w50_s200_biased_3')
+    all_params.remove('20050103_20141231_m50_w50_s200_{}_1'.format(bias))
+    all_params.remove('20050103_20141231_m50_w50_s200_{}_2'.format(bias))
+    all_params.remove('20050103_20141231_m50_w50_s200_{}_3'.format(bias))
     return set(all_params)
 
 def checking_generated_scenarios(scenario_path=None):
