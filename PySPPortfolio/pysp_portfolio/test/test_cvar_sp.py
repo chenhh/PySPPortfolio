@@ -11,7 +11,7 @@ from PySPPortfolio.pysp_portfolio.min_cvar_sp import (
     ms_min_cvar_sp_portfolio,)
 
 def test_ms_min_cvar_sp():
-    n_period, n_stock, n_scenario = 10, 3, 20
+    n_period, n_stock, n_scenario = 2484, 50, 200
     initial_money = 1e6
 
     symbols = EXP_SYMBOLS[:n_stock]

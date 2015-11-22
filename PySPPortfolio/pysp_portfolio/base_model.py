@@ -19,7 +19,8 @@ class PortfolioReportMixin(object):
     def get_performance_report(func_name, symbols, start_date, end_date,
                            buy_trans_fee, sell_trans_fee,
                            initial_wealth, final_wealth, n_exp_period,
-                           trans_fee_loss, wealth_df, weights_df):
+                           trans_fee_loss, risk_wealth_df,
+                               risk_free_wealth_arr):
         """
         standard reports
 
@@ -32,8 +33,8 @@ class PortfolioReportMixin(object):
         initial_wealth, final_wealth: float
         n_exp_period: integer
         trans_fee_loss: float
-        wealth_df: pandas.DataFrame, shape:(n_stock, n_exp_period)
-        weights_df: pandas.DataFrame, shape:(n_stock, n_exp_period)
+        wealth_df: pandas.DataFrame, shape:(n_exp_period, n_stock)
+        risk_free_wealth_arr: pandas.Series, shape(n_exp_period)
 
         """
         reports = {}
@@ -51,8 +52,8 @@ class PortfolioReportMixin(object):
         reports['final_wealth'] = final_wealth
         reports['n_exp_period'] = n_exp_period
         reports['trans_fee_loss'] = trans_fee_loss
-        reports['wealth_df'] = wealth_df
-        reports['weights_df'] = weights_df
+        reports['wealth_df'] = risk_wealth_df
+        reports['risk_free_wealth'] = risk_free_wealth_arr
 
         # analysis
         reports['n_stock'] = len(symbols)
@@ -61,7 +62,7 @@ class PortfolioReportMixin(object):
                                         1. / n_exp_period) - 1
 
         # wealth_arr, shape: (n_stock,)
-        wealth_arr = wealth_df.sum(axis=1)
+        wealth_arr = risk_wealth_df.sum(axis=1) + risk_free_wealth_arr
         wealth_daily_rois = wealth_arr.pct_change()
         wealth_daily_rois[0] = 0
 
@@ -464,11 +465,12 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             self.n_exp_period,
             self.trans_fee_loss,
             self.risk_wealth_df,
-            None)
+            self.risk_free_wealth,
+            )
 
         # model additional elements to reports
         reports['window_length'] = self.window_length
-        reports['risk_free_wealth'] = self.risk_free_wealth
+        reports['n_scenario'] = self.n_scenario
         reports['buy_amounts_df'] = self.buy_amounts_df
         reports['sell_amounts_df'] = self.sell_amounts_df
         reports['estimated_risk_roi_error'] = self.estimated_risk_roi_error
@@ -502,13 +504,29 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
                  start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
                  window_length=200, n_scenario=200, bias=False,
                  verbose=False):
+        """
+        Parameters:
+        -------------
+        symbols: list of symbols, size: n_stock
+        risk_rois: pandas.DataFrame, shape: (n_period, n_stock)
+        risk_free_rois: pandas.series, shape: (n_exp_period, )
+        initial_risk_wealth: pandas.series, shape: (n_stock,)
+        initial_risk_free_wealth: float
+        buy_trans_fee: float, 0<=value < 1,
+            the fee will not change in the simulation
+        sell_trans_fee: float, 0<=value < 1, the same as above
+        start_date: datetime.date, first date of simulation
+        end_date: datetime.date, last date of simulation
+        window_length: integer, historical periods for estimated parameters
+        n_scenario: integer, number of scenarios to generated
+        bias: boolean, biased moment estimators or not
+        verbose: boolean
+        """
 
         super(MS_SPTradingPortfolio, self).__init__(
-            symbols, risk_rois, risk_free_rois,
-            initial_risk_wealth, initial_risk_free_wealth,
-            buy_trans_fee, sell_trans_fee,
-            start_date, end_date,
-            window_length, n_scenario, bias, verbose
+            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
+            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
+            start_date, end_date, window_length, n_scenario, bias, verbose
         )
 
     def run(self):
@@ -525,12 +543,13 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         func_name = self.get_trading_func_name()
 
         # solve all scenarios at tone
+        # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
         try:
             estimated_risk_rois = self.get_estimated_risk_rois()
-
         except ValueError as e:
             raise ValueError("generating scenario error:  {}".format(e))
 
+        # estimated_risk_free_rois: shape: (n_exp_period,)
         estimated_risk_free_rois = self.get_estimated_risk_free_rois()
 
         # determining the buy and sell amounts
@@ -540,6 +559,11 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
             allocated_risk_wealth=self.initial_risk_wealth,
             allocated_risk_free_wealth=self.initial_risk_free_wealth
         )
+
+        self.risk_wealth_df = results['risk_wealth_df']
+        self.risk_free_wealth = results['risk_free_wealth_arr']
+        self.buy_amounts_df = results['buy_amounts_df']
+        self.sell_amounts_df = results['sell_amounts_df']
 
         # record results
         self.set_specific_period_action(results=results)
@@ -561,12 +585,11 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
             self.n_exp_period,
             self.trans_fee_loss,
             self.risk_wealth_df,
-            None)
+            self.risk_free_wealth)
 
         # model additional elements to reports
         reports['window_length'] = self.window_length
         reports['n_scenario'] = self.n_scenario
-        reports['risk_free_wealth'] = self.risk_free_wealth
         reports['buy_amounts_df'] = self.buy_amounts_df
         reports['sell_amounts_df'] = self.sell_amounts_df
 

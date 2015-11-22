@@ -34,7 +34,7 @@ required package
             - comstar, par56, par67, and par48
             - par48 (gentoo linux, i5-2400, 16g)
         
-       it requires about 60 hours
+       it requires about 70 hours
             
     
     
