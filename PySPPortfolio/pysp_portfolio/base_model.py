@@ -220,6 +220,8 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         self.valid_trans_date(start_date, end_date)
         self.exp_risk_rois = risk_rois.loc[start_date:end_date]
         self.exp_risk_free_rois = risk_free_rois.loc[start_date:end_date]
+        self.exp_start_date = self.exp_risk_rois.index[0]
+        self.exp_end_date = self.exp_risk_rois.index[-1]
         self.n_exp_period = self.exp_risk_rois.shape[0]
         self.n_stock = self.exp_risk_rois.shape[1]
 
@@ -483,6 +485,101 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             print (output)
         print ("{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
             func_name, self.n_stock,
+            self.exp_risk_rois.index[0],
+            self.exp_risk_rois.index[-1],
+            time() - t0))
+
+        return reports
+
+class MS_SPTradingPortfolio(SPTradingPortfolio):
+    """
+    multi-stage sp
+    """
+
+    def __init__(self, symbols, risk_rois, risk_free_rois,
+                 initial_risk_wealth, initial_risk_free_wealth,
+                 buy_trans_fee=0.001425, sell_trans_fee=0.004425,
+                 start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
+                 window_length=200, n_scenario=200, bias=False,
+                 verbose=False):
+
+        super(MS_SPTradingPortfolio, self).__init__(
+            symbols, risk_rois, risk_free_rois,
+            initial_risk_wealth, initial_risk_free_wealth,
+            buy_trans_fee, sell_trans_fee,
+            start_date, end_date,
+            window_length, n_scenario, bias, verbose
+        )
+
+    def run(self):
+        """
+        run recourse programming simulation
+
+        Returns:
+        ----------------
+        standard report
+        """
+        t0 = time()
+
+        # get function name
+        func_name = self.get_trading_func_name()
+
+        # solve all scenarios at tone
+        try:
+            estimated_risk_rois = self.get_estimated_risk_rois()
+
+        except ValueError as e:
+            raise ValueError("generating scenario error:  {}".format(e))
+
+        estimated_risk_free_rois = self.get_estimated_risk_free_rois()
+
+        # determining the buy and sell amounts
+        results = self.get_current_buy_sell_amounts(
+            estimated_risk_rois=estimated_risk_rois,
+            estimated_risk_free_roi=estimated_risk_free_rois,
+            allocated_risk_wealth=self.initial_risk_wealth,
+            allocated_risk_free_wealth=self.initial_risk_free_wealth
+        )
+
+        # record results
+        self.set_specific_period_action(results=results)
+
+        # end of iterations, computing statistics
+        final_wealth = (self.risk_wealth_df.iloc[-1].sum() +
+                        self.risk_free_wealth[-1])
+
+        # get reports
+        output, reports = self.get_performance_report(
+            func_name,
+            self.symbols,
+            self.exp_risk_rois.index[0],
+            self.exp_risk_rois.index[-1],
+            self.buy_trans_fee,
+            self.sell_trans_fee,
+            (self.initial_risk_wealth.sum() + self.initial_risk_free_wealth),
+            final_wealth,
+            self.n_exp_period,
+            self.trans_fee_loss,
+            self.risk_wealth_df,
+            None)
+
+        # model additional elements to reports
+        reports['window_length'] = self.window_length
+        reports['n_scenario'] = self.n_scenario
+        reports['risk_free_wealth'] = self.risk_free_wealth
+        reports['buy_amounts_df'] = self.buy_amounts_df
+        reports['sell_amounts_df'] = self.sell_amounts_df
+
+        # add simulation time
+        reports['simulation_time'] = time() - t0
+
+        # user specified  additional elements to reports
+        reports = self.add_results_to_reports(reports)
+
+        if self.verbose:
+            print (output)
+        print ("{} OK [{}-{}], {:.4f}.secs".format(
+            func_name,
             self.exp_risk_rois.index[0],
             self.exp_risk_rois.index[-1],
             time() - t0))

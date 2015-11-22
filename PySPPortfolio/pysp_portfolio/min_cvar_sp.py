@@ -207,6 +207,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
         """ add additional items to reports """
         reports['alpha'] = self.alpha
         reports['n_scenario'] = self.n_scenario
+        reports['scenario_cnt'] = self.scenario_cnt
         reports['var_arr'] = self.var_arr
         reports['cvar_arr'] = self.cvar_arr
         return reports
@@ -313,17 +314,16 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
 
 
 
-def multi_stage_scenarios_min_cvar_sp_portfolio(symbols, risk_rois,
-                                              risk_free_rois,
+def ms_min_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alpha, predict_risk_rois,
                           predict_risk_free_roi, n_scenario,
                           scenario_probs=None, solver=DEFAULT_SOLVER,
-                                                verbose=False
-    ):
+                          verbose=False):
     """
     after generating all scenarios, solving the SP at once
+
     symbols: list of string
     risk_rois: pandas.DataFrame, shape: (n_exp_period, n_stock)
     risk_free_rois: pandas.Series, shape: (n_exp_period,)
@@ -344,31 +344,36 @@ def multi_stage_scenarios_min_cvar_sp_portfolio(symbols, risk_rois,
         scenario_probs = np.ones(n_scenario, dtype=np.float) / n_scenario
 
     n_exp_period = risk_rois.shape[0]
-
+    assert len(trans_dates) == n_exp_period
+    n_stock = len(symbols)
     # concrete model
-    instance = ConcreteModel(name="all_scenarios_min_cvar_sp_portfolio")
+    instance = ConcreteModel(name="ms_min_cvar_sp_portfolio")
 
     # Set
     instance.exp_periods = np.arange(n_exp_period)
-    instance.symbols = symbols
+    instance.symbols = np.arange(n_stock)
     instance.scenarios = np.arange(n_scenario)
 
     # decision variables
-    # in each period, we buy or sell stock
+    # in each period, we buy or sell stock, shape: (n_exp_period, n_stock)
     instance.buy_amounts = Var(instance.exp_periods, instance.symbols,
-                            within=NonNegativeReals)
+                                 within=NonNegativeReals)
     instance.sell_amounts = Var(instance.exp_periods, instance.symbols,
-                             within=NonNegativeReals)
-
-    instance.risk_wealth = Var(instance.exp_periods, instance.symbols,
-                            within=NonNegativeReals)
-    instance.risk_free_wealth = Var(instance.exp_periods,
                                  within=NonNegativeReals)
 
+    # shape: (n_exp_period, n_stock)
+    instance.risk_wealth = Var(instance.exp_periods, instance.symbols,
+                                 within=NonNegativeReals)
+    # shape: (n_exp_period, )
+    instance.risk_free_wealth = Var(instance.exp_periods,
+                                      within=NonNegativeReals)
+
     # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
+    # shape: (n_exp_period, )
     instance.Z = Var(instance.exp_periods, within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
+    # shape: (n_exp_period, n_scenario)
     instance.Ys = Var(instance.exp_periods, instance.scenarios,
                    within=NonNegativeReals)
 
@@ -460,8 +465,43 @@ def multi_stage_scenarios_min_cvar_sp_portfolio(symbols, risk_rois,
 
     # extract results
     edx = n_exp_period -1
-    final_wealth = sum(instance.risk_wealth[edx, mdx].value
-                       for mdx in symbols)
-    final_wealth += + instance.risk_free_wealth[edx].value
-    roi = final_wealth/allocated_risk_free_wealth -1
-    print "final_wealth:{}, ROI:{:.4%}".format(final_wealth, roi)
+
+    # shape: (n_exp_period, n_stock)
+    buy_df = np.zeros((n_exp_period, n_stock))
+    sell_df  = np.zeros((n_exp_period, n_stock))
+    risk_df = np.zeros((n_exp_period, n_stock))
+    risk_free_arr = np.zeros(n_exp_period)
+    var_arr = np.zeros(n_exp_period)
+
+    for tdx in xrange(n_exp_period):
+        risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
+        var_arr[tdx] = instance.Z[tdx].value
+
+        for mdx in xrange(n_stock):
+            buy_df[tdx, mdx] = instance.buy_amounts[tdx, mdx].value
+            sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
+            risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
+
+    # shape: (n_exp_period, n_stock)
+    buy_amounts_df = pd.DataFrame(
+        buy_df, index=trans_dates, columns=symbols)
+
+    sell_amounts_df = pd.DataFrame(
+        sell_df, index=trans_dates,columns=symbols)
+
+    risk_wealth_df = pd.DataFrame(
+      risk_df, index=trans_dates, columns=symbols)
+
+    # shape: (n_exp_period, )
+    risk_free_wealth_arr = pd.Series(risk_free_arr, index=trans_dates)
+    estimated_var_arr = pd.Series(var_arr, index = trans_dates)
+
+    return {
+        "buy_amounts_df": buy_amounts_df,
+        "sell_amounts_df": sell_amounts_df,
+        "risk_wealth_df": risk_wealth_df,
+        "risk_free_wealth_arr": risk_free_wealth_arr,
+        "estimated_var_arr": estimated_var_arr,
+        "cvar": instance.cvar_objective(),
+    }
+

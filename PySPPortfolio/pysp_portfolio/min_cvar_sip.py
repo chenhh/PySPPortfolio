@@ -232,6 +232,7 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
     def add_results_to_reports(self, reports):
         reports['alpha'] = self.alpha
         reports['n_scenario'] = self.n_scenario
+        reports['scenario_cnt'] = self.scenario_cnt
         reports['max_portfolio_size'] = self.max_portfolio_size
         reports['var_arr'] = self.var_arr
         reports['cvar_arr'] = self.cvar_arr
