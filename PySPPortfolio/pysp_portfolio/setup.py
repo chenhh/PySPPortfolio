@@ -36,6 +36,12 @@ import numpy as np
 
 extensions = [
     Extension(
+              "min_cvar_sp",
+              ["min_cvar_sp.pyx"],
+              include_dirs = [np.get_include()],
+    ),
+
+    Extension(
               "ms_min_cvar_sp",
               ["ms_min_cvar_sp.pyx"],
               include_dirs = [np.get_include()],

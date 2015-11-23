@@ -241,7 +241,7 @@ if __name__ == '__main__':
     for m, w, a in params:
         for cnt in xrange(1, 3+1):
             try:
-                run_min_cvar_sip_simulation(m, w, scenario_cnt=cnt, alpha=a,
+                run_min_cvar_sp_simulation(m, w, scenario_cnt=cnt, alpha=a,
                                verbose=True)
             except ValueError as e:
                 print e

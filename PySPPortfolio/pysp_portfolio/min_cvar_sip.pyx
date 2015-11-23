@@ -35,8 +35,9 @@ def min_cvar_sip_portfolio(symbols,
                    cnp.ndarray[FLOAT_t, ndim=2] predict_risk_rois,
                    double predict_risk_free_roi,
                    int n_scenario, int max_portfolio_size,
-                   scenario_probs=None, solver=DEFAULT_SOLVER,
-                   verbose=False):
+                   scenario_probs=None,
+                   str solver=DEFAULT_SOLVER,
+                   int verbose=False):
     """
     two stage minimize conditional value at risk stochastic programming
     portfolio
@@ -76,7 +77,7 @@ def min_cvar_sip_portfolio(symbols,
     instance.predict_risk_free_roi = predict_risk_free_roi
     instance.max_portfolio_size = max_portfolio_size
 
-    cdef int n_stock = len(symbols)
+    cdef Py_ssize_t n_stock = len(symbols)
     # Set
     instance.symbols = np.arange(n_stock)
     instance.scenarios = np.arange(n_scenario)
