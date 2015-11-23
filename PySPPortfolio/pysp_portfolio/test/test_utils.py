@@ -14,7 +14,7 @@ def fun1(v1=1, *args, **kwargs):
 
 
 def fun2(*args, **kwargs):
-    print "fun2:", kwargs
+    print "fun2:", kwargs['alpha']
 
 if __name__ == '__main__':
     fun1(2, alpha=0.5)

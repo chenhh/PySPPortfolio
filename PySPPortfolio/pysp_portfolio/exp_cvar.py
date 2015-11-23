@@ -156,7 +156,9 @@ def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
 
 
 def run_ms_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
-                               bias=False, scenario_cnt=1, alpha=0.95,
+                               bias=False, scenario_cnt=1,
+                               alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
+                                        0.86, 0.9, 0.95],
                                verbose=False):
     """
     multi-stage SP simulation
@@ -176,14 +178,14 @@ def run_ms_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
     """
     t0 = time()
     n_stock, win_length,  = int(n_stock), int(win_length)
-    n_scenario, alpha = int(n_scenario), float(alpha)
+    n_scenario = int(n_scenario)
 
     # getting experiment symbols
     symbols = EXP_SYMBOLS[:n_stock]
-    param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+    param = "{}_{}_m{}_w{}_s{}_{}_{}".format(
         START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
         n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
-        scenario_cnt, alpha)
+        scenario_cnt)
 
     # read rois panel
     roi_path = os.path.join(SYMBOLS_PKL_DIR,
@@ -208,29 +210,30 @@ def run_ms_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
     instance = MS_MinCVaRSPPortfolio(symbols, risk_rois, risk_free_rois,
                            initial_risk_wealth, initial_risk_free_wealth,
                            window_length=win_length, n_scenario=n_scenario,
-                           bias=bias, alpha=alpha, scenario_cnt=scenario_cnt,
+                           bias=bias, alpha=alphas, scenario_cnt=scenario_cnt,
                            verbose=verbose)
     print ("ms min cvar sp {} ready to run: {:.3f} secs".format(
             param, time() - t1))
-    reports = instance.run()
-
-    file_name = 'ms_min_cvar_sp_{}.pkl'.format(param)
+    reports_list = instance.run()
 
     file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'ms_min_cvar_sp')
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
-    pd.to_pickle(reports, os.path.join(file_dir, file_name))
-    print ("ms min cvar sp {} OK, {:.3f} secs".format(param, time()-t0))
+    for reports in reports_list:
+        alpha = reports['alpha']
+        file_name = 'ms_min_cvar_sp_{}_a{:.2f}.pkl'.format(param, alpha)
+        pd.to_pickle(reports, os.path.join(file_dir, file_name))
+        print ("ms min cvar sp {}_a{:.2f} OK, {:.3f} secs".format(
+            param, alpha, time() - t0))
 
-    return reports
-
+    return reports_list
 
 
 if __name__ == '__main__':
     pass
     params = [
-        (5, 100 ,0.7),
+        (5, 100 ,0.5),
         #         (10, 50, 0.7),
               # (15, 80, 0.5), (20, 110, 0.5),
               # (25, 100, 0.55), (30, 110, 0.6),

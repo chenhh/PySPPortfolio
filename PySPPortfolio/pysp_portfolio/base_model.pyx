@@ -93,36 +93,7 @@ class PortfolioReportMixin(object):
         reports['SPA_c_pvalue'] = spa.pvalues[1]
         reports['SPA_u_pvalue'] = spa.pvalues[2]
 
-        # outputs
-        outputs = 'func: {}, [{}-{}] n_period: {}\n'.format(
-            func_name, start_date, end_date, n_exp_period)
-
-        outputs += "final wealth: {}, trans_fee_loss: {}\n".format(
-            final_wealth, trans_fee_loss)
-
-        outputs += "cum_roi:{:.6%}, daily_roi:{:.6%}\n".format(
-            reports['cum_roi'], reports['daily_roi'])
-
-        outputs += "roi (mean, std, skew, ex_kurt): "
-        outputs += "({:.6%}, {:.6%}, {:.6f}, {:.6f})\n".format(
-            reports['daily_mean_roi'], reports['daily_std_roi'],
-            reports['daily_skew_roi'], reports['daily_kurt_roi']
-        )
-
-        outputs += "Sharpe: {:.6%}\n".format(reports['sharpe'])
-        outputs += "Sortino full: ({:.6%}, {:.6%}\n".format(
-            reports['sortino_full'], reports['sortino_full_semi_std'])
-
-        outputs += "Sortino partial: ({:.6%}, {:.6%}\n".format(
-            reports['sortino_partial'], reports['sortino_partial_semi_std'])
-
-        outputs += "mad:{:.4f}\n".format(reports['max_abs_drawdown'])
-
-        outputs += "SPA_ pvalue: [{:.4%}, {:.4%}, {:.4%}]\n".format(
-            reports['SPA_l_pvalue'], reports['SPA_c_pvalue'],
-            reports['SPA_u_pvalue'])
-
-        return outputs, reports
+        return reports
 
 
 class ValidPortfolioParameterMixin(object):
@@ -205,13 +176,13 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
         """
         # valid number of symbols
-        self.valid_dimension("n_symbol", len(symbols), risk_rois.shape[1])
+        self.valid_dimension("n_stock", len(symbols), risk_rois.shape[1])
         self.symbols = symbols
         self.risk_rois = risk_rois
         self.risk_free_rois = risk_free_rois
 
         # valid number of symbols
-        self.valid_dimension("n_symbol", len(symbols),
+        self.valid_dimension("n_stock", len(symbols),
                              len(initial_risk_wealth))
         self.initial_risk_wealth = initial_risk_wealth
         self.initial_risk_free_wealth = initial_risk_free_wealth
@@ -380,8 +351,9 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                 self.estimated_risk_roi_error[tdx] = True
 
             estimated_risk_free_rois = self.get_estimated_risk_free_rois(
-                tdx=tdx, n_stock=self.n_stock,
+                tdx=tdx,
                 trans_date=self.exp_risk_rois.index[tdx],
+                n_stock=self.n_stock,
                 window_length=self.window_length,
                 n_scenario=self.n_scenario,
                 bias=self.bias_estimator)
@@ -446,8 +418,8 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             allocated_risk_wealth = self.risk_wealth_df.iloc[tdx]
             allocated_risk_free_wealth = self.risk_free_wealth.iloc[tdx]
 
-            print ("[{}/{}] {} {} OK, scenario error count:{} "
-                  "current_wealth:{:.2f}, {:.3f} secs".format(
+            print ("[{}/{}] {} {} OK, scenario err cnt:{} "
+                  "cur_wealth:{:.2f}, {:.3f} secs".format(
                     tdx + 1, self.n_exp_period,
                     self.exp_risk_rois.index[tdx].strftime("%Y%m%d"),
                     func_name,
@@ -462,7 +434,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                         self.risk_free_wealth[edx])
 
         # get reports
-        output, reports = self.get_performance_report(
+        reports = self.get_performance_report(
             func_name,
             self.symbols,
             self.exp_risk_rois.index[0],
@@ -491,9 +463,6 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
         # user specified  additional elements to reports
         reports = self.add_results_to_reports(reports)
-
-        if self.verbose:
-            print (output)
 
         print ("{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
             func_name, self.n_stock,

@@ -260,7 +260,7 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
                  int window_length=WINDOW_LENGTH,
                  int n_scenario=N_SCENARIO,
                  bias=BIAS_ESTIMATOR,
-                 alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8
+                 alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
                          0.86, 0.9, 0.95],
                  int scenario_cnt=1,
                  verbose=False):
@@ -357,7 +357,7 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             kwargs['allocated_risk_free_wealth'],
             self.buy_trans_fee,
             self.sell_trans_fee,
-            self.alpha,
+            kwargs['alpha'],
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
@@ -369,6 +369,9 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
         """
         overwrite
         """
+        reports = []
         for alpha in self.alphas:
-            super(MS_MinCVaRSPPortfolio, self).run(alpha=alpha)
+            reports.append(super(MS_MinCVaRSPPortfolio, self).run(alpha=alpha))
+
+        return reports
 

@@ -10,7 +10,6 @@ Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
 """
 
-
 from __future__ import division
 import os
 from time import time
@@ -22,22 +21,25 @@ from pyomo.environ import *
 from min_cvar_sp import MinCVaRSPPortfolio
 
 cimport numpy as cnp
+
 ctypedef cnp.float64_t FLOAT_t
 ctypedef cnp.intp_t INTP_t
 
 def min_cvar_sip_portfolio(symbols,
-                   cnp.ndarray[FLOAT_t, ndim=1] risk_rois,
-                   double risk_free_roi,
-                   cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
-                   double allocated_risk_free_wealth,
-                   double buy_trans_fee, double sell_trans_fee,
-                   double alpha,
-                   cnp.ndarray[FLOAT_t, ndim=2] predict_risk_rois,
-                   double predict_risk_free_roi,
-                   int n_scenario, int max_portfolio_size,
-                   scenario_probs=None,
-                   str solver=DEFAULT_SOLVER,
-                   int verbose=False):
+                           cnp.ndarray[FLOAT_t, ndim=1] risk_rois,
+                           double risk_free_roi,
+                           cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
+                           double allocated_risk_free_wealth,
+                           double buy_trans_fee,
+                           double sell_trans_fee,
+                           double alpha,
+                           cnp.ndarray[FLOAT_t, ndim=2] predict_risk_rois,
+                           double predict_risk_free_roi,
+                           int n_scenario,
+                           int max_portfolio_size,
+                           scenario_probs=None,
+                           str solver=DEFAULT_SOLVER,
+                           int verbose=False):
     """
     two stage minimize conditional value at risk stochastic programming
     portfolio
@@ -64,7 +66,7 @@ def min_cvar_sip_portfolio(symbols,
     # concrete model
     instance = ConcreteModel()
 
-     # data
+    # data
     instance.scenario_probs = scenario_probs
     instance.risk_rois = risk_rois
     instance.risk_free_roi = risk_free_roi
@@ -77,8 +79,9 @@ def min_cvar_sip_portfolio(symbols,
     instance.predict_risk_free_roi = predict_risk_free_roi
     instance.max_portfolio_size = max_portfolio_size
 
-    cdef Py_ssize_t n_stock = len(symbols)
+
     # Set
+    cdef Py_ssize_t n_stock = len(symbols)
     instance.symbols = np.arange(n_stock)
     instance.scenarios = np.arange(n_scenario)
 
@@ -110,7 +113,8 @@ def min_cvar_sip_portfolio(symbols,
         risk_wealth is second stage variable.
         """
         return (model.risk_wealth[mdx] ==
-                (1. + model.risk_rois[mdx]) * model.allocated_risk_wealth[mdx] +
+                (1. + model.risk_rois[mdx]) *
+                model.allocated_risk_wealth[mdx] +
                 model.buy_amounts[mdx] - model.sell_amounts[mdx])
 
     instance.risk_wealth_constraint = Constraint(
@@ -139,21 +143,21 @@ def min_cvar_sip_portfolio(symbols,
         return model.Ys[sdx] >= (model.Z - wealth)
 
     instance.cvar_constraint = Constraint(instance.scenarios,
-                                       rule=cvar_constraint_rule)
+                                          rule=cvar_constraint_rule)
 
     # constraint
     def chosen_constraint_rule(model, int mdx):
         total_wealth = (sum(model.allocated_risk_wealth) +
-                       model.allocated_risk_free_wealth)
+                        model.allocated_risk_free_wealth)
         return model.risk_wealth[mdx] <= model.chosen[mdx] * total_wealth
 
     instance.chosen_constraint = Constraint(instance.symbols,
-                                         rule=chosen_constraint_rule)
+                                            rule=chosen_constraint_rule)
 
     # constraint
     def portfolio_size_constraint_rule(model):
         return (sum(model.chosen[mdx] for mdx in model.symbols) <=
-               model.max_portfolio_size)
+                model.max_portfolio_size)
 
     instance.portfolio_size_constraint = Constraint(
         rule=portfolio_size_constraint_rule)
@@ -161,8 +165,8 @@ def min_cvar_sip_portfolio(symbols,
     # objective
     def cvar_objective_rule(model):
         scenario_expectation = sum(model.Ys[sdx] * model.scenario_probs[sdx]
-                                    for sdx in xrange(n_scenario))
-        return model.Z - 1 / (1 - alpha) * scenario_expectation
+                                   for sdx in xrange(n_scenario))
+        return model.Z - 1. / (1. - alpha) * scenario_expectation
 
     instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                         sense=maximize)
@@ -180,6 +184,10 @@ def min_cvar_sip_portfolio(symbols,
     sell_amounts = pd.Series([instance.sell_amounts[mdx].value
                               for mdx in xrange(n_stock)], index=symbols)
 
+    # chosen stock
+    chosen_symbols = pd.Series([instance.chosen[mdx].value
+                                for mdx in xrange(n_stock)], index=symbols)
+
     # value at risk (estimated)
     estimated_var = instance.Z.value
 
@@ -190,7 +198,8 @@ def min_cvar_sip_portfolio(symbols,
         "buy_amounts": buy_amounts,
         "sell_amounts": sell_amounts,
         "estimated_var": estimated_var,
-        "estimated_cvar": instance.cvar_objective()
+        "estimated_cvar": instance.cvar_objective(),
+        "chosen_symbols": chosen_symbols,
     }
 
 
@@ -234,12 +243,12 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
 
         # overwrite scenario panel, load 50 stocks
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
-        start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+            start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
             self.n_stock, window_length,
             n_scenario, "biased" if bias else "unbiased", scenario_cnt)
 
         scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
-                                 scenario_name)
+                                     scenario_name)
 
         if not os.path.exists(scenario_path):
             raise ValueError("{} not exists.".format(scenario_name))
@@ -249,13 +258,15 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
             self.scenario_panel = pd.read_pickle(scenario_path)
             self.scenario_cnt = scenario_cnt
 
+        self.chosen_symbols_df = pd.DataFrame(
+            np.zeros((self.n_exp_period, self.n_stock)),
+            index=self.exp_risk_rois.index, columns=candidate_symbols)
 
     def valid_specific_parameters(self, *args, **kwargs):
         if self.max_portfolio_size > self.n_stock:
             raise ValueError('the max portfolio size {} > the number of '
                              'stock {} in the candidate set.'.format(
                 self.max_portfolio_size, self.n_stock))
-
 
     def get_trading_func_name(self, *args, **kwargs):
         return "MinCVaRSIP_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
@@ -270,7 +281,18 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
         reports['max_portfolio_size'] = self.max_portfolio_size
         reports['var_arr'] = self.var_arr
         reports['cvar_arr'] = self.cvar_arr
+        reports['chosen_symbols_df'] = self.chosen_symbols_df
         return reports
+
+    def set_specific_period_action(self, *args, **kwargs):
+        """
+        user specified action after getting results
+        """
+        tdx = kwargs['tdx']
+        results = kwargs['results']
+        self.var_arr.iloc[tdx] = results["estimated_var"]
+        self.cvar_arr.iloc[tdx] = results['estimated_cvar']
+        self.chosen_symbols_df.iloc[tdx] = results['chosen_symbols']
 
     def get_current_buy_sell_amounts(self, *args, **kwargs):
         """ min_cvar function """
@@ -290,4 +312,3 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
             self.max_portfolio_size,
         )
         return results
-
