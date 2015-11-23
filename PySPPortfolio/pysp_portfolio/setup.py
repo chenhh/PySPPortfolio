@@ -40,6 +40,11 @@ extensions = [
               ["ms_min_cvar_sp.pyx"],
               include_dirs = [np.get_include()],
     ),
+    Extension(
+              "min_cvar_sip",
+              ["min_cvar_sip.pyx"],
+              include_dirs = [np.get_include()],
+    ),
 ]
 
 setup(

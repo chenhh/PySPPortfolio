@@ -21,24 +21,23 @@ from PySPPortfolio.pysp_portfolio import *
 from base_model import (MS_SPTradingPortfolio, )
 
 cimport numpy as cnp
-
 ctypedef cnp.float64_t FLOAT_t
 ctypedef cnp.intp_t INTP_t
 
 def ms_min_cvar_sp_portfolio(symbols, trans_dates,
-                             cnp.ndarray[FLOAT_t, ndim=2] risk_rois,
-                             cnp.ndarray[FLOAT_t, ndim=1] risk_free_rois,
-                             cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
-                             double allocated_risk_free_wealth,
-                             double buy_trans_fee,
-                             double sell_trans_fee,
-                             double alpha,
-                             cnp.ndarray[FLOAT_t, ndim=3] predict_risk_rois,
-                             cnp.ndarray[FLOAT_t, ndim=1] predict_risk_free_roi,
-                             int n_scenario,
-                             scenario_probs=False,
-                             solver=DEFAULT_SOLVER,
-                             verbose=True):
+                         cnp.ndarray[FLOAT_t, ndim=2] risk_rois,
+                         cnp.ndarray[FLOAT_t, ndim=1] risk_free_rois,
+                         cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
+                         double allocated_risk_free_wealth,
+                         double buy_trans_fee,
+                         double sell_trans_fee,
+                         double alpha,
+                         cnp.ndarray[FLOAT_t, ndim=3] predict_risk_rois,
+                         cnp.ndarray[FLOAT_t, ndim=1] predict_risk_free_roi,
+                         int n_scenario,
+                         scenario_probs=False,
+                         solver=DEFAULT_SOLVER,
+                         verbose=True):
     """
     after generating all scenarios, solving the SP at once
 
@@ -112,7 +111,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
                       within=NonNegativeReals)
 
     # constraint
-    def risk_wealth_constraint_rule(model, tdx, mdx):
+    def risk_wealth_constraint_rule(model, int tdx, int mdx):
         """
         Parameters:
         ------------
@@ -138,7 +137,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
         rule=risk_wealth_constraint_rule)
 
     # constraint
-    def risk_free_wealth_constraint_rule(model, tdx):
+    def risk_free_wealth_constraint_rule(model, int tdx):
         """
         Parameters:
         ------------
@@ -169,7 +168,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
         instance.exp_periods, rule=risk_free_wealth_constraint_rule)
 
     # constraint
-    def cvar_constraint_rule(model, tdx, sdx):
+    def cvar_constraint_rule(model, int tdx, int sdx):
         """
         auxiliary variable Y depends on scenario. CVaR <= VaR
         Parameters:
@@ -213,7 +212,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
     # display(instance)
 
     # extract results
-    edx = n_exp_period - 1
+    cdef int edx = n_exp_period - 1
 
     # shape: (n_exp_period, n_stock)
     cdef:

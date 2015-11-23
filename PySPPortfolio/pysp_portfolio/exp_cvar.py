@@ -230,8 +230,8 @@ def run_ms_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 if __name__ == '__main__':
     pass
     params = [
-        # (5, 100 ,0.6),
-                (10, 50, 0.7),
+        (5, 100 ,0.7),
+        #         (10, 50, 0.7),
               # (15, 80, 0.5), (20, 110, 0.5),
               # (25, 100, 0.55), (30, 110, 0.6),
               # (35, 110, 0.5), (40, 110, 0.5), (45, 120, 0.55),
@@ -241,7 +241,7 @@ if __name__ == '__main__':
     for m, w, a in params:
         for cnt in xrange(1, 3+1):
             try:
-                run_ms_min_cvar_sp_simulation(m, w, scenario_cnt=cnt, alpha=a,
+                run_min_cvar_sip_simulation(m, w, scenario_cnt=cnt, alpha=a,
                                verbose=True)
             except ValueError as e:
                 print e

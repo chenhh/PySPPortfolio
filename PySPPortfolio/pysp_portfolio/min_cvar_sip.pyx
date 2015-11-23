@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+#!python
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: infer_types=True
+#cython: nonecheck=False
+
 """
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
@@ -10,19 +16,27 @@ import os
 from time import time
 from PySPPortfolio.pysp_portfolio import *
 
-
 import numpy as np
 import pandas as pd
 from pyomo.environ import *
 from min_cvar_sp import MinCVaRSPPortfolio
 
-def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
-                           allocated_risk_wealth, allocated_risk_free_wealth,
-                           buy_trans_fee, sell_trans_fee, alpha,
-                           predict_risk_rois, predict_risk_free_roi,
-                           n_scenario, max_portfolio_size,
-                           scenario_probs=None, solver=DEFAULT_SOLVER,
-                           verbose=False):
+cimport numpy as cnp
+ctypedef cnp.float64_t FLOAT_t
+ctypedef cnp.intp_t INTP_t
+
+def min_cvar_sip_portfolio(symbols,
+                   cnp.ndarray[FLOAT_t, ndim=1] risk_rois,
+                   double risk_free_roi,
+                   cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
+                   double allocated_risk_free_wealth,
+                   double buy_trans_fee, double sell_trans_fee,
+                   double alpha,
+                   cnp.ndarray[FLOAT_t, ndim=2] predict_risk_rois,
+                   double predict_risk_free_roi,
+                   int n_scenario, int max_portfolio_size,
+                   scenario_probs=None, solver=DEFAULT_SOLVER,
+                   verbose=False):
     """
     two stage minimize conditional value at risk stochastic programming
     portfolio
@@ -49,8 +63,22 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
     # concrete model
     instance = ConcreteModel()
 
+     # data
+    instance.scenario_probs = scenario_probs
+    instance.risk_rois = risk_rois
+    instance.risk_free_roi = risk_free_roi
+    instance.allocated_risk_wealth = allocated_risk_wealth
+    instance.allocated_risk_free_wealth = allocated_risk_free_wealth
+    instance.buy_trans_fee = buy_trans_fee
+    instance.sell_trans_fee = sell_trans_fee
+    instance.alpha = alpha
+    instance.predict_risk_rois = predict_risk_rois
+    instance.predict_risk_free_roi = predict_risk_free_roi
+    instance.max_portfolio_size = max_portfolio_size
+
+    cdef int n_stock = len(symbols)
     # Set
-    instance.symbols = symbols
+    instance.symbols = np.arange(n_stock)
     instance.scenarios = np.arange(n_scenario)
 
     # decision variables
@@ -72,7 +100,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
     instance.chosen = Var(instance.symbols, within=Binary)
 
     # constraint
-    def risk_wealth_constraint_rule(model, mdx):
+    def risk_wealth_constraint_rule(model, int mdx):
         """
         risk_wealth is a decision variable which depends on both buy_amount and
         sell_amount. i.e. the risk_wealth depends on scenario.
@@ -81,7 +109,7 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
         risk_wealth is second stage variable.
         """
         return (model.risk_wealth[mdx] ==
-                (1. + risk_rois[mdx]) * allocated_risk_wealth[mdx] +
+                (1. + model.risk_rois[mdx]) * model.allocated_risk_wealth[mdx] +
                 model.buy_amounts[mdx] - model.sell_amounts[mdx])
 
     instance.risk_wealth_constraint = Constraint(
@@ -89,22 +117,22 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
 
     # constraint
     def risk_free_wealth_constraint_rule(model):
-        total_sell = sum((1 - sell_trans_fee) * model.sell_amounts[mdx]
+        total_sell = sum((1 - model.sell_trans_fee) * model.sell_amounts[mdx]
                          for mdx in model.symbols)
-        total_buy = sum((1 + buy_trans_fee) * model.buy_amounts[mdx]
+        total_buy = sum((1 + model.buy_trans_fee) * model.buy_amounts[mdx]
                         for mdx in model.symbols)
 
         return (model.risk_free_wealth ==
-                (1. + risk_free_roi) * allocated_risk_free_wealth +
+                (1. + model.risk_free_roi) * model.allocated_risk_free_wealth +
                 total_sell - total_buy)
 
     instance.risk_free_wealth_constraint = Constraint(
         rule=risk_free_wealth_constraint_rule)
 
     # constraint
-    def cvar_constraint_rule(model, sdx):
+    def cvar_constraint_rule(model, int sdx):
         """auxiliary variable Y depends on scenario. CVaR <= VaR"""
-        wealth = sum((1. + predict_risk_rois.at[mdx, sdx]) *
+        wealth = sum((1. + model.predict_risk_rois[mdx, sdx]) *
                      model.risk_wealth[mdx]
                      for mdx in model.symbols)
         return model.Ys[sdx] >= (model.Z - wealth)
@@ -113,8 +141,9 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
                                        rule=cvar_constraint_rule)
 
     # constraint
-    def chosen_constraint_rule(model, mdx):
-        total_wealth = sum(allocated_risk_wealth) + allocated_risk_free_wealth
+    def chosen_constraint_rule(model, int mdx):
+        total_wealth = (sum(model.allocated_risk_wealth) +
+                       model.allocated_risk_free_wealth)
         return model.risk_wealth[mdx] <= model.chosen[mdx] * total_wealth
 
     instance.chosen_constraint = Constraint(instance.symbols,
@@ -122,19 +151,20 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
 
     # constraint
     def portfolio_size_constraint_rule(model):
-        return sum(
-            model.chosen[mdx] for mdx in model.symbols) <= max_portfolio_size
+        return (sum(model.chosen[mdx] for mdx in model.symbols) <=
+               model.max_portfolio_size)
 
     instance.portfolio_size_constraint = Constraint(
         rule=portfolio_size_constraint_rule)
 
     # objective
     def cvar_objective_rule(model):
-        scenario_expectation = sum(model.Ys[sdx] * scenario_probs[sdx]
+        scenario_expectation = sum(model.Ys[sdx] * model.scenario_probs[sdx]
                                     for sdx in xrange(n_scenario))
         return model.Z - 1 / (1 - alpha) * scenario_expectation
 
-    instance.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+    instance.cvar_objective = Objective(rule=cvar_objective_rule,
+                                        sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
@@ -144,10 +174,10 @@ def min_cvar_sip_portfolio(symbols, risk_rois, risk_free_roi,
         display(instance)
 
     # buy and sell amounts
-    buy_amounts = pd.Series([instance.buy_amounts[symbol].value
-                             for symbol in symbols], index=symbols)
-    sell_amounts = pd.Series([instance.sell_amounts[symbol].value
-                              for symbol in symbols], index=symbols)
+    buy_amounts = pd.Series([instance.buy_amounts[mdx].value
+                             for mdx in xrange(n_stock)], index=symbols)
+    sell_amounts = pd.Series([instance.sell_amounts[mdx].value
+                              for mdx in xrange(n_stock)], index=symbols)
 
     # value at risk (estimated)
     estimated_var = instance.Z.value
@@ -242,14 +272,14 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
         tdx = kwargs['tdx']
         results = min_cvar_sip_portfolio(
             self.symbols,
-            self.exp_risk_rois.iloc[tdx, :],
+            self.exp_risk_rois.iloc[tdx, :].as_matrix(),
             self.risk_free_rois.iloc[tdx],
-            kwargs['allocated_risk_wealth'],
+            kwargs['allocated_risk_wealth'].as_matrix(),
             kwargs['allocated_risk_free_wealth'],
             self.buy_trans_fee,
             self.sell_trans_fee,
             self.alpha,
-            kwargs['estimated_risk_rois'],
+            kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
             self.max_portfolio_size,
