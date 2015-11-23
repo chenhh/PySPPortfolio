@@ -36,8 +36,8 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
                          cnp.ndarray[FLOAT_t, ndim=1] predict_risk_free_roi,
                          int n_scenario,
                          scenario_probs=False,
-                         solver=DEFAULT_SOLVER,
-                         verbose=True):
+                         str solver=DEFAULT_SOLVER,
+                         int verbose=True):
     """
     after generating all scenarios, solving the SP at once
 
@@ -252,11 +252,17 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
 
 class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
-                 initial_risk_wealth, initial_risk_free_wealth,
-                 buy_trans_fee=BUY_TRANS_FEE, sell_trans_fee=SELL_TRANS_FEE,
+                 initial_risk_wealth,
+                 double initial_risk_free_wealth,
+                 double buy_trans_fee=BUY_TRANS_FEE,
+                 double sell_trans_fee=SELL_TRANS_FEE,
                  start_date=START_DATE, end_date=END_DATE,
-                 window_length=WINDOW_LENGTH, n_scenario=N_SCENARIO,
-                 bias=BIAS_ESTIMATOR, alpha=0.9, scenario_cnt=1,
+                 int window_length=WINDOW_LENGTH,
+                 int n_scenario=N_SCENARIO,
+                 bias=BIAS_ESTIMATOR,
+                 alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8
+                         0.86, 0.9, 0.95],
+                 int scenario_cnt=1,
                  verbose=False):
 
         """
@@ -274,7 +280,7 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             verbose
         )
 
-        self.alpha = float(alpha)
+        self.alphas = alphas
 
         # try to load generated scenario panel
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
@@ -303,11 +309,11 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
         return "MS_MinCVaRSP_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             self.n_stock, self.window_length, self.n_scenario,
             "biased" if self.bias_estimator else "unbiased",
-            self.scenario_cnt, self.alpha)
+            self.scenario_cnt, kwargs['alpha'])
 
-    def add_results_to_reports(self, reports):
+    def add_results_to_reports(self, reports, *args, **kwargs):
         """ add additional items to reports """
-        reports['alpha'] = self.alpha
+        reports['alpha'] = kwargs['alpha']
         reports['scenario_cnt'] = self.scenario_cnt
         reports['var_arr'] = self.var_arr
         reports['cvar'] = self.cvar
@@ -357,3 +363,12 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             self.n_scenario,
         )
         return results
+
+
+    def run(self, *args, **kwargs):
+        """
+        overwrite
+        """
+        for alpha in self.alphas:
+            super(MS_MinCVaRSPPortfolio, self).run(alpha=alpha)
+

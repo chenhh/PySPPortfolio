@@ -338,7 +338,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
     def set_specific_period_action(self, *args, **kwargs):
         pass
 
-    def add_results_to_reports(self, reports):
+    def add_results_to_reports(self, reports, *args, **kwargs):
         """ add Additional results to reports after a simulation """
         return reports
 
@@ -494,6 +494,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
         if self.verbose:
             print (output)
+
         print ("{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
             func_name, self.n_stock,
             self.exp_risk_rois.index[0],
@@ -504,14 +505,16 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
 class MS_SPTradingPortfolio(SPTradingPortfolio):
     """
-    multi-stage sp
+    multi-stage stochastic programming
     """
-
     def __init__(self, symbols, risk_rois, risk_free_rois,
-                 initial_risk_wealth, initial_risk_free_wealth,
-                 buy_trans_fee=0.001425, sell_trans_fee=0.004425,
+                 initial_risk_wealth,
+                 double initial_risk_free_wealth,
+                 double buy_trans_fee=0.001425,
+                 double sell_trans_fee=0.004425,
                  start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
-                 window_length=200, n_scenario=200, bias=False,
+                 int window_length=200,
+                 int n_scenario=200, bias=False,
                  verbose=False):
         """
         Parameters:
@@ -531,14 +534,13 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         bias: boolean, biased moment estimators or not
         verbose: boolean
         """
-
         super(MS_SPTradingPortfolio, self).__init__(
             symbols, risk_rois, risk_free_rois, initial_risk_wealth,
             initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
             start_date, end_date, window_length, n_scenario, bias, verbose
         )
 
-    def run(self):
+    def run(self, *args, **kwargs):
         """
         run recourse programming simulation
 
@@ -549,7 +551,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         t0 = time()
 
         # get function name
-        func_name = self.get_trading_func_name()
+        func_name = self.get_trading_func_name(*args, **kwargs)
 
         # solve all scenarios at tone
         # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
@@ -567,6 +569,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
             estimated_risk_free_roi=estimated_risk_free_rois,
             allocated_risk_wealth=self.initial_risk_wealth,
             allocated_risk_free_wealth=self.initial_risk_free_wealth
+            *args, **kwargs
         )
 
         self.risk_wealth_df = results['risk_wealth_df']
@@ -575,7 +578,8 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         self.sell_amounts_df = results['sell_amounts_df']
 
         # record results
-        self.set_specific_period_action(results=results)
+        self.set_specific_period_action(results=results,
+                                        *args, **kwargs)
 
         # end of iterations, computing statistics
         edx = self.n_exp_period - 1
@@ -607,7 +611,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         reports['simulation_time'] = time() - t0
 
         # user specified  additional elements to reports
-        reports = self.add_results_to_reports(reports)
+        reports = self.add_results_to_reports(reports, *args, **kwargs)
 
         if self.verbose:
             print (output)

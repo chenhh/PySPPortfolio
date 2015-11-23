@@ -236,7 +236,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
              "biased" if self.bias_estimator else "unbiased",
              self.scenario_cnt, self.alpha)
 
-    def add_results_to_reports(self, reports):
+    def add_results_to_reports(self, reports, *args, **kwargs):
         """ add additional items to reports """
         reports['alpha'] = self.alpha
         reports['scenario_cnt'] = self.scenario_cnt

@@ -155,11 +155,11 @@ def all_results_to_dataframe(sheet="alpha"):
                                     '{}_{}.xlsx'.format(prob_type, sheet)))
 
 if __name__ == '__main__':
-    # all_results_to_dataframe("n_stock")
-    # all_results_to_dataframe("win_length")
-    # all_results_to_dataframe("alpha")
-    reports = load_results("min_cvar_sp", 5, 100, alpha=0.7)
-    print reports
+    all_results_to_dataframe("n_stock")
+    all_results_to_dataframe("win_length")
+    all_results_to_dataframe("alpha")
+    # reports = load_results("min_cvar_sp", 5, 100, alpha=0.7)
+    # print reports
     # wdf = reports['wealth_df']
     # wfree = reports['risk_free_wealth']
     # warr = wdf.sum(axis=1) + wfree

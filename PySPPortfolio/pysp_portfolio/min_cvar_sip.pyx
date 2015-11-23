@@ -264,7 +264,7 @@ class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
             self.n_scenario, "biased" if self.bias_estimator else "unbiased",
             self.scenario_cnt, self.alpha)
 
-    def add_results_to_reports(self, reports):
+    def add_results_to_reports(self, reports, *args, **kwargs):
         reports['alpha'] = self.alpha
         reports['scenario_cnt'] = self.scenario_cnt
         reports['max_portfolio_size'] = self.max_portfolio_size
