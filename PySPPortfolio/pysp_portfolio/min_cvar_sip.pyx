@@ -195,13 +195,17 @@ def min_cvar_sip_portfolio(symbols,
 
 
 class MinCVaRSIPPortfolio(MinCVaRSPPortfolio):
-    def __init__(self, candidate_symbols, max_portfolio_size, risk_rois,
+    def __init__(self, candidate_symbols,
+                 int max_portfolio_size, risk_rois,
                  risk_free_rois, initial_risk_wealth,
-                 initial_risk_free_wealth, buy_trans_fee=BUY_TRANS_FEE,
-                 sell_trans_fee=SELL_TRANS_FEE, start_date=START_DATE,
-                 end_date=END_DATE, window_length=WINDOW_LENGTH,
-                 n_scenario=N_SCENARIO, bias=BIAS_ESTIMATOR, alpha=0.05,
-                 scenario_cnt=1, verbose=False):
+                 double initial_risk_free_wealth,
+                 double buy_trans_fee=BUY_TRANS_FEE,
+                 double sell_trans_fee=SELL_TRANS_FEE, start_date=START_DATE,
+                 end_date=END_DATE,
+                 int window_length=WINDOW_LENGTH,
+                 int n_scenario=N_SCENARIO, bias=BIAS_ESTIMATOR,
+                 float alpha=0.05,
+                 int scenario_cnt=1, verbose=False):
         """
         the n_stock in SIP model represents the size of candidate stocks,
         not the portfolio size.

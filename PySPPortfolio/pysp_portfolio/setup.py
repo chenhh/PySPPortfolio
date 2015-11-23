@@ -36,19 +36,26 @@ import numpy as np
 
 extensions = [
     Extension(
+              "base_model",
+              ["base_model.pyx",],
+              include_dirs = [np.get_include()],
+    ),
+
+
+    Extension(
               "min_cvar_sp",
-              ["min_cvar_sp.pyx"],
+              ["min_cvar_sp.pyx",],
               include_dirs = [np.get_include()],
     ),
 
     Extension(
               "ms_min_cvar_sp",
-              ["ms_min_cvar_sp.pyx"],
+              ["ms_min_cvar_sp.pyx",],
               include_dirs = [np.get_include()],
     ),
     Extension(
               "min_cvar_sip",
-              ["min_cvar_sip.pyx"],
+              ["min_cvar_sip.pyx",],
               include_dirs = [np.get_include()],
     ),
 ]

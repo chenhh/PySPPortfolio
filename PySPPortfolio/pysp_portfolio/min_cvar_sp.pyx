@@ -176,11 +176,16 @@ def min_cvar_sp_portfolio(symbols,
 
 class MinCVaRSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
-                 initial_risk_wealth, initial_risk_free_wealth,
-                 buy_trans_fee=BUY_TRANS_FEE, sell_trans_fee=SELL_TRANS_FEE,
+                 initial_risk_wealth,
+                 double initial_risk_free_wealth,
+                 double buy_trans_fee=BUY_TRANS_FEE,
+                 double sell_trans_fee=SELL_TRANS_FEE,
                  start_date=START_DATE, end_date=END_DATE,
-                 window_length=WINDOW_LENGTH, n_scenario=N_SCENARIO,
-                 bias=BIAS_ESTIMATOR, alpha=0.05, scenario_cnt=1,
+                 int window_length=WINDOW_LENGTH,
+                 int n_scenario=N_SCENARIO,
+                 bias=BIAS_ESTIMATOR,
+                 double alpha=0.05,
+                 int scenario_cnt=1,
                  verbose=False):
         """
         2nd-stage SP

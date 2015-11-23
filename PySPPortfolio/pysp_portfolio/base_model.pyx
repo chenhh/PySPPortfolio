@@ -12,6 +12,9 @@ import pandas as pd
 from arch.bootstrap.multiple_comparrison import (SPA,)
 from utils import (sharpe, sortino_full, sortino_partial, maximum_drawdown)
 
+cimport numpy as cnp
+ctypedef cnp.float64_t FLOAT_t
+ctypedef cnp.intp_t INTP_t
 
 class PortfolioReportMixin(object):
 
@@ -124,7 +127,7 @@ class PortfolioReportMixin(object):
 
 class ValidPortfolioParameterMixin(object):
     @staticmethod
-    def valid_trans_fee(trans_fee):
+    def valid_trans_fee(double trans_fee):
         """
         Parameter:
         -------------
@@ -134,7 +137,7 @@ class ValidPortfolioParameterMixin(object):
             raise ValueError("wrong trans_fee: {}".format(trans_fee))
 
     @staticmethod
-    def valid_dimension(dim1_name, dim1, dim2):
+    def valid_dimension(str dim1_name, int dim1, int dim2):
         """
         Parameters:
         -------------
@@ -159,12 +162,16 @@ class ValidPortfolioParameterMixin(object):
 
 class SPTradingPortfolio(ValidPortfolioParameterMixin,
                          PortfolioReportMixin):
-    def __init__(self, symbols, risk_rois, risk_free_rois,
-                 initial_risk_wealth, initial_risk_free_wealth,
-                 buy_trans_fee=0.001425, sell_trans_fee=0.004425,
-                 start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
-                 window_length=200, n_scenario=200, bias=False,
-                 verbose=False):
+    def __init__(self, symbols,
+                 risk_rois, risk_free_rois,
+                 initial_risk_wealth,
+                 double initial_risk_free_wealth,
+                 double buy_trans_fee=0.001425,
+                 double sell_trans_fee=0.004425,
+                 start_date=date(2005, 1, 3),
+                 end_date=date(2014, 12, 31),
+                 int window_length=200,
+                 int n_scenario=200, bias=False, verbose=False):
         """
         stepwise stochastic programming trading portfolio
 
@@ -221,9 +228,10 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         self.valid_trans_date(start_date, end_date)
         self.exp_risk_rois = risk_rois.loc[start_date:end_date]
         self.exp_risk_free_rois = risk_free_rois.loc[start_date:end_date]
-        self.exp_start_date = self.exp_risk_rois.index[0]
-        self.exp_end_date = self.exp_risk_rois.index[-1]
         self.n_exp_period = self.exp_risk_rois.shape[0]
+        self.exp_start_date = self.exp_risk_rois.index[0]
+        self.exp_end_date = self.exp_risk_rois.index[self.n_exp_period - 1]
+
         self.n_stock = self.exp_risk_rois.shape[1]
 
         # date index in total data
@@ -449,15 +457,16 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
                     time() - t1))
 
         # end of iterations, computing statistics
-        final_wealth = (self.risk_wealth_df.iloc[-1].sum() +
-                        self.risk_free_wealth[-1])
+        edx = self.n_exp_period - 1
+        final_wealth = (self.risk_wealth_df.iloc[edx].sum() +
+                        self.risk_free_wealth[edx])
 
         # get reports
         output, reports = self.get_performance_report(
             func_name,
             self.symbols,
             self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[-1],
+            self.exp_risk_rois.index[edx],
             self.buy_trans_fee,
             self.sell_trans_fee,
             (self.initial_risk_wealth.sum() + self.initial_risk_free_wealth),
@@ -488,7 +497,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         print ("{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
             func_name, self.n_stock,
             self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[-1],
+            self.exp_risk_rois.index[edx],
             time() - t0))
 
         return reports
@@ -569,15 +578,16 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         self.set_specific_period_action(results=results)
 
         # end of iterations, computing statistics
-        final_wealth = (self.risk_wealth_df.iloc[-1].sum() +
-                        self.risk_free_wealth[-1])
+        edx = self.n_exp_period - 1
+        final_wealth = (self.risk_wealth_df.iloc[edx].sum() +
+                        self.risk_free_wealth[edx])
 
         # get reports
         output, reports = self.get_performance_report(
             func_name,
             self.symbols,
             self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[-1],
+            self.exp_risk_rois.index[edx],
             self.buy_trans_fee,
             self.sell_trans_fee,
             (self.initial_risk_wealth.sum() + self.initial_risk_free_wealth),
@@ -604,7 +614,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         print ("{} OK [{}-{}], {:.4f}.secs".format(
             func_name,
             self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[-1],
+            self.exp_risk_rois.index[edx],
             time() - t0))
 
         return reports
