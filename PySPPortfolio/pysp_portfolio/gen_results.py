@@ -240,9 +240,9 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                 except IOError as e:
                     if retry == retry_cnt -1:
                         raise Exception(e)
-                else:
-                    print ("reading retry: {}, {}".format(retry+1, e))
-                    time.sleep(np.random.rand()*5)
+                    else:
+                        print ("reading retry: {}, {}".format(retry+1, e))
+                        time.sleep(np.random.rand()*5)
 
             if param_key in working_dict.keys():
                 del working_dict[param_key]
