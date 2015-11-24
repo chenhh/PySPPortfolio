@@ -197,8 +197,6 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
 
         param = unfinished_params.pop()
         n_stock, win_length, n_scenario, bias, cnt, alpha = param
-        if n_stock == 50 and win_length == 50:
-                continue
 
         bias = True if bias == "biased" else False
         alpha = float(alpha)
