@@ -205,9 +205,9 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                 except IOError as e:
                     if retry == retry_cnt -1:
                         raise Exception(e)
-                else:
-                    print ("reading retry: {}, {}".format(retry+1, e))
-                    time.sleep(np.random.rand() * 5)
+                    else:
+                        print ("reading retry: {}, {}".format(retry+1, e))
+                        time.sleep(np.random.rand() * 5)
 
 
         param_key = "|".join(str(v) for v in param)
@@ -248,6 +248,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                 del working_dict[param_key]
             else:
                 print ("can't find {} in working dict.".format(param_key))
+
             for retry in xrange(retry_cnt):
                 try:
                     # preventing multi-process write file at the same time
