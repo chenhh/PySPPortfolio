@@ -27,7 +27,7 @@ def get_results_dir(prob_type):
 
 
 
-def all_experiment_parameters():
+def all_experiment_parameters(prob_type='min_cvar_sp'):
     """
     file_name of all experiment parameters
     n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
@@ -43,9 +43,13 @@ def all_experiment_parameters():
     all_params = []
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
-            # preclude m50_w50
-            if n_stock == 50 and win_length == 50:
-                continue
+            if prob_type == "min_cvar_sp":
+                if n_stock == 50 and win_length == 50:
+                    # preclude m50_w50
+                    continue
+            elif prob_type == "min_cvar_sip":
+                if win_length == 50:
+                    continue
 
             for n_scenario in (200,):
                 for bias in ("unbiased",):
@@ -75,7 +79,7 @@ def checking_finished_parameters(prob_type):
     dir_path = get_results_dir(prob_type)
 
     # get all params
-    all_params = all_experiment_parameters()
+    all_params = all_experiment_parameters(prob_type)
 
     if prob_type == "min_cvar_sp":
         pkls = glob.glob(os.path.join(dir_path,
@@ -122,7 +126,7 @@ def checking_working_parameters(prob_type):
     log_file = '{}_working.pkl'.format(prob_type)
     retry_cnt = 5
     # get all params
-    all_params = all_experiment_parameters()
+    all_params = all_experiment_parameters(prob_type)
 
     # storing a dict, key: param, value: platform_name
     file_path = os.path.join(dir_path, log_file)
