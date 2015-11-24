@@ -211,11 +211,42 @@ def all_results_to_4dpanel(prob_type="min_cvar_sp"):
         pd.to_pickle(results, file_path)
 
 
+def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
+    """
+
+    :param prob_type:
+    :return:
+    """
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+
+
+    if not prob_type in ('min_cvar_sp', 'min_cvar_sip'):
+        raise ValueError('unknown problem type:{}'.format(prob_type))
+
+    file_path = os.path.join(EXP_SP_PORTFOLIO_DIR, "reports",
+                             "{}_exp_results_{}.pkl".format(prob_type,
+                                                            scenario_cnt))
+    results = pd.read_pickle(file_path)
+    panel =  pd.Panel4D(results['data'], labels=results['labels'],
+                        items=results['items'],
+                        major_axis=results['major_axis'],
+                        minor_axis=results['minor_axis'])
+    # n_stock, win_length, alpha, columns
+    roi_df = panel.loc[:, "w50", :, 'cum_roi']
+    print roi_df
+    roi_df.plot(kind='bar')
+    plt.show()
+
+
+
 if __name__ == '__main__':
     # all_results_to_dataframe("n_stock")
     # all_results_to_dataframe("win_length")
     # all_results_to_dataframe("alpha")
-    all_results_to_4dpanel(prob_type="min_cvar_sp")
+    # all_results_to_4dpanel(prob_type="min_cvar_sp")
+    plot_results()
     # reports = load_results("min_cvar_sip", 5, 100, alpha=0.5)
     # print reports['chosen_symbols_df'].sum(axis=1)
     # wdf = reports['wealth_df']

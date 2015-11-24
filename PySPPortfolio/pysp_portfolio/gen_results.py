@@ -120,7 +120,7 @@ def checking_working_parameters(prob_type):
     """
     dir_path = get_results_dir(prob_type)
     log_file = '{}_working.pkl'.format(prob_type)
-
+    retry_cnt = 5
     # get all params
     all_params = all_experiment_parameters()
 
@@ -132,15 +132,15 @@ def checking_working_parameters(prob_type):
         return all_params
 
 
-    for retry in xrange(3):
+    for retry in xrange(retry_cnt):
         try:
             data = pd.read_pickle(file_path)
         except IOError as e:
-            if retry == 2:
+            if retry == retry_cnt -1:
                 raise Exception(e)
             else:
                 print ("reading retry: {}, {}".format(retry+1, e))
-                time.sleep(np.random.rand()*3)
+                time.sleep(np.random.rand()*5)
 
     for param_key, node in data.items():
         keys =  param_key.split('|')
@@ -161,6 +161,7 @@ def checking_working_parameters(prob_type):
 def dispatch_experiment_parameters(prob_type, log_file=None):
 
     dir_path = get_results_dir(prob_type)
+    retry_cnt = 5
 
     if log_file is None:
         # storing a dict, {key: param, value: platform_name}
@@ -198,20 +199,29 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
         if not os.path.exists(log_path):
             working_dict = {}
         else:
-            working_dict = pd.read_pickle(log_path)
+            for retry in xrange(retry_cnt):
+                try:
+                    working_dict = pd.read_pickle(log_path)
+                except IOError as e:
+                    if retry == retry_cnt -1:
+                        raise Exception(e)
+                else:
+                    print ("reading retry: {}, {}".format(retry+1, e))
+                    time.sleep(np.random.rand() * 5)
+
 
         param_key = "|".join(str(v) for v in param)
         working_dict[param_key] = platform.node()
-        for retry in xrange(3):
+        for retry in xrange(retry_cnt):
             try:
                 # preventing multi-process write file at the same time
                 pd.to_pickle(working_dict, log_path)
             except IOError as e:
-                if retry == 2:
+                if retry == retry_cnt-1:
                     raise Exception(e)
                 else:
                     print ("working retry: {}, {}".format(retry+1, e))
-                    time.sleep(np.random.rand()*3)
+                    time.sleep(np.random.rand()*5)
 
         # run experiment
         try:
@@ -224,21 +234,30 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
         except Exception as e:
             print ("run experiment:", param, e)
         finally:
-            working_dict = pd.read_pickle(log_path)
+            for retry in xrange(retry_cnt):
+                try:
+                    working_dict = pd.read_pickle(log_path)
+                except IOError as e:
+                    if retry == retry_cnt -1:
+                        raise Exception(e)
+                else:
+                    print ("reading retry: {}, {}".format(retry+1, e))
+                    time.sleep(np.random.rand()*5)
+
             if param_key in working_dict.keys():
                 del working_dict[param_key]
             else:
                 print ("can't find {} in working dict.".format(param_key))
-            for retry in xrange(3):
+            for retry in xrange(retry_cnt):
                 try:
                     # preventing multi-process write file at the same time
                     pd.to_pickle(working_dict, log_path)
                 except IOError as e:
-                    if retry == 2:
+                    if retry == retry_cnt-1:
                         raise Exception(e)
                     else:
                         print ("finally retry: {}, {}".format(retry+1, e))
-                        time.sleep(np.random.rand()*3)
+                        time.sleep(np.random.rand()*5)
 
 if __name__ == '__main__':
     import argparse
