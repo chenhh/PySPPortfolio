@@ -105,9 +105,9 @@ def checking_finished_parameters(prob_type):
 
         if data_param in all_params:
             all_params.remove(data_param)
-            print ("{} has finished.".format(name))
+            print ("checking finished: {} has finished.".format(name))
         else:
-            print ("{} not in exp parameters.".format(name))
+            print ("checking finished: {} not in exp parameters.".format(name))
 
     # unfinished params
     return all_params
@@ -128,7 +128,7 @@ def checking_working_parameters(prob_type):
     file_path = os.path.join(dir_path, log_file)
     if not os.path.exists(file_path):
         # no working parameters
-        print ("{}: no working parameters".format(prob_type))
+        print ("checking_working: {} no working parameters".format(prob_type))
         return all_params
 
 
@@ -139,7 +139,8 @@ def checking_working_parameters(prob_type):
             if retry == retry_cnt -1:
                 raise Exception(e)
             else:
-                print ("reading retry: {}, {}".format(retry+1, e))
+                print ("checking_working, reading retry: {}, {}".format(
+                    retry+1, e))
                 time.sleep(np.random.rand()*5)
 
     for param_key, node in data.items():
@@ -148,11 +149,11 @@ def checking_working_parameters(prob_type):
                  int(keys[4]), keys[5])
         if param in all_params:
             all_params.remove(param)
-            print ("{}: {} under processing on {}.".format(
+            print ("checking_working {}: {} under processing on {}.".format(
                 prob_type, param, node))
         else:
             print ("{}: {} not in exp parameters.".format(prob_type, param))
-    print ("workging params: {}".format(len(data)))
+    print ("checking_working params: {}".format(len(data)))
 
     # unfinished params
     return all_params
@@ -174,7 +175,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
     params2 = checking_working_parameters(prob_type)
     unfinished_params = params1.intersection(params2)
 
-    print ("{} initial unfinished params: {}".format(
+    print ("dispatch: {} initial unfinished params: {}".format(
         prob_type, len(unfinished_params)))
 
     while len(unfinished_params) > 0:
@@ -183,7 +184,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
         params2 = checking_working_parameters(prob_type)
         unfinished_params = params1.intersection(params2)
 
-        print ("{} current unfinished params: {}".format(
+        print ("dispatch: {} current unfinished params: {}".format(
             prob_type, len(unfinished_params)))
 
         if len(unfinished_params) <= 100:
@@ -209,7 +210,8 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                     if retry == retry_cnt -1:
                         raise Exception(e)
                     else:
-                        print ("reading retry: {}, {}".format(retry+1, e))
+                        print ("dispatch: reading retry: {}, {}".format(
+                            retry+1, e))
                         time.sleep(np.random.rand() * 5)
 
 
@@ -223,7 +225,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                 if retry == retry_cnt-1:
                     raise Exception(e)
                 else:
-                    print ("working retry: {}, {}".format(retry+1, e))
+                    print ("dispatch: working retry: {}, {}".format(retry+1, e))
                     time.sleep(np.random.rand()*5)
 
         # run experiment
@@ -235,7 +237,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                 run_min_cvar_sip_simulation(n_stock, win_length,
                                 n_scenario, bias, cnt, alpha)
         except Exception as e:
-            print ("run experiment:", param, e)
+            print ("dispatch: run experiment:", param, e)
         finally:
             for retry in xrange(retry_cnt):
                 try:
@@ -250,7 +252,8 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
             if param_key in working_dict.keys():
                 del working_dict[param_key]
             else:
-                print ("can't find {} in working dict.".format(param_key))
+                print ("dispatch: can't find {} in working dict.".format(
+                    param_key))
 
             for retry in xrange(retry_cnt):
                 try:
@@ -260,7 +263,8 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                     if retry == retry_cnt-1:
                         raise Exception(e)
                     else:
-                        print ("finally retry: {}, {}".format(retry+1, e))
+                        print ("dispatch: finally retry: {}, {}".format(
+                            retry+1, e))
                         time.sleep(np.random.rand()*5)
 
 if __name__ == '__main__':
