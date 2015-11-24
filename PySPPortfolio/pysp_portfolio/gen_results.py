@@ -105,7 +105,7 @@ def checking_finished_parameters(prob_type):
 
         if data_param in all_params:
             all_params.remove(data_param)
-            print ("checking finished: {} has finished.".format(name))
+            # print ("checking finished: {} has finished.".format(name))
         else:
             print ("checking finished: {} not in exp parameters.".format(name))
 
