@@ -5,6 +5,7 @@ License: GPL v2
 """
 
 import platform
+import numpy as np
 import pandas as pd
 from datetime import date
 import time
@@ -139,7 +140,7 @@ def checking_working_parameters(prob_type):
                 raise Exception(e)
             else:
                 print ("reading retry: {}, {}".format(retry+1, e))
-                time.sleep(2)
+                time.sleep(np.random.rand()*3)
 
     for param_key, node in data.items():
         keys =  param_key.split('|')
@@ -210,7 +211,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                     raise Exception(e)
                 else:
                     print ("working retry: {}, {}".format(retry+1, e))
-                    time.sleep(2)
+                    time.sleep(np.random.rand()*3)
 
         # run experiment
         try:
@@ -237,7 +238,7 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
                         raise Exception(e)
                     else:
                         print ("finally retry: {}, {}".format(retry+1, e))
-                        time.sleep(2)
+                        time.sleep(np.random.rand()*3)
 
 if __name__ == '__main__':
     import argparse
