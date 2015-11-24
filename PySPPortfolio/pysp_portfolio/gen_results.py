@@ -130,8 +130,17 @@ def checking_working_parameters(prob_type):
         print ("{}: no working parameters".format(prob_type))
         return all_params
 
-    # have working parameters
-    data = pd.read_pickle(file_path)
+
+    for retry in xrange(3):
+        try:
+            data = pd.read_pickle(file_path)
+        except IOError as e:
+            if retry == 2:
+                raise Exception(e)
+            else:
+                print ("reading retry: {}, {}".format(retry+1, e))
+                time.sleep(2)
+
     for param_key, node in data.items():
         keys =  param_key.split('|')
         param = (int(keys[0]),int(keys[1]),int(keys[2]),keys[3],
