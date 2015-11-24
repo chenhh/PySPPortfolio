@@ -63,8 +63,6 @@ def all_results_to_dataframe(sheet="alpha"):
     if not sheet in ("n_stock", "win_length", "alpha"):
         raise ValueError('{} cannot be sheet'.format(sheet))
 
-
-
     n_stocks = range(5, 50 + 5, 5)
     win_lengths = range(50, 240 + 10, 10)
     cnts = range(1, 3+1)
@@ -141,12 +139,12 @@ def all_results_to_dataframe(sheet="alpha"):
                     item_key = a
 
                 for col_key in columns:
-                        if col_key not in ('win_length', 'scenario_cnt'):
-                            results_panel.loc[item_key, major, col_key] = results[
-                                col_key]
-                        else:
-                            results_panel.loc[item_key, major, 'win_length'] = w
-                            results_panel.loc[item_key, major, 'scenario_cnt'] = c
+                    if col_key not in ('win_length', 'scenario_cnt'):
+                        results_panel.loc[item_key, major, col_key] = results[
+                            col_key]
+                    else:
+                        results_panel.loc[item_key, major, 'win_length'] = w
+                        results_panel.loc[item_key, major, 'scenario_cnt'] = c
 
                 print ("[{}/{}] {}: {}_{} OK".format(
                     rdx +1, n_param, sheet , major, a))
@@ -154,12 +152,72 @@ def all_results_to_dataframe(sheet="alpha"):
         results_panel.to_excel(os.path.join(TMP_DIR,
                                     '{}_{}.xlsx'.format(prob_type, sheet)))
 
+
+def all_results_to_4dpanel(prob_type="min_cvar_sp"):
+    """
+    axis_0: n_stock
+    axis_1: win_length
+    axis_2: alpha
+    axis_3: cnt + columns
+    """
+    cnts = range(1, 3+1)
+    n_stocks = ["m{}".format(str(v)) for v in range(5, 50 + 5, 5)]
+    win_lengths = ["w{}".format(str(v)) for v in range(50, 240 + 10, 10)]
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
+    columns = ['n_stock', 'win_length', 'alpha', 'scenario_cnt',
+              'start_date', 'end_date', 'n_exp_period',
+              'trans_fee_loss',
+              'cum_roi', 'daily_roi', 'daily_mean_roi', 'daily_std_roi',
+              'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
+              'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
+              'SPA_u_pvalue', 'simulation_time']
+
+    params = all_experiment_parameters()
+    n_param = len(params)
+
+    # 3 4d-panel
+    panels = [pd.Panel4D(np.zeros((len(n_stocks),len(win_lengths),
+                                    len(alphas), len(columns))),
+                           labels=n_stocks, items=win_lengths,
+                           major_axis=alphas, minor_axis=columns)
+              for _ in cnts]
+
+    for rdx, (m, w, n, b, c, a) in enumerate(params):
+        bias = True if b == "biased" else False
+        results = load_results(prob_type, m, w, n, bias, c, float(a))
+        stock_key = "m{}".format(m)
+        win_key = "w{}".format(w)
+        for col_key in columns:
+            if col_key in ('win_length', 'scenario_cnt'):
+                # additioanl columns
+                panels[c-1].loc[stock_key, win_key, a, 'win_length'] = w
+                panels[c-1].loc[stock_key, win_key, a, 'scenario_cnt'] = c
+            else:
+                panels[c-1].loc[stock_key, win_key, a, col_key] = results[
+                    col_key]
+
+        print ("[{}/{}] {} OK".format(rdx+1, n_param, results['func_name']))
+
+    for cnt in xrange(3):
+        file_name = "{}_exp_results_{}.pkl".format(prob_type, cnt+1)
+        file_path = os.path.join(TMP_DIR, file_name)
+        results = {}
+        results['labels'] = panels[cnt].labels
+        results['items'] = panels[cnt].items
+        results['major_axis'] = panels[cnt].major_axis
+        results['minor_axis'] = panels[cnt].minor_axis
+        results['data'] = panels[cnt].as_matrix()
+        pd.to_pickle(results, file_path)
+
+
 if __name__ == '__main__':
     # all_results_to_dataframe("n_stock")
     # all_results_to_dataframe("win_length")
     # all_results_to_dataframe("alpha")
-    reports = load_results("min_cvar_sip", 5, 100, alpha=0.5)
-    print reports['chosen_symbols_df'].sum(axis=1)
+    all_results_to_4dpanel(prob_type="min_cvar_sp")
+    # reports = load_results("min_cvar_sip", 5, 100, alpha=0.5)
+    # print reports['chosen_symbols_df'].sum(axis=1)
     # wdf = reports['wealth_df']
     # wfree = reports['risk_free_wealth']
     # warr = wdf.sum(axis=1) + wfree

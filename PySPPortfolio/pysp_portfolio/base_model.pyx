@@ -9,25 +9,27 @@ import platform
 import numpy as np
 import pandas as pd
 
-from arch.bootstrap.multiple_comparrison import (SPA,)
+from arch.bootstrap.multiple_comparrison import (SPA, )
 from utils import (sharpe, sortino_full, sortino_partial, maximum_drawdown)
 
 cimport numpy as cnp
+
 ctypedef cnp.float64_t FLOAT_t
 ctypedef cnp.intp_t INTP_t
 
-class PortfolioReportMixin(object):
 
+class PortfolioReportMixin(object):
     @staticmethod
     def get_performance_report(func_name, symbols, start_date, end_date,
-                           buy_trans_fee, sell_trans_fee,
-                           initial_wealth, final_wealth, n_exp_period,
-                           trans_fee_loss, risk_wealth_df,
+                               buy_trans_fee, sell_trans_fee,
+                               initial_wealth, final_wealth, n_exp_period,
+                               trans_fee_loss, risk_wealth_df,
                                risk_free_wealth_arr):
         """
         standard reports
 
         Parameters:
+
         ------------------
         func_name: str
         symbols: list of string
@@ -250,7 +252,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         # scenarios in some periods, we record these periods if fails.
         self.estimated_risk_roi_error = pd.Series(np.zeros(
             self.n_exp_period).astype(np.bool),
-          index=self.exp_risk_rois.index)
+                                                  index=self.exp_risk_rois.index)
 
         # cumulative loss in transaction fee in the simulation
         self.trans_fee_loss = 0
@@ -395,12 +397,12 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             sell_amounts_sum = sell_amounts.sum()
             self.trans_fee_loss += (
                 buy_amounts_sum * self.buy_trans_fee +
-               sell_amounts_sum * self.sell_trans_fee
+                sell_amounts_sum * self.sell_trans_fee
             )
 
             # buy and sell amounts consider the transaction cost
             total_buy = (buy_amounts_sum * (1 + self.buy_trans_fee))
-            total_sell = ( sell_amounts_sum * (1 - self.sell_trans_fee))
+            total_sell = (sell_amounts_sum * (1 - self.sell_trans_fee))
 
             # capital allocation
             self.risk_wealth_df.iloc[tdx] = (
@@ -419,14 +421,14 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             allocated_risk_free_wealth = self.risk_free_wealth.iloc[tdx]
 
             print ("[{}/{}] {} {} OK, scenario err cnt:{} "
-                  "cur_wealth:{:.2f}, {:.3f} secs".format(
-                    tdx + 1, self.n_exp_period,
-                    self.exp_risk_rois.index[tdx].strftime("%Y%m%d"),
-                    func_name,
-                    estimated_risk_roi_error_count,
-                    (self.risk_wealth_df.iloc[tdx].sum() +
-                     self.risk_free_wealth.iloc[tdx]),
-                    time() - t1))
+                   "cur_wealth:{:.2f}, {:.3f} secs".format(
+                tdx + 1, self.n_exp_period,
+                self.exp_risk_rois.index[tdx].strftime("%Y%m%d"),
+                func_name,
+                estimated_risk_roi_error_count,
+                (self.risk_wealth_df.iloc[tdx].sum() +
+                 self.risk_free_wealth.iloc[tdx]),
+                time() - t1))
 
         # end of iterations, computing statistics
         edx = self.n_exp_period - 1
@@ -447,7 +449,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             self.trans_fee_loss,
             self.risk_wealth_df,
             self.risk_free_wealth,
-            )
+        )
 
         # model additional elements to reports
         reports['window_length'] = self.window_length
@@ -471,6 +473,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             time() - t0))
 
         return reports
+
 
 class MS_SPTradingPortfolio(SPTradingPortfolio):
     """
@@ -538,7 +541,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
             estimated_risk_free_roi=estimated_risk_free_rois,
             allocated_risk_wealth=self.initial_risk_wealth,
             allocated_risk_free_wealth=self.initial_risk_free_wealth
-            *args, **kwargs
+                                       * args, **kwargs
         )
 
         self.risk_wealth_df = results['risk_wealth_df']
