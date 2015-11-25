@@ -23,7 +23,7 @@ def load_results(prob_type, n_stock, win_length, n_scenario=200,
     alpha: float
 
     """
-    if prob_type in ("min_cvar_sp", "ms_min_cvar_sp"):
+    if prob_type in ("min_cvar_sp", "ms_min_cvar_sp", "min_cvar_eev"):
         param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
         START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
         n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
@@ -246,9 +246,9 @@ if __name__ == '__main__':
     # all_results_to_dataframe("win_length")
     # all_results_to_dataframe("alpha")
     # all_results_to_4dpanel(prob_type="min_cvar_sp")
-    plot_results()
-    # reports = load_results("min_cvar_sip", 5, 100, alpha=0.5)
-    # print reports['chosen_symbols_df'].sum(axis=1)
+    # plot_results()
+    reports = load_results("min_cvar_eev", 5, 100, alpha=0.5)
+    print reports
     # wdf = reports['wealth_df']
     # wfree = reports['risk_free_wealth']
     # warr = wdf.sum(axis=1) + wfree

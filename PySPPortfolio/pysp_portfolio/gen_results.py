@@ -12,7 +12,8 @@ import time
 import glob
 import os
 from PySPPortfolio.pysp_portfolio import *
-from exp_cvar import (run_min_cvar_sip_simulation, run_min_cvar_sp_simulation)
+from exp_cvar import (run_min_cvar_sip_simulation,
+                      run_min_cvar_sp_simulation, run_min_cvar_eev_simulation)
 
 def get_results_dir(prob_type):
     """
@@ -20,14 +21,14 @@ def get_results_dir(prob_type):
     ----------------
     prob_type: str, {min_cvar_sp, min_cvar_sip}
     """
-    if prob_type in ("min_cvar_sp", "min_cvar_sip"):
+    if prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
 
 
 
-def all_experiment_parameters(prob_type='min_cvar_sp'):
+def all_experiment_parameters(prob_type):
     """
     file_name of all experiment parameters
     n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
@@ -43,11 +44,13 @@ def all_experiment_parameters(prob_type='min_cvar_sp'):
     all_params = []
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
-            if prob_type == "min_cvar_sp":
+            if prob_type in ( "min_cvar_sp", 'min_cvar_eev'):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
             elif prob_type == "min_cvar_sip":
+                # because the candidate set is 50, therefore all
+                # experiments of windows length = 50 is excluded.
                 if win_length == 50:
                     continue
 
@@ -81,7 +84,7 @@ def checking_finished_parameters(prob_type):
     # get all params
     all_params = all_experiment_parameters(prob_type)
 
-    if prob_type == "min_cvar_sp":
+    if prob_type in ("min_cvar_sp", "min_cvar_eev"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_*.pkl".format(prob_type)))
     elif prob_type == "min_cvar_sip":
@@ -91,7 +94,7 @@ def checking_finished_parameters(prob_type):
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep)+1: pkl.rfind('.')]
         exp_params = name.split('_')
-        if prob_type == "min_cvar_sp":
+        if prob_type in ("min_cvar_sp", "min_cvar_eev"):
             params = exp_params[5:]
         elif prob_type == "min_cvar_sip":
             params = exp_params[6:]
@@ -163,14 +166,13 @@ def checking_working_parameters(prob_type):
     return all_params
 
 
-def dispatch_experiment_parameters(prob_type, log_file=None):
+def dispatch_experiment_parameters(prob_type):
 
     dir_path = get_results_dir(prob_type)
     retry_cnt = 5
 
-    if log_file is None:
-        # storing a dict, {key: param, value: platform_name}
-        log_file = '{}_working.pkl'.format(prob_type)
+    # storing a dict, {key: param, value: platform_name}
+    log_file = '{}_working.pkl'.format(prob_type)
 
     # reading working pkl
     log_path = os.path.join(dir_path, log_file)
@@ -238,6 +240,9 @@ def dispatch_experiment_parameters(prob_type, log_file=None):
             elif prob_type == "min_cvar_sip":
                 run_min_cvar_sip_simulation(n_stock, win_length,
                                 n_scenario, bias, cnt, alpha)
+            elif prob_type == "min_cvar_eev":
+                run_min_cvar_eev_simulation(n_stock, win_length, n_scenario,
+                               bias, cnt, alpha)
         except Exception as e:
             print ("dispatch: run experiment:", param, e)
         finally:
