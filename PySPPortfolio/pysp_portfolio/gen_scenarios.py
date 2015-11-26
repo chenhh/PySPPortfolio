@@ -230,7 +230,11 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--bias", required=True, type=bool)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-b", "--bias", action='store_true')
+    group.add_argument("-u", "--unbias", action='store_true')
     args = parser.parse_args()
-    dispatch_scenario_parameters(bias_estimator=args.bias)
-    # read_working_parameters()
+    if args.bias:
+        dispatch_scenario_parameters(bias_estimator=True)
+    elif args.unbias:
+        dispatch_scenario_parameters(bias_estimator=False)
