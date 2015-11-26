@@ -13,7 +13,6 @@ from arch.bootstrap.multiple_comparrison import (SPA, )
 from utils import (sharpe, sortino_full, sortino_partial, maximum_drawdown)
 
 cimport numpy as cnp
-
 ctypedef cnp.float64_t FLOAT_t
 ctypedef cnp.intp_t INTP_t
 

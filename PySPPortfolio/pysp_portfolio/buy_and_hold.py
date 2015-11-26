@@ -10,7 +10,6 @@ from datetime import date
 import numpy as np
 import pandas as pd
 from base_model import (PortfolioReportMixin, ValidPortfolioParameterMixin)
-from PySPPortfolio.pysp_portfolio import *
 
 
 class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
@@ -21,7 +20,7 @@ class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
                  start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
                  verbose=False):
         """
-        buy and hold portfolio
+        uniform buy-and-hold portfolio
         that is, one invests wealth among a pool of assets with an initial
         portfolio b1 and holds the portfolio until the end.
 
@@ -128,20 +127,34 @@ class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
         for tdx in xrange(self.n_exp_period):
             t1 = time()
             if tdx == 0:
-                # uniformly allocation fund
+                # the first period, uniformly allocation fund
+                # the transaction fee  should be considered while buying
                  buy_amounts = pd.Series(
                     np.ones(self.n_stock) *
-                    self.initial_risk_free_wealth/self.n_stock,
-                    iindex=self.symbols)
+                    self.initial_risk_free_wealth/self.n_stock/
+                    (1+self.buy_trans_fee),
+                    index=self.symbols)
                  self.buy_amounts_df.iloc[tdx] = buy_amounts
+                 sell_amounts = 0
+
                  buy_amounts_sum = buy_amounts.sum()
                  sell_amounts_sum = 0
 
             elif tdx == self.n_exp_period - 1:
-                # sell all stocks at the last period
+                # the last period, sell all stocks at the last period
+                buy_amounts = 0
                 sell_amounts = self.risk_wealth_df.iloc[tdx-1]
-                sell_amounts_sum = sell_amounts.sum()
+
                 buy_amounts_sum = 0
+                sell_amounts_sum = sell_amounts.sum()
+
+            else:
+                buy_amounts, sell_amounts = 0, 0
+                buy_amounts_sum, sell_amounts_sum = 0, 0
+
+            # record buy and sell amounts
+            self.buy_amounts_df.iloc[tdx] = buy_amounts
+            self.sell_amounts_df.iloc[tdx] = sell_amounts
 
             self.trans_fee_loss += (
                 buy_amounts_sum * self.buy_trans_fee +
@@ -181,7 +194,7 @@ class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
                         self.risk_free_wealth[-1])
 
         # get reports
-        output, reports = self.get_performance_report(
+        reports = self.get_performance_report(
             func_name,
             self.symbols,
             self.exp_risk_rois.index[0],
@@ -193,16 +206,16 @@ class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
             self.n_exp_period,
             self.trans_fee_loss,
             self.risk_wealth_df,
-            None)
+            self.risk_free_wealth)
 
         # model additional elements to reports
-        reports['risk_free_wealth'] = self.risk_free_wealth
+        reports['buy_amounts_df'] = self.buy_amounts_df
+        reports['sell_amounts_df'] = self.sell_amounts_df
 
         # add simulation time
         reports['simulation_time'] = time() - t0
 
-        if self.verbose:
-            print (output)
+
         print ("{} OK n_stock:{}, [{}-{}], {:.4f}.secs".format(
             func_name, self.n_stock,
             self.exp_risk_rois.index[0],
@@ -210,47 +223,6 @@ class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
             time() - t0))
 
         return reports
-
-
-
-def buy_and_hold(n_stock, buy_trans_fee=BUY_TRANS_FEE,
-                 sell_trans_fee=SELL_TRANS_FEE):
-    """
-    The Buy-And-Hold (BAH) strategy,
-    """
-    # read rois panel
-    roi_path = os.path.join(SYMBOLS_PKL_DIR,
-                            'TAIEX_2005_largest50cap_panel.pkl')
-    if not os.path.exists(roi_path):
-        raise ValueError("{} roi panel does not exist.".format(roi_path))
-
-    symbols = EXP_SYMBOLS[:n_stock]
-
-    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
-    roi_panel = pd.read_pickle(roi_path)
-
-    # shape: (n_period, n_stock)
-    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols,
-                    'simple_roi'].T
-    n_exp_period = exp_risk_rois.shape[0]
-
-    initial_wealth = 1e6
-    # shape: (n_exp_period, n_stock)
-    risk_wealth_df = pd.DataFrame(np.zeros((n_exp_period, n_stock)),
-                                  index=exp_risk_rois.index,
-                                  columns=symbols)
-
-    # initial allocation
-    risk_wealth_df.iloc[0] = (initial_wealth/n_stock) * (1. - BUY_TRANS_FEE)
-
-    for tdx in xrange(1, n_exp_period):
-        trans_date = exp_risk_rois.index[tdx]
-        risk_wealth_df.iloc[tdx] = (risk_wealth_df.iloc[tdx-1] *
-                                    exp_risk_rois.iloc[tdx])
-        p_roi = (risk_wealth_df.iloc[tdx].sum()/
-                 risk_wealth_df.iloc[tdx-1].sum() - 1)
-        print ("[{}/{}] {}: portfolio roi: {:.2%}".format(
-            tdx+1, n_exp_period, trans_date.strftime("%Y%m%d"), p_roi))
 
 
 

@@ -9,7 +9,7 @@ import numpy as np
 from PySPPortfolio.pysp_portfolio import *
 from gen_results import (all_experiment_parameters,)
 
-def load_results(prob_type, n_stock, win_length, n_scenario=200,
+def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
                      bias=False, scenario_cnt=1, alpha=0.95):
     """
     Parameters:
@@ -25,14 +25,18 @@ def load_results(prob_type, n_stock, win_length, n_scenario=200,
     """
     if prob_type in ("min_cvar_sp", "ms_min_cvar_sp", "min_cvar_eev"):
         param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-        n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
-        scenario_cnt, alpha)
+            START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+            n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
+            scenario_cnt, alpha)
     elif prob_type == "min_cvar_sip":
         param = "{}_{}_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-        len(EXP_SYMBOLS), n_stock, win_length, n_scenario,
-        "biased" if bias else "unbiased", scenario_cnt, alpha)
+            START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+            len(EXP_SYMBOLS), n_stock, win_length, n_scenario,
+            "biased" if bias else "unbiased", scenario_cnt, alpha)
+    elif prob_type == "bah":
+        param = "{}_{}_m{}".format(
+            START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+            n_stock)
     else:
         raise ValueError('unknown prob_type: {}'.format(prob_type))
 
@@ -129,7 +133,6 @@ def all_results_to_dataframe(sheet="alpha"):
                     major = "w{}_s200_unbiased_{}_a{}".format(w, c, a)
                     item_key = m
 
-
                 elif sheet == "win_length":
                     major = "m{}_s200_unbiased_{}_a{}".format(m, c, a)
                     item_key = w
@@ -211,6 +214,27 @@ def all_results_to_4dpanel(prob_type="min_cvar_sp"):
         pd.to_pickle(results, file_path)
 
 
+def bah_results_to_xlsx():
+    n_stocks = range(5, 50+5, 5)
+    columns = ['n_stock', 'start_date', 'end_date', 'n_exp_period',
+               'trans_fee_loss', 'cum_roi', 'daily_roi', 'daily_mean_roi',
+               'daily_std_roi', 'daily_kurt_roi', 'sharpe', 'sortino_full',
+               'sortino_partial', 'max_abs_drawdown', 'SPA_l_pvalue',
+               'SPA_c_pvalue', 'SPA_u_pvalue', 'simulation_time']
+
+    df = pd.DataFrame(np.zeros((len(n_stocks), len(columns))),
+                      index=n_stocks, columns=columns)
+
+    for n_stock in n_stocks:
+        results = load_results("bah", n_stock)
+        print results['func_name']
+        for col in columns:
+            df.loc[n_stock, col] = results[col]
+
+    df.to_excel(os.path.join(TMP_DIR, 'BAH.xlsx'))
+
+
+
 def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     """
 
@@ -219,8 +243,6 @@ def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     """
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
-
-
 
     if not prob_type in ('min_cvar_sp', 'min_cvar_sip'):
         raise ValueError('unknown problem type:{}'.format(prob_type))
@@ -234,9 +256,17 @@ def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
                         major_axis=results['major_axis'],
                         minor_axis=results['minor_axis'])
     # n_stock, win_length, alpha, columns
-    roi_df = panel.loc[:, "w50", :, 'cum_roi']
-    print roi_df
-    roi_df.plot(kind='bar')
+    stock ="m45"
+    win = 'w230'
+    alpha="0.90"
+    roi_df = panel.loc[:, win , :, 'cum_roi']
+    print roi_df.columns, roi_df.index
+    ax = roi_df.plot( kind='bar', title="{}-s{}".format(win, scenario_cnt),
+                      legend=True,
+                      figsize=(48, 36), ylim=(0.8, 2.8))
+
+    ax.legend(loc=1, bbox_to_anchor=(1.05, 1.0))
+
     plt.show()
 
 
@@ -246,9 +276,10 @@ if __name__ == '__main__':
     # all_results_to_dataframe("win_length")
     # all_results_to_dataframe("alpha")
     # all_results_to_4dpanel(prob_type="min_cvar_sp")
-    # plot_results()
-    reports = load_results("min_cvar_eev", 5, 100, alpha=0.5)
-    print reports
+    plot_results()
+    # reports = load_results("bah", 5)
+    # print reports
+    # bah_results_to_xlsx()
     # wdf = reports['wealth_df']
     # wfree = reports['risk_free_wealth']
     # warr = wdf.sum(axis=1) + wfree

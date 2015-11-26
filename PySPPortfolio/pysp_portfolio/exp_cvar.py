@@ -12,6 +12,7 @@ from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio, MinCVaREEVPortfolio)
 from min_cvar_sip import (MinCVaRSIPPortfolio,)
 from ms_min_cvar_sp import (MS_MinCVaRSPPortfolio,)
+from buy_and_hold import (BAHPortfolio,)
 
 
 def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
@@ -296,25 +297,72 @@ def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
 
     return reports
 
+def run_bah_simulation(n_stock ,verbose=False):
+    """
+    The Buy-And-Hold (BAH) strategy,
+    """
+    t0 = time()
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+    param = "{}_{}_m{}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        n_stock)
+
+    symbols = EXP_SYMBOLS[:n_stock]
+    n_stock = len(symbols)
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # shape: (n_period, n_stock)
+    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols,
+                    'simple_roi'].T
+    n_exp_period = exp_risk_rois.shape[0]
+    exp_risk_free_rois = pd.Series(np.zeros(n_exp_period),
+                                   index=exp_risk_rois.index)
+
+    allocated_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
+    initial_wealth = 1e6
+
+
+    instance = BAHPortfolio(symbols, exp_risk_rois, exp_risk_free_rois,
+                            allocated_risk_wealth, initial_wealth,
+                            start_date=START_DATE, end_date=END_DATE)
+    reports = instance.run()
+
+    file_name = 'bah_{}.pkl'.format(param)
+
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'bah')
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+
+    pd.to_pickle(reports, os.path.join(file_dir, file_name))
+    print ("BAH {} OK, {:.3f} secs".format(param, time()-t0))
+
 if __name__ == '__main__':
     pass
-    params = [
-        (5, 100 ,0.5),
-        #         (10, 50, 0.7),
-              # (15, 80, 0.5), (20, 110, 0.5),
-              # (25, 100, 0.55), (30, 110, 0.6),
-              # (35, 110, 0.5), (40, 110, 0.5), (45, 120, 0.55),
-              # (50, 120, 0.5)
-              ]
-
-    for m, w, a in params:
-        for cnt in xrange(1, 3+1):
-            try:
-                run_min_cvar_eev_simulation(m, w, scenario_cnt=cnt, alpha=a,
-                               verbose=True)
-            except ValueError as e:
-                print e
-                continue
+    for n_stock in xrange(5, 50+5, 5):
+        run_bah_simulation(n_stock)
+    # params = [
+    #     (5, 100 ,0.5),
+    #     #         (10, 50, 0.7),
+    #           # (15, 80, 0.5), (20, 110, 0.5),
+    #           # (25, 100, 0.55), (30, 110, 0.6),
+    #           # (35, 110, 0.5), (40, 110, 0.5), (45, 120, 0.55),
+    #           # (50, 120, 0.5)
+    #           ]
+    #
+    # for m, w, a in params:
+    #     for cnt in xrange(1, 3+1):
+    #         try:
+    #             run_min_cvar_eev_simulation(m, w, scenario_cnt=cnt, alpha=a,
+    #                            verbose=True)
+    #         except ValueError as e:
+    #             print e
+    #             continue
     # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,

@@ -6,7 +6,6 @@ License: GPL v2
 
 import platform
 import pandas as pd
-from datetime import date
 import numpy as np
 import time
 import glob
