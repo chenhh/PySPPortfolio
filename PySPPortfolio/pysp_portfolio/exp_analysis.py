@@ -384,7 +384,7 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     from mpl_toolkits.mplot3d import axes3d
 
     # figsize in inches
-    fig = plt.figure(figsize=(64, 48))
+    fig = plt.figure(facecolor='white')
 
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
@@ -453,23 +453,32 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
         # position=fig.add_axes([0.93, 0.1, 0.02, 0.35])
         # cbar = plt.colorbar(cset, cax=position)
 
-        # color normalization
-        # gs = mpl.gridspec.GridSpec(3, 3)
-
-
-        cm_norm = mpl.colors.Normalize(vmin=-1, vmax=3, clip=False)
+        cm_norm = mpl.colors.Normalize(vmin=-100, vmax=280, clip=False)
 
         for adx, value in enumerate(alphas):
             alpha = float(value)
             ax = fig.add_subplot(2,5, adx+1, projection='3d',
-                                 xlim=(0, 50), ylim=(40, 240),
-                                 zlim=(-1, 2.8))
-            ax.set_title(r'$\alpha = {}\%$'.format(int(alpha*100)))
-            ax.set_xlabel(r'$M$', fontsize=18)
-            ax.set_ylabel(r'$h$', fontsize=18)
-            ax.set_zlabel(r'cumulative returns', fontsize=18,
-                          fontname="Times New Roman")
-            ax.tick_params(labelsize=10)
+                                 xlim=(50, 5), ylim=(40, 240),
+                                 zlim=(-100, 280))
+            ax.set_title(r'$\alpha = {}\%$'.format(int(alpha*100)),
+                         y=1.02, fontsize=30)
+            ax.set_xlabel(r'$M$', fontsize=24)
+            ax.set_ylabel(r'$h$', fontsize=24)
+            ax.set_zlabel(r'cumulative returns (%)', fontsize=22,
+                          fontname="Times New Roman", linespacing=4.5)
+            ax.tick_params(labelsize=10, pad=0, )
+            ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
+                               fontname="Times New Roman")
+            ax.set_yticklabels(np.arange(50, 240 + 10, 50), fontsize=12,
+                               # rotation=-30,
+                               fontname="Times New Roman")
+            ax.set_zticklabels(np.arange(-100, 280, 50),
+                               rotation=90,
+                               # va='center',
+                               # ha='left',
+                               fontsize=12,
+                               fontname="Times New Roman")
+            # ax.zaxis._axinfo['label']['space_factor'] = 255.0
 
             Xs, Ys = np.meshgrid(stocks, lengths)
             Zs = np.zeros_like(Xs, dtype=np.float)
@@ -485,15 +494,16 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                                   'cum_roi']
                     # annualized_rois = np.power(cum_rois+1, 1./10) -1
                     mean = cum_rois.mean()
-                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
 
             print adx, Zs
-            p = ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.6,
-                            cmap=plt.cm.coolwarm, norm=cm_norm
+            p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=0.6,
+                            cmap=plt.cm.coolwarm, norm=cm_norm,
+                            antialiased=True
                             )
 
             # contour, projected on z
-            cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-1, alpha=0.6,
+            cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-100, alpha=0.6,
                               cmap=plt.cm.coolwarm, norm=cm_norm)
             # color bar
             # cbaxes = ax.add_axes([0.8, 0.1, 0.03, 0.8])
@@ -501,11 +511,13 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
             # cbar.ax.set_ylabel('verbosity coefficient')
 
         cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
-        fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax)
-        fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,
+        fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax,
+                     ticks=np.arange(-100, 280+10, 20))
+        fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
                             wspace=0.01, hspace=0.01)
     # plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.eps'), format="eps")
+    # plt.show()
 
 
 
