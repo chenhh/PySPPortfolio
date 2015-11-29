@@ -519,6 +519,8 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     # plt.tight_layout()
     plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.eps'), format="eps",
                 dpi=600)
+    plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'), format="pdf",
+                dpi=600)
     plt.show()
 
 
