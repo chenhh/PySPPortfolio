@@ -385,7 +385,7 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     from mpl_toolkits.mplot3d import axes3d
 
     # figsize in inches
-    fig = plt.figure(facecolor='white')
+    fig = plt.figure(figsize=(64, 48), facecolor='white')
 
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
