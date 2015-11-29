@@ -380,13 +380,16 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                    '0.85', '0.90', '0.95')
 
     import matplotlib.pyplot as plt
+    import matplotlib as mpl
     from mpl_toolkits.mplot3d import axes3d
 
-    fig = plt.figure()
+    # figsize in inches
+    fig = plt.figure(figsize=(64, 48))
 
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
             ax = fig.add_subplot(2, 5, mdx+1, projection='3d')
+            ax.set_title('n_stock: {}'.format(n_stock))
             v_alphas = [float(v) for v in alphas]
             Xs, Ys = np.meshgrid(lengths, v_alphas)
             Zs = np.zeros_like(Xs, dtype=np.float)
@@ -447,9 +450,27 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
             ax.set_zlim(-1, 3)
 
     if dim_z == "alpha":
+        # position=fig.add_axes([0.93, 0.1, 0.02, 0.35])
+        # cbar = plt.colorbar(cset, cax=position)
+
+        # color normalization
+        # gs = mpl.gridspec.GridSpec(3, 3)
+
+
+        cm_norm = mpl.colors.Normalize(vmin=-1, vmax=3, clip=False)
+
         for adx, value in enumerate(alphas):
             alpha = float(value)
-            ax = fig.add_subplot(2, 5, adx+1, projection='3d')
+            ax = fig.add_subplot(2,5, adx+1, projection='3d',
+                                 xlim=(0, 50), ylim=(40, 240),
+                                 zlim=(-1, 2.8))
+            ax.set_title(r'$\alpha = {}\%$'.format(int(alpha*100)))
+            ax.set_xlabel(r'$M$', fontsize=18)
+            ax.set_ylabel(r'$h$', fontsize=18)
+            ax.set_zlabel(r'cumulative returns', fontsize=18,
+                          fontname="Times New Roman")
+            ax.tick_params(labelsize=10)
+
             Xs, Ys = np.meshgrid(stocks, lengths)
             Zs = np.zeros_like(Xs, dtype=np.float)
             # stds = np.zeros_like(Xs, dtype=np.float)
@@ -467,20 +488,23 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                     Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
 
             print adx, Zs
+            p = ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.6,
+                            cmap=plt.cm.coolwarm, norm=cm_norm
+                            )
 
-            # projected on z
-            cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=-1,
-                              cmap=plt.cm.coolwarm)
+            # contour, projected on z
+            cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-1, alpha=0.6,
+                              cmap=plt.cm.coolwarm, norm=cm_norm)
+            # color bar
+            # cbaxes = ax.add_axes([0.8, 0.1, 0.03, 0.8])
+            # cbar = fig.colorbar(cset)
+            # cbar.ax.set_ylabel('verbosity coefficient')
 
-            ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.4,
-                            cmap=plt.cm.coolwarm)
-            ax.set_xlabel('portfolio size')
-            ax.set_xlim(0, 50)
-            ax.set_ylabel('window length')
-            ax.set_ylim(40, 240)
-            ax.set_zlabel('cumulative ROI')
-            ax.set_zlim(-1, 3)
-
+        cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
+        fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax)
+        fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,
+                            wspace=0.01, hspace=0.01)
+    # plt.tight_layout()
     plt.show()
 
 
