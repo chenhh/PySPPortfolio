@@ -379,8 +379,9 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
                    '0.85', '0.90', '0.95')
 
-    import matplotlib.pyplot as plt
     import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import axes3d
 
     # figsize in inches
