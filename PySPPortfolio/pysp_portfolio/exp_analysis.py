@@ -51,7 +51,7 @@ def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
     results = pd.read_pickle(file_path)
     return results
 
-def all_results_to_dataframe(sheet="alpha"):
+def all_results_to_sheet_xlsx(prob_type="min_cvar_sip", sheet="alpha"):
     """
     n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}: length 10
     win_length: {50, 60, ..., 240}, length: 20
@@ -117,44 +117,88 @@ def all_results_to_dataframe(sheet="alpha"):
                             np.zeros((len(alphas), len(name), len(columns))),
                             items=alphas, major_axis=name, minor_axis=columns)
 
-    params = all_experiment_parameters()
+    params = all_experiment_parameters(prob_type)
+    n_param = len(params)
+    for rdx, (m, w, n, b, c, a) in enumerate(params):
+        bias = True if b == "biased" else False
+        results = load_results(prob_type, m, w, n, bias, c, float(a))
+        if results:
+            if sheet == "n_stock":
+                major = "w{}_s200_unbiased_{}_a{}".format(w, c, a)
+                item_key = m
+
+            elif sheet == "win_length":
+                major = "m{}_s200_unbiased_{}_a{}".format(m, c, a)
+                item_key = w
+
+            elif sheet == "alpha":
+                major = "m{}_w{}_s200_unbiased_{}".format(m,w,c)
+                item_key = a
+
+            for col_key in columns:
+                if col_key not in ('win_length', 'scenario_cnt'):
+                    results_panel.loc[item_key, major, col_key] = results[
+                        col_key]
+                else:
+                    results_panel.loc[item_key, major, 'win_length'] = w
+                    results_panel.loc[item_key, major, 'scenario_cnt'] = c
+
+            print ("[{}/{}] {} {}: {}_{} OK".format(
+                rdx +1, n_param, prob_type, sheet , major, a))
+
+    results_panel.to_excel(os.path.join(TMP_DIR,
+                                '{}_{}.xlsx'.format(prob_type, sheet)))
+
+
+def all_results_to_xlsx(prob_type="min_cvar_sp"):
+    """ output results to a single sheet """
+    n_stocks = range(5, 50 + 5, 5)
+    win_lengths = range(50, 240 + 10, 10)
+    cnts = range(1, 3+1)
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
+    columns = ['n_stock', 'win_length', 'alpha', "scenario_cnt",
+              'start_date', 'end_date', 'n_exp_period',
+              'trans_fee_loss',
+              'cum_roi', 'daily_roi', 'daily_mean_roi', 'daily_std_roi',
+              'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
+              'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
+              'SPA_u_pvalue', 'simulation_time']
+
+    # output all combination to a sheet
+    names = ["m{}_w{}_s200_unbiased_{}_a{}".format(
+                n_stock, win_length, cnt, alpha)
+                for n_stock in n_stocks
+                for win_length in win_lengths
+                for cnt in cnts
+                for alpha in alphas]
+
+    result_df = pd.DataFrame(
+                np.zeros((len(names), len(columns))),
+                index=names, columns=columns)
+
+    params = all_experiment_parameters(prob_type)
     n_param = len(params)
 
-    # min_cvar_sp results
-    # prob_types = ('min_cvar_sp', 'min_cvar_sip')
-    prob_types = ('min_cvar_sp',)
+    for rdx, (m, w, n, b, c, a) in enumerate(params):
+        bias = True if b == "biased" else False
+        results = load_results(prob_type, m, w, n, bias, c, float(a))
+        if results:
+            key = "m{}_w{}_s200_unbiased_{}_a{}".format(m,w,c,a)
 
-    for prob_type in prob_types:
-        for rdx, (m, w, n, b, c, a) in enumerate(params):
-            bias = True if b == "biased" else False
-            results = load_results(prob_type, m, w, n, bias, c, float(a))
-            if results:
-                if sheet == "n_stock":
-                    major = "w{}_s200_unbiased_{}_a{}".format(w, c, a)
-                    item_key = m
+            for col_key in columns:
+                if col_key not in ('win_length', 'scenario_cnt'):
+                    result_df.loc[key, col_key] = results[col_key]
+                else:
+                    result_df.loc[key, 'win_length'] = w
+                    result_df.loc[key, 'scenario_cnt'] = c
 
-                elif sheet == "win_length":
-                    major = "m{}_s200_unbiased_{}_a{}".format(m, c, a)
-                    item_key = w
-
-                elif sheet == "alpha":
-                    major = "m{}_w{}_s200_unbiased_{}".format(m,w,c)
-                    item_key = a
-
-                for col_key in columns:
-                    if col_key not in ('win_length', 'scenario_cnt'):
-                        results_panel.loc[item_key, major, col_key] = results[
-                            col_key]
-                    else:
-                        results_panel.loc[item_key, major, 'win_length'] = w
-                        results_panel.loc[item_key, major, 'scenario_cnt'] = c
-
-                print ("[{}/{}] {}: {}_{} OK".format(
-                    rdx +1, n_param, sheet , major, a))
-
-        results_panel.to_excel(os.path.join(TMP_DIR,
-                                    '{}_{}.xlsx'.format(prob_type, sheet)))
-
+            print ("[{}/{}] {} {} OK".format(rdx +1, n_param, key))
+    print ("{} OK".format(prob_type))
+    result_df.to_excel(os.path.join(TMP_DIR,
+                                '{}_results_all.xlsx'.format(prob_type)))
+    pd.to_pickle(result_df, os.path.join(TMP_DIR,
+                                '{}_results_all.pkl'.format(prob_type)))
 
 def all_results_to_4dpanel(prob_type="min_cvar_sp"):
     """
@@ -259,24 +303,121 @@ def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     stock ="m45"
     win = 'w230'
     alpha="0.90"
-    roi_df = panel.loc[:, win , :, 'cum_roi']
+    roi_df = panel.loc["m5", : , :, 'cum_roi']
     print roi_df.columns, roi_df.index
-    ax = roi_df.plot( kind='bar', title="{}-s{}".format(win, scenario_cnt),
-                      legend=True,
-                      figsize=(48, 36), ylim=(0.8, 2.8))
+    ax = roi_df.plot( kind='bar', title="{}-s{}".format(stock, scenario_cnt),
+                      legend=True, ylim=(0.8, 2.8), yerr=np.random.randn(10))
 
     ax.legend(loc=1, bbox_to_anchor=(1.05, 1.0))
 
     plt.show()
 
 
+def all_results_roi_stats():
+    """
+    cnts = range(1, 3+1)
+    n_stocks = ["m{}".format(str(v)) for v in range(5, 50 + 5, 5)]
+    win_lengths = ["w{}".format(str(v)) for v in range(50, 240 + 10, 10)]
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
+    columns = ['n_stock', 'win_length', 'alpha', 'scenario_cnt',
+              'start_date', 'end_date', 'n_exp_period',
+              'trans_fee_loss',
+              'cum_roi', 'daily_roi', 'daily_mean_roi', 'daily_std_roi',
+              'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
+              'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
+              'SPA_u_pvalue', 'simulation_time']
+    """
+    fin = os.path.join(EXP_SP_PORTFOLIO_DIR, 'reports',
+                       'min_cvar_sp_results_all.pkl')
+    df = pd.read_pickle(fin)
+    grouped = df.groupby(['n_stock', 'win_length', 'alpha'])
+    stats_df = pd.DataFrame([grouped.mean()['cum_roi'],
+                             grouped.std()['cum_roi']],
+                            index=("cum_roi_mean", "cum_roi_std"))
+    stats_df = stats_df.T
+    stats_df.reset_index(inplace=True)
+    print stats_df
+    stats_df.to_excel(os.path.join(TMP_DIR,
+                                       'min_cvar_sp_results_roi_stats.xlsx'))
+
+
+def plot_4d_results(prob_type="min_cvar_sp"):
+    """
+    axis-0: n_stock
+    axis-1: win_length
+    axis-2: alpha
+    axis-3: cum_roi (annualized roi)
+
+    bar chart:
+    -------------------------------------
+    - http://i.stack.imgur.com/jLgBI.png
+    - http://www.dplot.com/help/3dbars.png
+    - http://www.mathworks.com/matlabcentral/mlc-downloads/downloads
+    /submissions/11233/versions/1/screenshot.png
+
+    scatter chart:
+    ----------------------
+    - http://www.doka.ch/3Dscatterplot.jpg
+    - https://www.onosokki.co.jp/English/hp_e/products/keisoku/data/oc1300/images/graphs/13.gif
+    - http://cloud.originlab.com/www/resources/graph_gallery/images_galleries_new/3D_Scatter_with_Colormap.png
+
+    5d plot
+    http://www.mathworks.com/matlabcentral/mlc-downloads/downloads/submissions/41086/versions/1/screenshot.png
+
+
+    """
+    if not prob_type in ("min_cvar_sp",):
+        raise ValueError("unknown problem type: {}".format(prob_type))
+
+    data_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'reports',
+                       '{}_results_all.pkl'.format(prob_type))
+    df = pd.read_pickle(data_path)
+    print df
+
+    # axes
+    stocks = np.arange(5, 50+5, 5)  # 10
+    lengths = np.arange(50, 240 + 10, 10)   #20
+    # alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+    #                '0.85', '0.90', '0.95')
+    alphas = np.arange(0.5, 1, 0.05)
+    columns = ['cum_roi',]
+
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import axes3d
+    from matplotlib import cm
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    X, Y, Z = axes3d.get_test_data(0.05)
+    ax.plot_surface(X, Y, Z, rstride=8, cstride=8, alpha=0.3)
+    cset = ax.contour(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
+    cset = ax.contour(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
+    cset = ax.contour(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
+    # cset = ax.contourf(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
+    # cset = ax.contourf(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
+    # cset = ax.contourf(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
+
+    ax.set_xlabel('X')
+    ax.set_xlim(-40, 40)
+    ax.set_ylabel('Y')
+    ax.set_ylim(-40, 40)
+    ax.set_zlabel('Z')
+    ax.set_zlim(-100, 100)
+
+    plt.show()
+
+
 
 if __name__ == '__main__':
-    # all_results_to_dataframe("n_stock")
-    # all_results_to_dataframe("win_length")
-    # all_results_to_dataframe("alpha")
+    all_results_to_sheet_xlsx("min_cvar_sip", "n_stock")
+    all_results_to_sheet_xlsx("min_cvar_sip", "win_length")
+    all_results_to_sheet_xlsx("min_cvar_sip", "alpha")
     # all_results_to_4dpanel(prob_type="min_cvar_sp")
-    plot_results()
+    # all_results_to_xlsx()
+    # all_results_roi_stats()
+    # plot_4d_results()
+    # plot_results()
     # reports = load_results("bah", 5)
     # print reports
     # bah_results_to_xlsx()
