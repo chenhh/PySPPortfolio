@@ -342,29 +342,24 @@ def all_results_roi_stats():
                                        'min_cvar_sp_results_roi_stats.xlsx'))
 
 
-def plot_4d_results(prob_type="min_cvar_sp"):
+def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     """
     axis-0: n_stock
     axis-1: win_length
     axis-2: alpha
     axis-3: cum_roi (annualized roi)
 
-    bar chart:
-    -------------------------------------
-    - http://i.stack.imgur.com/jLgBI.png
-    - http://www.dplot.com/help/3dbars.png
-    - http://www.mathworks.com/matlabcentral/mlc-downloads/downloads
-    /submissions/11233/versions/1/screenshot.png
+    df columns:
+    Index([u'n_stock', u'win_length', u'alpha', u'scenario_cnt', u'start_date',
+       u'end_date', u'n_exp_period', u'trans_fee_loss', u'cum_roi',
+       u'daily_roi', u'daily_mean_roi', u'daily_std_roi', u'daily_kurt_roi',
+       u'sharpe', u'sortino_full', u'sortino_partial', u'max_abs_drawdown',
+       u'SPA_l_pvalue', u'SPA_c_pvalue', u'SPA_u_pvalue', u'simulation_time'],
+      dtype='object')
 
-    scatter chart:
-    ----------------------
-    - http://www.doka.ch/3Dscatterplot.jpg
-    - https://www.onosokki.co.jp/English/hp_e/products/keisoku/data/oc1300/images/graphs/13.gif
-    - http://cloud.originlab.com/www/resources/graph_gallery/images_galleries_new/3D_Scatter_with_Colormap.png
 
-    5d plot
-    http://www.mathworks.com/matlabcentral/mlc-downloads/downloads/submissions/41086/versions/1/screenshot.png
-
+    colormap:
+    http://matplotlib.org/examples/color/colormaps_reference.html
 
     """
     if not prob_type in ("min_cvar_sp",):
@@ -373,50 +368,131 @@ def plot_4d_results(prob_type="min_cvar_sp"):
     data_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'reports',
                        '{}_results_all.pkl'.format(prob_type))
     df = pd.read_pickle(data_path)
-    print df
+    # print df.loc[(df.loc[:, 'win_length']==100),
+    #              'cum_roi']
+    # print df.loc[(df.loc[:,'n_stock']==5) & (df.loc[:,'win_length']==100),
+    #              'cum_roi']
 
     # axes
     stocks = np.arange(5, 50+5, 5)  # 10
     lengths = np.arange(50, 240 + 10, 10)   #20
-    # alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
-    #                '0.85', '0.90', '0.95')
-    alphas = np.arange(0.5, 1, 0.05)
-    columns = ['cum_roi',]
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
 
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import axes3d
-    from matplotlib import cm
 
     fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    X, Y, Z = axes3d.get_test_data(0.05)
-    ax.plot_surface(X, Y, Z, rstride=8, cstride=8, alpha=0.3)
-    cset = ax.contour(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
-    cset = ax.contour(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
-    cset = ax.contour(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
-    # cset = ax.contourf(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
-    # cset = ax.contourf(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
-    # cset = ax.contourf(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
 
-    ax.set_xlabel('X')
-    ax.set_xlim(-40, 40)
-    ax.set_ylabel('Y')
-    ax.set_ylim(-40, 40)
-    ax.set_zlabel('Z')
-    ax.set_zlim(-100, 100)
+    if dim_z == "n_stock":
+        for mdx, n_stock in enumerate(stocks):
+            ax = fig.add_subplot(2, 5, mdx+1, projection='3d')
+            v_alphas = [float(v) for v in alphas]
+            Xs, Ys = np.meshgrid(lengths, v_alphas)
+            Zs = np.zeros_like(Xs, dtype=np.float)
+
+            n_row, n_col = Xs.shape
+            for rdx in xrange(n_row):
+                for cdx in xrange(n_col):
+                    win_length, alpha = Xs[rdx, cdx], Ys[rdx, cdx]
+                    cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                  (df.loc[:, 'win_length'] == win_length) &
+                                  (df.loc[:, 'alpha'] == alpha),
+                                  'cum_roi']
+                    mean = cum_rois.mean()
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
+
+            print Zs
+             # projected on z
+            cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=-1,
+                              cmap=plt.cm.coolwarm)
+            ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.4,
+                            cmap=plt.cm.coolwarm)
+            ax.set_xlabel('window length')
+            ax.set_xlim(40, 240)
+            ax.set_ylabel('alpha')
+            ax.set_ylim(0.5, 1)
+            ax.set_zlabel('cumulative ROI')
+            ax.set_zlim(-1, 3)
+
+    if dim_z == "win_length":
+        for wdx, win_length in enumerate(lengths):
+            ax = fig.add_subplot(4, 5, wdx+1, projection='3d')
+            v_alphas = [float(v) for v in alphas]
+            Xs, Ys = np.meshgrid(stocks, v_alphas)
+            Zs = np.zeros_like(Xs, dtype=np.float)
+
+            n_row, n_col = Xs.shape
+            for rdx in xrange(n_row):
+                for cdx in xrange(n_col):
+                    n_stock, alpha = Xs[rdx, cdx], Ys[rdx, cdx]
+                    cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                  (df.loc[:, 'win_length'] == win_length) &
+                                  (df.loc[:, 'alpha'] == alpha),
+                                  'cum_roi']
+                    mean = cum_rois.mean()
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
+
+            print Zs
+             # projected on z
+            cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=-1,
+                              cmap=plt.cm.coolwarm)
+            ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.4,
+                            cmap=plt.cm.coolwarm)
+            ax.set_xlabel('n_stock')
+            ax.set_xlim(0, 50)
+            ax.set_ylabel('alpha')
+            ax.set_ylim(0.5, 1)
+            ax.set_zlabel('cumulative ROI')
+            ax.set_zlim(-1, 3)
+
+    if dim_z == "alpha":
+        for adx, value in enumerate(alphas):
+            alpha = float(value)
+            ax = fig.add_subplot(2, 5, adx+1, projection='3d')
+            Xs, Ys = np.meshgrid(stocks, lengths)
+            Zs = np.zeros_like(Xs, dtype=np.float)
+            # stds = np.zeros_like(Xs, dtype=np.float)
+
+            n_row, n_col = Xs.shape
+            for rdx in xrange(n_row):
+                for cdx in xrange(n_col):
+                    n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
+                    cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                  (df.loc[:, 'win_length'] == win_length) &
+                                  (df.loc[:, 'alpha'] == alpha),
+                                  'cum_roi']
+                    # annualized_rois = np.power(cum_rois+1, 1./10) -1
+                    mean = cum_rois.mean()
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
+
+            print adx, Zs
+
+            # projected on z
+            cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=-1,
+                              cmap=plt.cm.coolwarm)
+
+            ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.4,
+                            cmap=plt.cm.coolwarm)
+            ax.set_xlabel('portfolio size')
+            ax.set_xlim(0, 50)
+            ax.set_ylabel('window length')
+            ax.set_ylim(40, 240)
+            ax.set_zlabel('cumulative ROI')
+            ax.set_zlim(-1, 3)
 
     plt.show()
 
 
 
 if __name__ == '__main__':
-    all_results_to_sheet_xlsx("min_cvar_sip", "n_stock")
-    all_results_to_sheet_xlsx("min_cvar_sip", "win_length")
-    all_results_to_sheet_xlsx("min_cvar_sip", "alpha")
+    # all_results_to_sheet_xlsx("min_cvar_sip", "n_stock")
+    # all_results_to_sheet_xlsx("min_cvar_sip", "win_length")
+    # all_results_to_sheet_xlsx("min_cvar_sip", "alpha")
     # all_results_to_4dpanel(prob_type="min_cvar_sp")
     # all_results_to_xlsx()
     # all_results_roi_stats()
-    # plot_4d_results()
+    plot_4d_results(dim_z="alpha")
     # plot_results()
     # reports = load_results("bah", 5)
     # print reports
