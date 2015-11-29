@@ -385,7 +385,7 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     from mpl_toolkits.mplot3d import axes3d
 
     # figsize in inches
-    fig = plt.figure( facecolor='white')
+    fig = plt.figure( figsize=(12,8),facecolor='white')
 
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
@@ -518,7 +518,7 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                             wspace=0.01, hspace=0.01)
     # plt.tight_layout()
     plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.eps'), format="eps",
-                                                            dpi=600)
+                dpi=600)
     # plt.show()
 
 
