@@ -80,6 +80,9 @@ def all_results_to_sheet_xlsx(prob_type="min_cvar_sip", sheet="alpha"):
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
 
+    if prob_type == "min_cvar_sip":
+        columns.insert(1, "max_portfolio_size")
+
 
     if sheet == "n_stock":
         name = ["w{}_s200_unbiased_{}_a{}".format(win_length, cnt, alpha)
@@ -165,6 +168,9 @@ def all_results_to_xlsx(prob_type="min_cvar_sp"):
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
 
+    if prob_type == "min_cvar_sip":
+        columns.append("max_portfolio_size")
+
     # output all combination to a sheet
     names = ["m{}_w{}_s200_unbiased_{}_a{}".format(
                 n_stock, win_length, cnt, alpha)
@@ -193,7 +199,7 @@ def all_results_to_xlsx(prob_type="min_cvar_sp"):
                     result_df.loc[key, 'win_length'] = w
                     result_df.loc[key, 'scenario_cnt'] = c
 
-            print ("[{}/{}] {} {} OK".format(rdx +1, n_param, key))
+            print ("[{}/{}] {} {} OK".format(rdx +1, n_param, prob_type, key))
     print ("{} OK".format(prob_type))
     result_df.to_excel(os.path.join(TMP_DIR,
                                 '{}_results_all.xlsx'.format(prob_type)))
@@ -362,16 +368,16 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     http://matplotlib.org/examples/color/colormaps_reference.html
 
     """
-    if not prob_type in ("min_cvar_sp",):
+    if not prob_type in ("min_cvar_sp", "min_cvar_sip"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
-    data_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'reports',
+    data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
                        '{}_results_all.pkl'.format(prob_type))
     df = pd.read_pickle(data_path)
-    # print df.loc[(df.loc[:, 'win_length']==100),
-    #              'cum_roi']
-    # print df.loc[(df.loc[:,'n_stock']==5) & (df.loc[:,'win_length']==100),
-    #              'cum_roi']
+
+    # set alpha column to str
+    for rdx in xrange(df.index.size):
+        df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
 
     # axes
     stocks = np.arange(5, 50+5, 5)  # 10
@@ -456,12 +462,11 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
 
         cm_norm = mpl.colors.Normalize(vmin=-100, vmax=280, clip=False)
 
-        for adx, value in enumerate(alphas):
-            alpha = float(value)
+        for adx, alpha in enumerate(alphas):
             ax = fig.add_subplot(2,5, adx+1, projection='3d',
                                  xlim=(50, 5), ylim=(40, 240),
                                  zlim=(-100, 280))
-            ax.set_title(r'$\alpha = {}\%$'.format(int(alpha*100)),
+            ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
                          y=1.02, fontsize=30)
             ax.set_xlabel(r'$M$', fontsize=24)
             ax.set_ylabel(r'$h$', fontsize=24)
@@ -483,24 +488,28 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
 
             Xs, Ys = np.meshgrid(stocks, lengths)
             Zs = np.zeros_like(Xs, dtype=np.float)
-            # stds = np.zeros_like(Xs, dtype=np.float)
 
             n_row, n_col = Xs.shape
             for rdx in xrange(n_row):
                 for cdx in xrange(n_col):
                     n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
-                    cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
-                                  (df.loc[:, 'win_length'] == win_length) &
-                                  (df.loc[:, 'alpha'] == alpha),
-                                  'cum_roi']
+                    if prob_type=="min_cvar_sp":
+                        cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                      (df.loc[:, 'win_length'] == win_length) &
+                                      (df.loc[:, 'alpha'] == alpha),
+                                      'cum_roi']
+                    elif prob_type == "min_cvar_sip":
+                        cum_rois =  df.loc[
+                                (df.loc[:, 'max_portfolio_size'] == n_stock) &
+                                (df.loc[:, 'win_length'] == win_length) &
+                                (df.loc[:, 'alpha'] == alpha),
+                                'cum_roi']
 
                     mean = cum_rois.mean()
-                    # std = cum_rois.std(ddof=1)
                     Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
-                    # stds[rdx, cdx] = 0 if np.isnan(std) else std * 100
 
             # print adx, Zs
-            print alpha
+            print alpha, Zs
             # surface
             p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=0.6,
                             cmap=plt.cm.coolwarm, norm=cm_norm,
@@ -528,10 +537,10 @@ if __name__ == '__main__':
     # all_results_to_sheet_xlsx("min_cvar_sip", "n_stock")
     # all_results_to_sheet_xlsx("min_cvar_sip", "win_length")
     # all_results_to_sheet_xlsx("min_cvar_sip", "alpha")
-    # all_results_to_4dpanel(prob_type="min_cvar_sp")
-    # all_results_to_xlsx()
+    # all_results_to_4dpanel(prob_type="min_cvar_sip")
+    # all_results_to_xlsx("min_cvar_sip")
     # all_results_roi_stats()
-    plot_4d_results(dim_z="alpha")
+    plot_4d_results("min_cvar_sip", dim_z="alpha")
     # plot_results()
     # reports = load_results("bah", 5)
     # print reports

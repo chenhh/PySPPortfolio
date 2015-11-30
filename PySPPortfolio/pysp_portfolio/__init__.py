@@ -21,22 +21,23 @@ if os_type == 'Linux':
     DROPBOX_DIR = r'/home/chenhh/Dropbox'
     SEAFILE_DIR = r'/home/chenhh/Seafile'
     EXP_DATA_DIR = r'/home/chenhh/workspace_pycharm/experiment_data'
-    EXP_SP_PORTFOLIO_DIR = os.path.join(EXP_DATA_DIR, 'pysp_portfolio')
     TMP_DIR = r'/tmp'
 
 elif os_type == 'Windows':
     DROPBOX_DIR = r'C:\Users\chen1\Dropbox'
     SEAFILE_DIR = r'C:\Users\chen1\Seafile'
     EXP_DATA_DIR = r'C:\Users\chen1\Documents\experiment_data'
-    EXP_SP_PORTFOLIO_DIR = os.path.join(EXP_DATA_DIR, 'pysp_portfolio')
     TMP_DIR = 'E:\\'
 else:
     raise ValueError('unknown os platform:{}'.format(os_type))
 
+EXP_SP_PORTFOLIO_DIR = os.path.join(EXP_DATA_DIR, 'pysp_portfolio')
+EXP_SCENARIO_DIR = os.path.join(EXP_SP_PORTFOLIO_DIR,  'scenarios')
+EXP_SP_PORTFOLIO_REPORT_DIR = os.path.join(DROPBOX_DIR, 'financial_experiment',
+                                           'pysp_portfolio', 'reports')
+
 if not os.path.exists(EXP_SP_PORTFOLIO_DIR):
     os.makedirs(EXP_SP_PORTFOLIO_DIR)
-
-EXP_SCENARIO_DIR = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios')
 
 # experiment global setting
 DEFAULT_SOLVER = 'cplex'
@@ -47,7 +48,7 @@ END_DATE = date(2014, 12, 31)
 WINDOW_LENGTH = 200
 N_SCENARIO = 200
 BIAS_ESTIMATOR = False # using unbiased estimator
-
+MAX_SCENARIO_FILE_CNT = 5
 
 EXP_SYMBOLS = [
     "2330", "2412", "2882", "6505", "2317",
@@ -63,7 +64,8 @@ EXP_SYMBOLS = [
 ]
 
 __all__ = ['PROJECT_DIR','DATA_DIR', 'SYMBOLS_CSV_DIR', 'SYMBOLS_PKL_DIR',
-           'EXP_SP_PORTFOLIO_DIR', 'TMP_DIR', 'EXP_SCENARIO_DIR',
-           'DEFAULT_SOLVER', 'BUY_TRANS_FEE', 'SELL_TRANS_FEE',
-           'START_DATE', 'END_DATE', "N_SCENARIO", 'WINDOW_LENGTH',
-           'BIAS_ESTIMATOR', 'EXP_SYMBOLS']
+           'EXP_SP_PORTFOLIO_DIR', 'EXP_SP_PORTFOLIO_REPORT_DIR',
+           'TMP_DIR', 'EXP_SCENARIO_DIR', 'DEFAULT_SOLVER', 'BUY_TRANS_FEE',
+           'SELL_TRANS_FEE', 'START_DATE', 'END_DATE', "N_SCENARIO",
+           'WINDOW_LENGTH', 'BIAS_ESTIMATOR', 'EXP_SYMBOLS',
+           'MAX_SCENARIO_FILE_CNT']

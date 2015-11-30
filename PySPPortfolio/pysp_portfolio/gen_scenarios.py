@@ -34,15 +34,15 @@ def all_parameters_combination_name(bias_estimator=False):
                 exp_start_date.strftime("%Y%m%d"),
                 exp_end_date.strftime("%Y%m%d"),
                 n_stock, win_length, n_scenario,bias, cnt)
-                  for cnt in xrange(1, 5+1)
+                  for cnt in xrange(1, MAX_SCENARIO_FILE_CNT+1)
                   for n_scenario in (200,)
                   for win_length in xrange(50, 240 + 10, 10)
                   for n_stock in xrange(5, 50 + 5, 5)
                   ]
     # preclude m50_w50
-    all_params.remove('20050103_20141231_m50_w50_s200_{}_1'.format(bias))
-    all_params.remove('20050103_20141231_m50_w50_s200_{}_2'.format(bias))
-    all_params.remove('20050103_20141231_m50_w50_s200_{}_3'.format(bias))
+    for cnt in xrange(1, MAX_SCENARIO_FILE_CNT+1):
+        all_params.remove('20050103_20141231_m50_w50_s200_{}_{}'.format(
+            bias, cnt))
     return set(all_params)
 
 def checking_generated_scenarios(scenario_path=None, bias_estimator=False):
@@ -62,8 +62,6 @@ def checking_generated_scenarios(scenario_path=None, bias_estimator=False):
         if param in all_params:
             all_params.remove(param)
             # print ("{} has finished.".format(param))
-        else:
-            print ("{} not in exp parameters.".format(param))
 
     # unfinished params
     return all_params
@@ -150,7 +148,6 @@ def dispatch_scenario_parameters(scenario_path=None, log_file=None,
         win_length = int(win[win.rfind('w')+1:])
         n_scenario = int(scenario[scenario.rfind('s')+1:])
         bias = True if biased == "biased" else False
-
 
         # log  parameter to file
         if not os.path.exists(log_path):

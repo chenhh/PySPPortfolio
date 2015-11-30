@@ -79,7 +79,6 @@ def min_cvar_sip_portfolio(symbols,
     instance.predict_risk_free_roi = predict_risk_free_roi
     instance.max_portfolio_size = max_portfolio_size
 
-
     # Set
     cdef Py_ssize_t n_stock = len(symbols)
     instance.symbols = np.arange(n_stock)
@@ -89,8 +88,6 @@ def min_cvar_sip_portfolio(symbols,
     # first stage
     instance.buy_amounts = Var(instance.symbols, within=NonNegativeReals)
     instance.sell_amounts = Var(instance.symbols, within=NonNegativeReals)
-
-    # second stage
     instance.risk_wealth = Var(instance.symbols, within=NonNegativeReals)
     instance.risk_free_wealth = Var(within=NonNegativeReals)
 
@@ -139,7 +136,9 @@ def min_cvar_sip_portfolio(symbols,
         """auxiliary variable Y depends on scenario. CVaR <= VaR"""
         wealth = sum((1. + model.predict_risk_rois[mdx, sdx]) *
                      model.risk_wealth[mdx]
-                     for mdx in model.symbols)
+                     for mdx in model.symbols) + (
+            (1+model.predict_risk_free_roi) * model.risk_free_wealth)
+
         return model.Ys[sdx] >= (model.Z - wealth)
 
     instance.cvar_constraint = Constraint(instance.scenarios,
