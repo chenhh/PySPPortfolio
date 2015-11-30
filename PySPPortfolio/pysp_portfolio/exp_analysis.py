@@ -380,12 +380,12 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                    '0.85', '0.90', '0.95')
 
     import matplotlib as mpl
-    mpl.use('Agg')
+    # mpl.use('Agg')
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import axes3d
 
     # figsize in inches
-    fig = plt.figure( figsize=(24,18),facecolor='white')
+    fig = plt.figure( figsize=(64,48),facecolor='white')
 
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
@@ -465,7 +465,7 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                          y=1.02, fontsize=30)
             ax.set_xlabel(r'$M$', fontsize=24)
             ax.set_ylabel(r'$h$', fontsize=24)
-            ax.set_zlabel(r'cumulative returns (%)', fontsize=22,
+            ax.set_zlabel(r'Average cumulative returns (%)', fontsize=22,
                           fontname="Times New Roman", linespacing=4.5)
             ax.tick_params(labelsize=10, pad=0, )
             ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
@@ -493,11 +493,15 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                                   (df.loc[:, 'win_length'] == win_length) &
                                   (df.loc[:, 'alpha'] == alpha),
                                   'cum_roi']
-                    # annualized_rois = np.power(cum_rois+1, 1./10) -1
-                    mean = cum_rois.mean()
-                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
 
-            print adx, Zs
+                    mean = cum_rois.mean()
+                    # std = cum_rois.std(ddof=1)
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+                    # stds[rdx, cdx] = 0 if np.isnan(std) else std * 100
+
+            # print adx, Zs
+            print alpha
+            # surface
             p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=0.6,
                             cmap=plt.cm.coolwarm, norm=cm_norm,
                             antialiased=True
@@ -506,24 +510,19 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
             # contour, projected on z
             cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-100, alpha=0.6,
                               cmap=plt.cm.coolwarm, norm=cm_norm)
-            # color bar
-            # cbaxes = ax.add_axes([0.8, 0.1, 0.03, 0.8])
-            # cbar = fig.colorbar(cset)
-            # cbar.ax.set_ylabel('verbosity coefficient')
 
+        # share color bar
         cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
         fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax,
                      ticks=np.arange(-100, 280+10, 20))
         fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
                             wspace=0.01, hspace=0.01)
     # plt.tight_layout()
-    plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.eps'), format="eps",
-                dpi=600)
-    plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'), format="pdf",
-                dpi=600)
+    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.eps'), format="eps",
+    #             dpi=600)
+    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'), format="pdf",
+    #             dpi=600)
     plt.show()
-
-
 
 if __name__ == '__main__':
     # all_results_to_sheet_xlsx("min_cvar_sip", "n_stock")

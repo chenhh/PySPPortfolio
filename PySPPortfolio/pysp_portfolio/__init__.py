@@ -20,15 +20,15 @@ os_type = platform.system()
 if os_type == 'Linux':
     DROPBOX_DIR = r'/home/chenhh/Dropbox'
     SEAFILE_DIR = r'/home/chenhh/Seafile'
-    EXP_SP_PORTFOLIO_DIR = os.path.join(DROPBOX_DIR,
-                                  'financial_experiment', 'pysp_portfolio')
+    EXP_DATA_DIR = r'/home/chenhh/workspace_pycharm/experiment_data'
+    EXP_SP_PORTFOLIO_DIR = os.path.join(EXP_DATA_DIR, 'pysp_portfolio')
     TMP_DIR = r'/tmp'
 
 elif os_type == 'Windows':
     DROPBOX_DIR = r'C:\Users\chen1\Dropbox'
     SEAFILE_DIR = r'C:\Users\chen1\Seafile'
-    EXP_SP_PORTFOLIO_DIR = os.path.join(DROPBOX_DIR,
-                                  'financial_experiment', 'pysp_portfolio')
+    EXP_DATA_DIR = r'C:\Users\chen1\Documents\experiment_data'
+    EXP_SP_PORTFOLIO_DIR = os.path.join(EXP_DATA_DIR, 'pysp_portfolio')
     TMP_DIR = 'E:\\'
 else:
     raise ValueError('unknown os platform:{}'.format(os_type))
