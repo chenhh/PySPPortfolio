@@ -11,7 +11,7 @@ import pandas as pd
 from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio, MinCVaREEVPortfolio)
 from min_cvar_sip import (MinCVaRSIPPortfolio,)
-from ms_min_cvar_sp import (MS_MinCVaRSPPortfolio,)
+from min_ms_cvar_sp import (MinMSCVaRSPPortfolio,)
 from buy_and_hold import (BAHPortfolio,)
 
 
@@ -156,11 +156,11 @@ def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
     return reports
 
 
-def run_ms_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
+def run_min_ms_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
                                bias=False, scenario_cnt=1,
-                               alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-                                        0.86, 0.9, 0.95],
-                               verbose=False):
+                               alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75,
+                                       0.8, 0.85, 0.9, 0.95],
+                                  verbose=False):
     """
     multi-stage SP simulation
 
@@ -206,29 +206,29 @@ def run_ms_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
     initial_risk_free_wealth = 1e6
 
-    print ("ms min cvar sp {} start.".format(param))
+    print ("min ms cvar sp {} start.".format(param))
     t1 = time()
-    instance = MS_MinCVaRSPPortfolio(symbols, risk_rois, risk_free_rois,
+    instance = MinMSCVaRSPPortfolio(symbols, risk_rois, risk_free_rois,
                            initial_risk_wealth, initial_risk_free_wealth,
                            window_length=win_length, n_scenario=n_scenario,
-                           bias=bias, alpha=alphas, scenario_cnt=scenario_cnt,
+                           bias=bias, alphas=alphas, scenario_cnt=scenario_cnt,
                            verbose=verbose)
-    print ("ms min cvar sp {} ready to run: {:.3f} secs".format(
+    print ("min ms cvar sp {} ready to run: {:.3f} secs".format(
             param, time() - t1))
-    reports_list = instance.run()
+    reports_dict = instance.run()
 
-    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'ms_min_cvar_sp')
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_ms_cvar_sp')
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
-    for reports in reports_list:
+    for alpha_str, reports in reports_dict.items():
         alpha = reports['alpha']
-        file_name = 'ms_min_cvar_sp_{}_a{:.2f}.pkl'.format(param, alpha)
+        file_name = 'min_ms_cvar_sp_{}_a{:.2f}.pkl'.format(param, alpha)
         pd.to_pickle(reports, os.path.join(file_dir, file_name))
         print ("ms min cvar sp {}_a{:.2f} OK, {:.3f} secs".format(
             param, alpha, time() - t0))
 
-    return reports_list
+    return reports_dict
 
 
 def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
@@ -344,8 +344,8 @@ def run_bah_simulation(n_stock ,verbose=False):
 
 if __name__ == '__main__':
     pass
-    for n_stock in xrange(5, 50+5, 5):
-        run_bah_simulation(n_stock)
+    # for n_stock in xrange(5, 50+5, 5):
+    #     run_bah_simulation(n_stock)
     # params = [
     #     (5, 100 ,0.5),
     #     #         (10, 50, 0.7),
@@ -367,3 +367,9 @@ if __name__ == '__main__':
     #                            verbose=True)
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
+    run_min_ms_cvar_sp_simulation(5, 100, n_scenario=200,
+                               bias=False, scenario_cnt=1,
+                                  alphas=[0.5, 0.55],
+                               # alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
+                               #          0.85, 0.9, 0.95],
+                               verbose=False)
