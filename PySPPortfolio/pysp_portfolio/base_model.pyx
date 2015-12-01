@@ -251,7 +251,7 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
         # scenarios in some periods, we record these periods if fails.
         self.estimated_risk_roi_error = pd.Series(np.zeros(
             self.n_exp_period).astype(np.bool),
-                                                  index=self.exp_risk_rois.index)
+            index=self.exp_risk_rois.index)
 
         # cumulative loss in transaction fee in the simulation
         self.trans_fee_loss = 0
@@ -469,128 +469,6 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
             func_name, self.n_stock,
             self.exp_risk_rois.index[0],
             self.exp_risk_rois.index[edx],
-            time() - t0))
-
-        return reports
-
-
-class MS_SPTradingPortfolio(SPTradingPortfolio):
-    """ multi-stage stochastic programming """
-
-    def __init__(self, symbols, risk_rois, risk_free_rois,
-                 initial_risk_wealth,
-                 double initial_risk_free_wealth,
-                 double buy_trans_fee=0.001425,
-                 double sell_trans_fee=0.004425,
-                 start_date=date(2005, 1, 3), end_date=date(2014, 12, 31),
-                 int window_length=200,
-                 int n_scenario=200, bias=False,
-                 verbose=False):
-        """
-        Parameters:
-        -------------
-        symbols: list of symbols, size: n_stock
-        risk_rois: pandas.DataFrame, shape: (n_period, n_stock)
-        risk_free_rois: pandas.series, shape: (n_exp_period, )
-        initial_risk_wealth: pandas.series, shape: (n_stock,)
-        initial_risk_free_wealth: float
-
-        buy_trans_fee: float, 0<=value < 1,
-            the fee will not change in the simulation
-        sell_trans_fee: float, 0<=value < 1, the same as above
-        start_date: datetime.date, first date of simulation
-        end_date: datetime.date, last date of simulation
-        window_length: integer, historical periods for estimated parameters
-        n_scenario: integer, number of scenarios to generated
-        bias: boolean, biased moment estimators or not
-        verbose: boolean
-        """
-        super(MS_SPTradingPortfolio, self).__init__(
-            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
-            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
-            start_date, end_date, window_length, n_scenario, bias, verbose
-        )
-
-    def run(self, *args, **kwargs):
-        """
-        run recourse programming simulation
-
-        Returns:
-        ----------------
-        standard report
-        """
-        t0 = time()
-
-        # get function name
-        func_name = self.get_trading_func_name(*args, **kwargs)
-
-        # solve all scenarios at once
-        # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
-        try:
-            estimated_risk_rois = self.get_estimated_risk_rois()
-        except ValueError as e:
-            raise ValueError("generating scenario error:  {}".format(e))
-
-        # estimated_risk_free_rois: shape: (n_exp_period,)
-        estimated_risk_free_rois = self.get_estimated_risk_free_rois()
-
-        # determining the buy and sell amounts
-        results = self.get_current_buy_sell_amounts(
-            estimated_risk_rois=estimated_risk_rois,
-            estimated_risk_free_roi=estimated_risk_free_rois,
-            allocated_risk_wealth=self.initial_risk_wealth,
-            allocated_risk_free_wealth=self.initial_risk_free_wealth,
-            *args, **kwargs)
-
-        # shape: (n_exp_period, n_stock)
-        self.risk_wealth_df = results['risk_wealth_df']
-        self.buy_amounts_df = results['buy_amounts_df']
-        self.sell_amounts_df = results['sell_amounts_df']
-
-        # shape: (n_exp_period, )
-        self.risk_free_wealth = results['risk_free_wealth_arr']
-
-        # record results
-        self.set_specific_period_action(results=results, *args, **kwargs)
-
-        # end of iterations, computing statistics
-        Tdx = self.n_exp_period - 1
-        final_wealth = (self.risk_wealth_df.iloc[Tdx].sum() +
-                        self.risk_free_wealth[Tdx])
-
-        # get reports
-        output, reports = self.get_performance_report(
-            func_name,
-            self.symbols,
-            self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[Tdx],
-            self.buy_trans_fee,
-            self.sell_trans_fee,
-            (self.initial_risk_wealth.sum() + self.initial_risk_free_wealth),
-            final_wealth,
-            self.n_exp_period,
-            self.trans_fee_loss,
-            self.risk_wealth_df,
-            self.risk_free_wealth)
-
-        # model additional elements to reports
-        reports['window_length'] = self.window_length
-        reports['n_scenario'] = self.n_scenario
-        reports['buy_amounts_df'] = self.buy_amounts_df
-        reports['sell_amounts_df'] = self.sell_amounts_df
-
-        # add simulation time
-        reports['simulation_time'] = time() - t0
-
-        # user specified  additional elements to reports
-        reports = self.add_results_to_reports(reports, *args, **kwargs)
-
-        if self.verbose:
-            print (output)
-        print ("{} OK [{}-{}], {:.4f}.secs".format(
-            func_name,
-            self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[Tdx],
             time() - t0))
 
         return reports

@@ -18,13 +18,13 @@ import pandas as pd
 from pyomo.environ import *
 
 from PySPPortfolio.pysp_portfolio import *
-from base_model import (MS_SPTradingPortfolio, )
+from base_model import (SPTradingPortfolio, )
 
 cimport numpy as cnp
 ctypedef cnp.float64_t FLOAT_t
 ctypedef cnp.intp_t INTP_t
 
-def ms_min_cvar_sp_portfolio(symbols, trans_dates,
+def min_ms_cvar_sp_portfolio(symbols, trans_dates,
                          cnp.ndarray[FLOAT_t, ndim=2] risk_rois,
                          cnp.ndarray[FLOAT_t, ndim=1] risk_free_rois,
                          cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
@@ -36,7 +36,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
                          cnp.ndarray[FLOAT_t, ndim=1] predict_risk_free_roi,
                          int n_scenario,
                          str solver=DEFAULT_SOLVER,
-                         int verbose=True):
+                         int verbose=False):
     """
     after generating all scenarios, solving the SP at once
 
@@ -164,8 +164,24 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
         instance.exp_periods, instance.scenarios,
         rule=cvar_constraint_rule)
 
+    print ("min_ms_cvar_sp constraints and objective rules OK, "
+               "{:.3f} secs".format(time() - t0))
+
     results_dict = {}
+
+    cdef:
+        int Tdx = n_exp_period - 1
+        cnp.ndarray[FLOAT_t, ndim=2] buy_df = np.zeros((n_exp_period,
+                                                        n_stock))
+        cnp.ndarray[FLOAT_t, ndim=2] sell_df = np.zeros((n_exp_period,
+                                                         n_stock))
+        cnp.ndarray[FLOAT_t, ndim=2] risk_df = np.zeros((n_exp_period,
+                                                         n_stock))
+        cnp.ndarray[FLOAT_t, ndim=1] risk_free_arr = np.zeros(n_exp_period)
+        cnp.ndarray[FLOAT_t, ndim=1] var_arr = np.zeros(n_exp_period)
+
     for adx, alpha in enumerate(alphas):
+        t1 = time()
         param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
         START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
         n_stock, n_exp_period, n_scenario, alpha)
@@ -180,34 +196,18 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
 
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)
-        print ("ms_min_cvar_sp {} constraints and objective rules OK, "
-               "{:.3f} secs".format(param, time() - t0))
         # solve
-        t1 = time()
         opt = SolverFactory(solver)
         if solver == "cplex":
-            opt.set_options('Threads=4')
+            opt.set_options('threads=4')
         results = opt.solve(instance)
         instance.solutions.load_from(results)
         if verbose:
             display(instance)
-        print ("solve ms_min_cvar_sp {} OK {:.3f} secs".format(
+        print ("solve min_ms_cvar_sp {} OK {:.2f} secs".format(
             param, time() - t1))
 
-        # extract results
-        cdef int Tdx = n_exp_period - 1
-
         # shape: (n_exp_period, n_stock)
-        cdef:
-            cnp.ndarray[FLOAT_t, ndim=2] buy_df = np.zeros((n_exp_period,
-                                                            n_stock))
-            cnp.ndarray[FLOAT_t, ndim=2] sell_df = np.zeros((n_exp_period,
-                                                             n_stock))
-            cnp.ndarray[FLOAT_t, ndim=2] risk_df = np.zeros((n_exp_period,
-                                                             n_stock))
-            cnp.ndarray[FLOAT_t, ndim=1] risk_free_arr = np.zeros(n_exp_period)
-            cnp.ndarray[FLOAT_t, ndim=1]  var_arr = np.zeros(n_exp_period)
-
         for tdx in xrange(n_exp_period):
             risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
             var_arr[tdx] = instance.Z[tdx].value
@@ -245,10 +245,20 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
             "estimated_cvar": instance.cvar_objective(),
         }
 
+        # reset variables
+        buy_df = np.zeros((n_exp_period, n_stock))
+        sell_df = np.zeros((n_exp_period, n_stock))
+        risk_df = np.zeros((n_exp_period, n_stock))
+        risk_free_arr = np.zeros(n_exp_period)
+        var_arr = np.zeros(n_exp_period)
+
+        # delete objective
+        instance.del_component("cvar_objective")
+
     return results_dict
 
 
-class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
+class MinMSCVaRSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
                  initial_risk_wealth,
                  double initial_risk_free_wealth,
@@ -259,7 +269,7 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
                  int n_scenario=N_SCENARIO,
                  bias=BIAS_ESTIMATOR,
                  alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-                         0.86, 0.9, 0.95],
+                         0.85, 0.9, 0.95],
                  int scenario_cnt=1,
                  verbose=False):
         """
@@ -268,10 +278,11 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
         parameters at once.
         """
 
-        super(MS_MinCVaRSPPortfolio, self).__init__(
+        super(MinMSCVaRSPPortfolio, self).__init__(
             symbols, risk_rois, risk_free_rois, initial_risk_wealth,
             initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
-            start_date, end_date, window_length, n_scenario, bias, verbose)
+            start_date, end_date, window_length, n_scenario, bias,
+            verbose)
 
         self.alphas = alphas
 
@@ -292,11 +303,6 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             self.scenario_panel = pd.read_pickle(scenario_path)
             self.scenario_cnt = scenario_cnt
 
-        # additional results
-        self.var_arr = pd.Series(np.zeros(self.n_exp_period),
-                                 index=self.exp_risk_rois.index)
-
-        self.cvar = 0
 
     def get_trading_func_name(self, *args, **kwargs):
         return "MS_MinCVaRSP_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
@@ -304,13 +310,6 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             "biased" if self.bias_estimator else "unbiased",
             self.scenario_cnt, kwargs['alpha'])
 
-    def add_results_to_reports(self, reports, *args, **kwargs):
-        """ add additional items to reports """
-        reports['alpha'] = kwargs['alpha']
-        reports['scenario_cnt'] = self.scenario_cnt
-        reports['var_arr'] = self.var_arr
-        reports['cvar'] = self.cvar
-        return reports
 
     def get_estimated_risk_free_rois(self, *arg, **kwargs):
         """ the risk free roi is set all zeros """
@@ -329,17 +328,19 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
 
         return self.scenario_panel
 
-    def set_specific_period_action(self, *args, **kwargs):
-        """ user specified action after getting results """
-        results = kwargs['results']
-        self.var_arr = results["estimated_var_arr"]
-        self.cvar = results['estimated_cvar']
 
     def get_current_buy_sell_amounts(self, *args, **kwargs):
-        """ min_cvar function """
+        """ min_cvar function
+
+        Return
+        -------------
+        results_dict:
+          - key: alpha, str
+          - value: results, dict
+        """
 
         # current exp_period index
-        results = ms_min_cvar_sp_portfolio(
+        results_dict = min_ms_cvar_sp_portfolio(
             self.symbols,
             self.exp_risk_rois.index,
             self.exp_risk_rois.as_matrix(),
@@ -348,17 +349,98 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             kwargs['allocated_risk_free_wealth'],
             self.buy_trans_fee,
             self.sell_trans_fee,
-            kwargs['alpha'],    # get alpha
+            self.alphas,    # get alpha
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
         )
-        return results
+        return results_dict
 
 
     def run(self, *args, **kwargs):
         """ overwrite """
-        reports = [super(MS_MinCVaRSPPortfolio, self).run(alpha=alpha)
-                   for alpha in self.alphas]
-        return reports
+        t0 = time()
+
+        # solve all scenarios at once
+        # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
+        try:
+            estimated_risk_rois = self.get_estimated_risk_rois()
+        except ValueError as e:
+            raise ValueError("generating scenario error:  {}".format(e))
+
+        # estimated_risk_free_rois: shape: (n_exp_period,)
+        estimated_risk_free_rois = self.get_estimated_risk_free_rois()
+
+        # determining the buy and sell amounts
+        results_dict = self.get_current_buy_sell_amounts(
+            estimated_risk_rois=estimated_risk_rois,
+            estimated_risk_free_roi=estimated_risk_free_rois,
+            allocated_risk_wealth=self.initial_risk_wealth,
+            allocated_risk_free_wealth=self.initial_risk_free_wealth,
+            *args, **kwargs)
+
+        reports_dict = {}
+        for alpha_value in self.alphas:
+            func_name = self.get_trading_func_name(alpha=alpha_value)
+            print (func_name)
+            t1 = time()
+            alpha_str = "{:.2f}".format(alpha_value)
+
+            # shape: (n_exp_period, n_stock)
+            risk_wealth_df = results_dict[alpha_str]['risk_wealth_df']
+            buy_amounts_df = results_dict[alpha_str]['buy_amounts_df']
+            sell_amounts_df = results_dict[alpha_str]['sell_amounts_df']
+            # shape: (n_exp_period, )
+            risk_free_wealth = results_dict[alpha_str]['risk_free_wealth_arr']
+            estimated_var_arr = results_dict[alpha_str]["estimated_var_arr"]
+            # float
+            estimated_cvar = results_dict[alpha_str]["estimated_cvar"]
+
+            # end of iterations, computing statistics
+            Tdx = self.n_exp_period - 1
+            final_wealth = (risk_wealth_df.iloc[Tdx].sum() +
+                            risk_free_wealth[Tdx])
+
+            # compute transaction fee
+            trans_fee_loss = (buy_amounts_df.sum() * self.buy_trans_fee +
+                              sell_amounts_df.sum() * self.sell_trans_fee)
+
+            # get reports
+            reports = self.get_performance_report(
+                func_name,
+                self.symbols,
+                self.exp_risk_rois.index[0],
+                self.exp_risk_rois.index[Tdx],
+                self.buy_trans_fee,
+                self.sell_trans_fee,
+                (self.initial_risk_wealth.sum() +
+                 self.initial_risk_free_wealth),
+                final_wealth,
+                self.n_exp_period,
+                trans_fee_loss,
+                risk_wealth_df,
+                risk_free_wealth)
+
+            # model additional elements to reports
+            reports['window_length'] = self.window_length
+            reports['n_scenario'] = self.n_scenario
+            reports['alpha'] = alpha_value
+            reports['scenario_cnt'] = self.scenario_cnt
+            reports['buy_amounts_df'] = buy_amounts_df
+            reports['sell_amounts_df'] =sell_amounts_df
+
+            # add simulation time
+            reports['simulation_time'] = time() - t1
+
+            reports_dict[alpha_str] = reports
+            print ("{} {} OK [{}-{}], {:.4f}.secs".format(
+                func_name, alpha_str, self.exp_risk_rois.index[0],
+                self.exp_risk_rois.index[Tdx], time() - t1))
+
+        print ("{} {} OK [{}-{}], {:.4f}.secs".format(
+                func_name, self.alphas, self.exp_risk_rois.index[0],
+                self.exp_risk_rois.index[Tdx], time() - t0))
+        return reports_dict
+
+
 

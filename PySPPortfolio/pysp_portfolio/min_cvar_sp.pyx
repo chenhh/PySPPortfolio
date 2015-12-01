@@ -20,7 +20,7 @@ from pyomo.environ import *
 
 from PySPPortfolio.pysp_portfolio import *
 from scenario.c_moment_matching import heuristic_moment_matching
-from base_model import (SPTradingPortfolio, MS_SPTradingPortfolio)
+from base_model import (SPTradingPortfolio, )
 
 cimport numpy as cnp
 ctypedef cnp.float64_t FLOAT_t

@@ -7,10 +7,10 @@ from time import time
 import numpy as np
 import pandas as pd
 from PySPPortfolio.pysp_portfolio import *
-from PySPPortfolio.pysp_portfolio.ms_min_cvar_sp import (
-    ms_min_cvar_sp_portfolio,)
+from PySPPortfolio.pysp_portfolio.min_ms_cvar_sp import (
+    min_ms_cvar_sp_portfolio,)
 
-def test_ms_min_cvar_sp():
+def test_min_ms_cvar_sp():
     n_period, n_stock, n_scenario = 250, 50, 200
     initial_money = 1e6
 
@@ -23,18 +23,18 @@ def test_ms_min_cvar_sp():
     allocated_risk_free_wealth = initial_money
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
-    alpha = 0.05
+    alphas = [0.1, 0.2, 0.3]
     predict_risk_rois = np.random.randn(n_period, n_stock, n_scenario)
     predict_risk_free_rois = np.zeros(n_period)
 
     # model
     t0 = time()
-    res = ms_min_cvar_sp_portfolio(symbols, trans_dates, risk_rois,
+    res = min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois,
                                   risk_free_roi,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
-                          sell_trans_fee, alpha, predict_risk_rois,
-                          predict_risk_free_rois, n_scenario)
+                          sell_trans_fee, alphas, predict_risk_rois,
+                          predict_risk_free_rois, n_scenario, verbose=False)
 
     print res
     print "all_scenarios_min_cvar_sp_portfolio: "
@@ -43,4 +43,4 @@ def test_ms_min_cvar_sp():
     )
 
 if __name__ == '__main__':
-    test_ms_min_cvar_sp()
+    test_min_ms_cvar_sp()
