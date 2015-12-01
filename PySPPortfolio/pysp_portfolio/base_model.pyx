@@ -541,7 +541,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
             estimated_risk_free_roi=estimated_risk_free_rois,
             allocated_risk_wealth=self.initial_risk_wealth,
             allocated_risk_free_wealth=self.initial_risk_free_wealth,
-            * args, **kwargs)
+            *args, **kwargs)
 
         # shape: (n_exp_period, n_stock)
         self.risk_wealth_df = results['risk_wealth_df']

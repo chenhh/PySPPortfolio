@@ -319,9 +319,7 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
         return self.scenario_panel
 
     def set_specific_period_action(self, *args, **kwargs):
-        """
-        user specified action after getting results
-        """
+        """ user specified action after getting results """
         results = kwargs['results']
         self.var_arr = results["estimated_var_arr"]
         self.cvar = results['estimated_cvar']
@@ -339,7 +337,7 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
             kwargs['allocated_risk_free_wealth'],
             self.buy_trans_fee,
             self.sell_trans_fee,
-            kwargs['alpha'],
+            kwargs['alpha'],    # get alpha
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
@@ -348,12 +346,8 @@ class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):
 
 
     def run(self, *args, **kwargs):
-        """
-        overwrite
-        """
-        reports = []
-        for alpha in self.alphas:
-            reports.append(super(MS_MinCVaRSPPortfolio, self).run(alpha=alpha))
-
+        """ overwrite """
+        reports = [super(MS_MinCVaRSPPortfolio, self).run(alpha=alpha)
+                   for alpha in self.alphas]
         return reports
 
