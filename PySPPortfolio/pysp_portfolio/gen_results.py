@@ -56,7 +56,7 @@ def all_experiment_parameters(prob_type):
 
             for n_scenario in (200,):
                 for bias in ("unbiased",):
-                    for cnt in xrange(1, 3+1):
+                    for cnt in xrange(1, MAX_SCENARIO_FILE_CNT+1):
                         for alpha in ('0.50', '0.55', '0.60', '0.65',
                                       '0.70', '0.75', '0.80', '0.85',
                                       '0.90', '0.95'):

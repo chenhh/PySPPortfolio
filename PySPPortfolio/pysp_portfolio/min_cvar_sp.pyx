@@ -131,8 +131,7 @@ def min_cvar_sp_portfolio(symbols,
         """ auxiliary variable Y depends on scenario. CVaR <= VaR """
         wealth = sum((1. + model.predict_risk_rois[mdx, sdx]) *
                      model.risk_wealth[mdx]
-                     for mdx in model.symbols) + (
-                  (1+predict_risk_free_roi) * model.risk_free_wealth)
+                     for mdx in model.symbols)
         return model.Ys[sdx] >= (model.Z - wealth)
 
     instance.cvar_constraint = Constraint(instance.scenarios,
@@ -185,7 +184,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
                  int n_scenario=N_SCENARIO,
                  bias=BIAS_ESTIMATOR,
                  double alpha=0.05,
-                 int scenario_cnt=200,
+                 int scenario_cnt=1,
                  verbose=False):
         """
         2nd-stage SP
@@ -451,8 +450,7 @@ def min_cvar_eev_sp_portfolio(symbols,
         """ auxiliary variable Y depends on scenario. CVaR <= VaR """
         wealth = sum((1. + model.mean_predict_risk_rois[mdx]) *
                      model.risk_wealth[mdx]
-                     for mdx in model.symbols) + (
-            (1+model.predict_risk_free_roi) * model.risk_free_wealth)
+                     for mdx in model.symbols)
 
         return model.Y >= (model.Z - wealth)
 
@@ -497,10 +495,9 @@ def min_cvar_eev_sp_portfolio(symbols,
         # update CVaR constraint
         def cvar_constraint_rule(model):
             """ auxiliary variable Y depends on scenario. CVaR <= VaR """
-            wealth = sum((1. + model.all_predict_risk_rois[:, sdx]) *
+            wealth = sum((1. + model.all_predict_risk_rois[mdx, sdx]) *
                          model.risk_wealth[mdx]
-                         for mdx in model.symbols) + (
-                (1+model.predict_risk_free_roi) * model.risk_free_wealth)
+                         for mdx in model.symbols)
             return model.Y >= (model.Z - wealth)
 
         instance.cvar_constraint = Constraint(rule=cvar_constraint_rule)

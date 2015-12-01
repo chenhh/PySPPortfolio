@@ -111,7 +111,8 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
         """ auxiliary variable Y depends on scenario. CVaR <= VaR """
         wealth = sum((1. + model.predict_risk_rois[mdx, sdx]) *
                      model.risk_wealth[mdx]
-                     for mdx in model.symbols)
+                     for mdx in model.symbols) + model.risk_free_wealth
+
         return model.Ys[sdx] >= (model.Z - wealth)
 
     instance.cvar_constraint = Constraint(instance.scenarios,
@@ -121,7 +122,8 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     def cvar_objective_rule(model):
         scenario_expectation = sum(model.Ys[sdx] * model.scenario_probs[sdx]
                                     for sdx in xrange(n_scenario))
-        return model.Z - 1. / (1. - model.alpha) * scenario_expectation
+        return (model.Z - 1. / (1. - model.alpha) * scenario_expectation -
+         model.risk_free_wealth)
 
     instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                         sense=maximize)
@@ -148,6 +150,9 @@ def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
     return {
         "buy_amounts": buy_amounts,
         "sell_amounts": sell_amounts,
+        "risk_wealth": sum(instance.risk_wealth[mdx].value for mdx in xrange(
+            n_stock)),
+        "risk_free_wealth": instance.risk_free_wealth.value,
         "estimated_var": estimated_var,
         "estimated_cvar": instance.cvar_objective()
     }
@@ -266,8 +271,8 @@ def optimal_portfolio(symbols, risk_rois, risk_free_roi,
 
 
 def test_min_cvar_sp():
-    n_stock = 10
-    n_scenario = 1000
+    n_stock = 2
+    n_scenario = 100
     symbols = np.arange(n_stock)
     risk_rois = np.random.randn(n_stock)
     risk_free_roi = 0
@@ -277,7 +282,7 @@ def test_min_cvar_sp():
     sell_trans_fee = 0.004425
     alpha = 0.99
     predict_risk_rois =  np.random.randn(n_stock, n_scenario)
-    predict_risk_free_roi = 0
+    predict_risk_free_roi = 0.
     results =min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                           allocated_risk_wealth, allocated_risk_free_wealth,
                           buy_trans_fee, sell_trans_fee, alpha,

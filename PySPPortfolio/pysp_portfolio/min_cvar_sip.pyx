@@ -136,8 +136,7 @@ def min_cvar_sip_portfolio(symbols,
         """auxiliary variable Y depends on scenario. CVaR <= VaR"""
         wealth = sum((1. + model.predict_risk_rois[mdx, sdx]) *
                      model.risk_wealth[mdx]
-                     for mdx in model.symbols) + (
-            (1+model.predict_risk_free_roi) * model.risk_free_wealth)
+                     for mdx in model.symbols)
 
         return model.Ys[sdx] >= (model.Z - wealth)
 

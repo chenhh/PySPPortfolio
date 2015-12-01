@@ -495,6 +495,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         risk_free_rois: pandas.series, shape: (n_exp_period, )
         initial_risk_wealth: pandas.series, shape: (n_stock,)
         initial_risk_free_wealth: float
+
         buy_trans_fee: float, 0<=value < 1,
             the fee will not change in the simulation
         sell_trans_fee: float, 0<=value < 1, the same as above
@@ -524,7 +525,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         # get function name
         func_name = self.get_trading_func_name(*args, **kwargs)
 
-        # solve all scenarios at tone
+        # solve all scenarios at once
         # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
         try:
             estimated_risk_rois = self.get_estimated_risk_rois()
@@ -539,30 +540,31 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
             estimated_risk_rois=estimated_risk_rois,
             estimated_risk_free_roi=estimated_risk_free_rois,
             allocated_risk_wealth=self.initial_risk_wealth,
-            allocated_risk_free_wealth=self.initial_risk_free_wealth
-                                       * args, **kwargs
-        )
+            allocated_risk_free_wealth=self.initial_risk_free_wealth,
+            * args, **kwargs)
 
+        # shape: (n_exp_period, n_stock)
         self.risk_wealth_df = results['risk_wealth_df']
-        self.risk_free_wealth = results['risk_free_wealth_arr']
         self.buy_amounts_df = results['buy_amounts_df']
         self.sell_amounts_df = results['sell_amounts_df']
 
+        # shape: (n_exp_period, )
+        self.risk_free_wealth = results['risk_free_wealth_arr']
+
         # record results
-        self.set_specific_period_action(results=results,
-                                        *args, **kwargs)
+        self.set_specific_period_action(results=results, *args, **kwargs)
 
         # end of iterations, computing statistics
-        edx = self.n_exp_period - 1
-        final_wealth = (self.risk_wealth_df.iloc[edx].sum() +
-                        self.risk_free_wealth[edx])
+        Tdx = self.n_exp_period - 1
+        final_wealth = (self.risk_wealth_df.iloc[Tdx].sum() +
+                        self.risk_free_wealth[Tdx])
 
         # get reports
         output, reports = self.get_performance_report(
             func_name,
             self.symbols,
             self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[edx],
+            self.exp_risk_rois.index[Tdx],
             self.buy_trans_fee,
             self.sell_trans_fee,
             (self.initial_risk_wealth.sum() + self.initial_risk_free_wealth),
@@ -589,7 +591,7 @@ class MS_SPTradingPortfolio(SPTradingPortfolio):
         print ("{} OK [{}-{}], {:.4f}.secs".format(
             func_name,
             self.exp_risk_rois.index[0],
-            self.exp_risk_rois.index[edx],
+            self.exp_risk_rois.index[Tdx],
             time() - t0))
 
         return reports
