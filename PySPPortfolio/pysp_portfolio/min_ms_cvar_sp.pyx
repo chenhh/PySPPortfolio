@@ -182,7 +182,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
 
     for adx, alpha in enumerate(alphas):
         t1 = time()
-        param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
+        param = "{}_{}_m{}_w{}_s{}_a{:.2f}".format(
         START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
         n_stock, n_exp_period, n_scenario, alpha)
 
@@ -199,7 +199,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         # solve
         opt = SolverFactory(solver)
         if solver == "cplex":
-            opt.set_options('threads=4')
+            opt.options["threads"] = 4
         results = opt.solve(instance)
         instance.solutions.load_from(results)
         if verbose:
