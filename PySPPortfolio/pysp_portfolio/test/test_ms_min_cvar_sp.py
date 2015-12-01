@@ -7,11 +7,11 @@ from time import time
 import numpy as np
 import pandas as pd
 from PySPPortfolio.pysp_portfolio import *
-from PySPPortfolio.pysp_portfolio.min_cvar_sp import (
+from PySPPortfolio.pysp_portfolio.ms_min_cvar_sp import (
     ms_min_cvar_sp_portfolio,)
 
 def test_ms_min_cvar_sp():
-    n_period, n_stock, n_scenario = 2484, 50, 200
+    n_period, n_stock, n_scenario = 250, 50, 200
     initial_money = 1e6
 
     symbols = EXP_SYMBOLS[:n_stock]

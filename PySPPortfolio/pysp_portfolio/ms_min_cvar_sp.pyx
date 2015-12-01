@@ -31,7 +31,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
                          double allocated_risk_free_wealth,
                          double buy_trans_fee,
                          double sell_trans_fee,
-                         double alpha,
+                         alphas,
                          cnp.ndarray[FLOAT_t, ndim=3] predict_risk_rois,
                          cnp.ndarray[FLOAT_t, ndim=1] predict_risk_free_roi,
                          int n_scenario,
@@ -47,7 +47,7 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
     allocated_risk_free_wealth: float
     buy_trans_fee: float
     sell_trans_fee: float
-    alpha: float, 1-alpha is the significant level
+    alphas: list of float
     predict_risk_ret: numpy.array, shape: (n_exp_period, n_stock, n_scenario)
     predict_risk_free_roi: float
     n_scenario: integer
@@ -59,22 +59,17 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
     cdef INTP_t n_exp_period = risk_rois.shape[0]
     cdef int n_stock = len(symbols)
 
-    param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
-        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-        n_stock, n_exp_period, n_scenario, alpha)
-
     # concrete model
     instance = ConcreteModel(name="ms_min_cvar_sp_portfolio")
 
     # data
-    instance.scenario_probs = scenario_probs
     instance.risk_rois = risk_rois
     instance.risk_free_rois = risk_free_rois
     instance.allocated_risk_wealth = allocated_risk_wealth
     instance.allocated_risk_free_wealth = allocated_risk_free_wealth
     instance.buy_trans_fee = buy_trans_fee
     instance.sell_trans_fee = sell_trans_fee
-    instance.alpha = alpha
+    instance.alphas = alphas
     instance.predict_risk_rois = predict_risk_rois
     instance.predict_risk_free_roi = predict_risk_free_roi
 
@@ -169,72 +164,88 @@ def ms_min_cvar_sp_portfolio(symbols, trans_dates,
         instance.exp_periods, instance.scenarios,
         rule=cvar_constraint_rule)
 
-    # objective
-    def cvar_objective_rule(model):
-        Tdx = n_exp_period - 1
-        scenario_expectation = sum(model.Ys[Tdx, sdx]
-            for sdx in xrange(n_scenario)) / float(n_scenario)
-        return model.Z[Tdx] - 1. / (1. - model.alpha) * scenario_expectation
+    results_dict = {}
+    for adx, alpha in enumerate(alphas):
+        param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        n_stock, n_exp_period, n_scenario, alpha)
 
-    instance.cvar_objective = Objective(rule=cvar_objective_rule,
-                                        sense=maximize)
-    print ("ms_min_cvar_sp {} constraints and objective rules OK, "
-           "{:.3f} secs".format(param, time() - t0))
+        # objective
+        def cvar_objective_rule(model):
+            Tdx = n_exp_period - 1
+            scenario_expectation = sum(model.Ys[Tdx, sdx]
+                for sdx in xrange(n_scenario)) / float(n_scenario)
+            return (model.Z[Tdx] - 1. / (1. - model.alphas[adx]) *
+                    scenario_expectation)
 
-    # solve
-    t1 = time()
-    opt = SolverFactory(solver)
-    if solver == "cplex":
-        opt.set_options('Threads=4')
-    results = opt.solve(instance)
-    instance.solutions.load_from(results)
-    if verbose:
-        display(instance)
-    print ("solve ms_min_cvar_sp {} OK {:.3f} secs".format(param, time() - t1))
+        instance.cvar_objective = Objective(rule=cvar_objective_rule,
+                                            sense=maximize)
+        print ("ms_min_cvar_sp {} constraints and objective rules OK, "
+               "{:.3f} secs".format(param, time() - t0))
+        # solve
+        t1 = time()
+        opt = SolverFactory(solver)
+        if solver == "cplex":
+            opt.set_options('Threads=4')
+        results = opt.solve(instance)
+        instance.solutions.load_from(results)
+        if verbose:
+            display(instance)
+        print ("solve ms_min_cvar_sp {} OK {:.3f} secs".format(
+            param, time() - t1))
 
-    # extract results
-    cdef int Tdx = n_exp_period - 1
+        # extract results
+        cdef int Tdx = n_exp_period - 1
 
-    # shape: (n_exp_period, n_stock)
-    cdef:
-        cnp.ndarray[FLOAT_t, ndim=2] buy_df = np.zeros((n_exp_period, n_stock))
-        cnp.ndarray[FLOAT_t, ndim=2] sell_df = np.zeros((n_exp_period, n_stock))
-        cnp.ndarray[FLOAT_t, ndim=2] risk_df = np.zeros((n_exp_period, n_stock))
-        cnp.ndarray[FLOAT_t, ndim=1] risk_free_arr = np.zeros(n_exp_period)
-        cnp.ndarray[FLOAT_t, ndim=1]  var_arr = np.zeros(n_exp_period)
-
-    for tdx in xrange(n_exp_period):
-        risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
-        var_arr[tdx] = instance.Z[tdx].value
-
-        for mdx in xrange(n_stock):
-            buy_df[tdx, mdx] = instance.buy_amounts[tdx, mdx].value
-            sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
-            risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
-
-    # shape: (n_exp_period, n_stock)
-    buy_amounts_df = pd.DataFrame(buy_df, index=trans_dates, columns=symbols)
-    sell_amounts_df = pd.DataFrame(sell_df, index=trans_dates, columns=symbols)
-    risk_wealth_df = pd.DataFrame(risk_df, index=trans_dates, columns=symbols)
-
-    # shape: (n_exp_period, )
-    risk_free_wealth_arr = pd.Series(risk_free_arr, index=trans_dates)
-    estimated_var_arr = pd.Series(var_arr, index=trans_dates)
-
-    print ("final_total_wealth: {:.2f}".format(
-        risk_df[Tdx].sum() + risk_free_arr[Tdx]))
-
-    return {
         # shape: (n_exp_period, n_stock)
-        "buy_amounts_df": buy_amounts_df,
-        "sell_amounts_df": sell_amounts_df,
-        "risk_wealth_df": risk_wealth_df,
+        cdef:
+            cnp.ndarray[FLOAT_t, ndim=2] buy_df = np.zeros((n_exp_period,
+                                                            n_stock))
+            cnp.ndarray[FLOAT_t, ndim=2] sell_df = np.zeros((n_exp_period,
+                                                             n_stock))
+            cnp.ndarray[FLOAT_t, ndim=2] risk_df = np.zeros((n_exp_period,
+                                                             n_stock))
+            cnp.ndarray[FLOAT_t, ndim=1] risk_free_arr = np.zeros(n_exp_period)
+            cnp.ndarray[FLOAT_t, ndim=1]  var_arr = np.zeros(n_exp_period)
+
+        for tdx in xrange(n_exp_period):
+            risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
+            var_arr[tdx] = instance.Z[tdx].value
+
+            for mdx in xrange(n_stock):
+                buy_df[tdx, mdx] = instance.buy_amounts[tdx, mdx].value
+                sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
+                risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
+
+        # shape: (n_exp_period, n_stock)
+        buy_amounts_df = pd.DataFrame(buy_df, index=trans_dates,
+                                      columns=symbols)
+        sell_amounts_df = pd.DataFrame(sell_df, index=trans_dates,
+                                       columns=symbols)
+        risk_wealth_df = pd.DataFrame(risk_df, index=trans_dates,
+                                      columns=symbols)
+
         # shape: (n_exp_period, )
-        "risk_free_wealth_arr": risk_free_wealth_arr,
-        "estimated_var_arr": estimated_var_arr,
-        # float
-        "estimated_cvar": instance.cvar_objective(),
-    }
+        risk_free_wealth_arr = pd.Series(risk_free_arr, index=trans_dates)
+        estimated_var_arr = pd.Series(var_arr, index=trans_dates)
+
+        print ("{} final_total_wealth: {:.2f}".format(
+            param, risk_df[Tdx].sum() + risk_free_arr[Tdx]))
+
+        alpha_str = "{:.2f}".format(alpha)
+        results_dict[alpha_str] = {
+            # shape: (n_exp_period, n_stock)
+            "buy_amounts_df": buy_amounts_df,
+            "sell_amounts_df": sell_amounts_df,
+            "risk_wealth_df": risk_wealth_df,
+            # shape: (n_exp_period, )
+            "risk_free_wealth_arr": risk_free_wealth_arr,
+            "estimated_var_arr": estimated_var_arr,
+            # float
+            "estimated_cvar": instance.cvar_objective(),
+        }
+
+    return results_dict
 
 
 class MS_MinCVaRSPPortfolio(MS_SPTradingPortfolio):

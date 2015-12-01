@@ -475,9 +475,8 @@ class SPTradingPortfolio(ValidPortfolioParameterMixin,
 
 
 class MS_SPTradingPortfolio(SPTradingPortfolio):
-    """
-    multi-stage stochastic programming
-    """
+    """ multi-stage stochastic programming """
+
     def __init__(self, symbols, risk_rois, risk_free_rois,
                  initial_risk_wealth,
                  double initial_risk_free_wealth,
