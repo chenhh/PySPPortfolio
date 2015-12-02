@@ -171,6 +171,8 @@ def min_cvar_sip_portfolio(symbols,
 
     # solve
     opt = SolverFactory(solver)
+    if solver == "cplex":
+        opt.options["threads"] = 4
     results = opt.solve(instance)
     instance.solutions.load_from(results)
     if verbose:

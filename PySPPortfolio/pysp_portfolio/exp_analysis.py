@@ -542,7 +542,7 @@ if __name__ == '__main__':
     # all_results_roi_stats()
     # plot_4d_results("min_cvar_sip", dim_z="alpha")
     # plot_results()
-    reports = load_results("min_ms_cvar_sp", 5, 100, alpha=0.55)
+    reports = load_results("min_ms_cvar_sp", 10, 220, alpha=0.50    )
     print reports
     # bah_results_to_xlsx()
     # wdf = reports['wealth_df']

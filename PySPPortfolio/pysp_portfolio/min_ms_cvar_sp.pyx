@@ -167,8 +167,6 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
     print ("min_ms_cvar_sp constraints and objective rules OK, "
                "{:.3f} secs".format(time() - t0))
 
-    results_dict = {}
-
     cdef:
         int Tdx = n_exp_period - 1
         cnp.ndarray[FLOAT_t, ndim=2] buy_df = np.zeros((n_exp_period,
@@ -180,9 +178,10 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         cnp.ndarray[FLOAT_t, ndim=1] risk_free_arr = np.zeros(n_exp_period)
         cnp.ndarray[FLOAT_t, ndim=1] var_arr = np.zeros(n_exp_period)
 
+    results_dict = {}
     for adx, alpha in enumerate(alphas):
         t1 = time()
-        param = "{}_{}_m{}_w{}_s{}_a{:.2f}".format(
+        param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
         START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
         n_stock, n_exp_period, n_scenario, alpha)
 
@@ -197,22 +196,23 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)
         # solve
-        opt = SolverFactory(solver)
-        if solver == "cplex":
-            opt.options["threads"] = 4
-        results = opt.solve(instance)
+        opt = SolverFactory(solver,  solver_io="python")
+
+        results = opt.solve(instance, keepfiles=True)
         instance.solutions.load_from(results)
         if verbose:
             display(instance)
         print ("solve min_ms_cvar_sp {} OK {:.2f} secs".format(
             param, time() - t1))
 
-        # shape: (n_exp_period, n_stock)
+        # extract results
         for tdx in xrange(n_exp_period):
+            # shape: (n_exp_period,)
             risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
             var_arr[tdx] = instance.Z[tdx].value
 
             for mdx in xrange(n_stock):
+                # shape: (n_exp_period, n_stock)
                 buy_df[tdx, mdx] = instance.buy_amounts[tdx, mdx].value
                 sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
                 risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
@@ -319,18 +319,17 @@ class MinMSCVaRSPPortfolio(SPTradingPortfolio):
         """
         Returns:
         -----------
-        estimated_risk_rois, numpy.array, shape: (n_stock, n_scenario)
+        estimated_risk_rois, pandas.Panel,
+            shape: (n_exp_period, n_stock, n_scenario)
         """
-        # current index in the exp_period
-
         if self.scenario_panel is None:
             raise ValueError('no pre-generated scenario panel.')
 
         return self.scenario_panel
 
-
     def get_current_buy_sell_amounts(self, *args, **kwargs):
-        """ min_cvar function
+        """
+        min_cvar function
 
         Return
         -------------
@@ -338,8 +337,6 @@ class MinMSCVaRSPPortfolio(SPTradingPortfolio):
           - key: alpha, str
           - value: results, dict
         """
-
-        # current exp_period index
         results_dict = min_ms_cvar_sp_portfolio(
             self.symbols,
             self.exp_risk_rois.index,
@@ -349,24 +346,22 @@ class MinMSCVaRSPPortfolio(SPTradingPortfolio):
             kwargs['allocated_risk_free_wealth'],
             self.buy_trans_fee,
             self.sell_trans_fee,
-            self.alphas,    # get alpha
+            self.alphas,    # all alphas
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
         )
         return results_dict
 
-
     def run(self, *args, **kwargs):
-        """ overwrite """
+        """  # solve all scenarios at once """
         t0 = time()
 
-        # solve all scenarios at once
         # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
         try:
             estimated_risk_rois = self.get_estimated_risk_rois()
         except ValueError as e:
-            raise ValueError("generating scenario error:  {}".format(e))
+            raise ValueError("generating scenario error: {}".format(e))
 
         # estimated_risk_free_rois: shape: (n_exp_period,)
         estimated_risk_free_rois = self.get_estimated_risk_free_rois()
@@ -390,6 +385,7 @@ class MinMSCVaRSPPortfolio(SPTradingPortfolio):
             risk_wealth_df = results_dict[alpha_str]['risk_wealth_df']
             buy_amounts_df = results_dict[alpha_str]['buy_amounts_df']
             sell_amounts_df = results_dict[alpha_str]['sell_amounts_df']
+
             # shape: (n_exp_period, )
             risk_free_wealth = results_dict[alpha_str]['risk_free_wealth_arr']
             estimated_var_arr = results_dict[alpha_str]["estimated_var_arr"]

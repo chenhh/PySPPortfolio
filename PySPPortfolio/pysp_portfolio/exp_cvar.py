@@ -352,7 +352,7 @@ if __name__ == '__main__':
     #           # (15, 80, 0.5), (20, 110, 0.5),
     #           # (25, 100, 0.55), (30, 110, 0.6),
     #           # (35, 110, 0.5), (40, 110, 0.5), (45, 120, 0.55),
-    #           # (50, 120, 0.5)
+    #           # (50 120, 0.5)
     #           ]
     #
     # for m, w, a in params:
@@ -367,7 +367,7 @@ if __name__ == '__main__':
     #                            verbose=True)
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
-    run_min_ms_cvar_sp_simulation(5, 100, n_scenario=200,
+    run_min_ms_cvar_sp_simulation(10, 220, n_scenario=200,
                                bias=False, scenario_cnt=1,
                                   alphas=[0.5, 0.55],
                                # alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,

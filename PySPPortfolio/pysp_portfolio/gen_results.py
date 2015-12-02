@@ -94,9 +94,9 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep)+1: pkl.rfind('.')]
         exp_params = name.split('_')
-        if prob_type in ("min_cvar_sp", "min_cvar_eev", "min_ms_cvar_sp"):
+        if prob_type in ("min_cvar_sp", "min_cvar_eev"):
             params = exp_params[5:]
-        elif prob_type == "min_cvar_sip":
+        elif prob_type in ("min_cvar_sip", "min_ms_cvar_sp"):
             params = exp_params[6:]
         n_stock = int(params[0][params[0].rfind('m')+1:])
         win_length = int(params[1][params[1].rfind('w')+1:])
