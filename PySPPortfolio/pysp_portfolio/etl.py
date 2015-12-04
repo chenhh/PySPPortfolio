@@ -551,14 +551,13 @@ def generating_scenarios(n_stock, win_length, n_scenario=200, bias=False,
         os.makedirs(scenario_path)
 
     # check file name
-    max_file_cnt = 3
-    for file_cnt in xrange(1, max_file_cnt+1):
+    for file_cnt in xrange(1, MAX_SCENARIO_FILE_CNT+1):
         file_name = "{}_{}_{}_{}.pkl".format(
             exp_start_date.strftime('%Y%m%d'),
             exp_end_date.strftime('%Y%m%d'), parameters, file_cnt)
         file_path = os.path.join(scenario_path, file_name)
         if os.path.exists(file_path):
-            if file_cnt == max_file_cnt:
+            if file_cnt == MAX_SCENARIO_FILE_CNT:
                 raise ValueError('maximum file count limited, {}'.format(
                     file_path))
         else:

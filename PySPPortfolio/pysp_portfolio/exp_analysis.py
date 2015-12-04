@@ -23,7 +23,7 @@ def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
     alpha: float
 
     """
-    if prob_type in ("min_cvar_sp", "ms_min_cvar_sp", "min_cvar_eev"):
+    if prob_type in ("min_cvar_sp", "min_ms_cvar_sp", "min_cvar_eev"):
         param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
             n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
@@ -79,6 +79,9 @@ def all_results_to_sheet_xlsx(prob_type="min_cvar_sip", sheet="alpha"):
               'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
+
+    if prob_type == "min_cvar_sip":
+        columns.insert(1, "max_portfolio_size")
 
 
     if sheet == "n_stock":
@@ -165,6 +168,9 @@ def all_results_to_xlsx(prob_type="min_cvar_sp"):
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
 
+    if prob_type == "min_cvar_sip":
+        columns.append("max_portfolio_size")
+
     # output all combination to a sheet
     names = ["m{}_w{}_s200_unbiased_{}_a{}".format(
                 n_stock, win_length, cnt, alpha)
@@ -193,7 +199,7 @@ def all_results_to_xlsx(prob_type="min_cvar_sp"):
                     result_df.loc[key, 'win_length'] = w
                     result_df.loc[key, 'scenario_cnt'] = c
 
-            print ("[{}/{}] {} {} OK".format(rdx +1, n_param, key))
+            print ("[{}/{}] {} {} OK".format(rdx +1, n_param, prob_type, key))
     print ("{} OK".format(prob_type))
     result_df.to_excel(os.path.join(TMP_DIR,
                                 '{}_results_all.xlsx'.format(prob_type)))
@@ -362,16 +368,16 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     http://matplotlib.org/examples/color/colormaps_reference.html
 
     """
-    if not prob_type in ("min_cvar_sp",):
+    if not prob_type in ("min_cvar_sp", "min_cvar_sip"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
-    data_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'reports',
+    data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
                        '{}_results_all.pkl'.format(prob_type))
     df = pd.read_pickle(data_path)
-    # print df.loc[(df.loc[:, 'win_length']==100),
-    #              'cum_roi']
-    # print df.loc[(df.loc[:,'n_stock']==5) & (df.loc[:,'win_length']==100),
-    #              'cum_roi']
+
+    # set alpha column to str
+    for rdx in xrange(df.index.size):
+        df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
 
     # axes
     stocks = np.arange(5, 50+5, 5)  # 10
@@ -379,12 +385,14 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
     alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
                    '0.85', '0.90', '0.95')
 
-    import matplotlib.pyplot as plt
     import matplotlib as mpl
+    # mpl.use('Agg')
+    import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import axes3d
 
-    fig = plt.figure()
-    fig.figsize(64,48)
+    # figsize in inches
+    fig = plt.figure( figsize=(64,48),facecolor='white')
+
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
             ax = fig.add_subplot(2, 5, mdx+1, projection='3d')
@@ -452,70 +460,90 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
         # position=fig.add_axes([0.93, 0.1, 0.02, 0.35])
         # cbar = plt.colorbar(cset, cax=position)
 
-        # color normalization
-        cm_norm = mpl.colors.Normalize(vmin=-1, vmax=3, clip=False)
+        cm_norm = mpl.colors.Normalize(vmin=-100, vmax=280, clip=False)
 
+        for adx, alpha in enumerate(alphas):
+            ax = fig.add_subplot(2,5, adx+1, projection='3d',
+                                 xlim=(50, 5), ylim=(40, 240),
+                                 zlim=(-100, 280))
+            ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
+                         y=1.02, fontsize=30)
+            ax.set_xlabel(r'$M$', fontsize=24)
+            ax.set_ylabel(r'$h$', fontsize=24)
+            ax.set_zlabel(r'Average cumulative returns (%)', fontsize=22,
+                          fontname="Times New Roman", linespacing=4.5)
+            ax.tick_params(labelsize=10, pad=0, )
+            ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
+                               fontname="Times New Roman")
+            ax.set_yticklabels(np.arange(50, 240 + 10, 50), fontsize=12,
+                               # rotation=-30,
+                               fontname="Times New Roman")
+            ax.set_zticklabels(np.arange(-100, 280, 50),
+                               rotation=90,
+                               # va='center',
+                               # ha='left',
+                               fontsize=12,
+                               fontname="Times New Roman")
+            # ax.zaxis._axinfo['label']['space_factor'] = 255.0
 
-        for adx, value in enumerate(alphas):
-            alpha = float(value)
-            ax = fig.add_subplot(2, 5, adx+1, projection='3d')
-            ax.set_title('alpha: {:.0%}'.format(alpha))
             Xs, Ys = np.meshgrid(stocks, lengths)
             Zs = np.zeros_like(Xs, dtype=np.float)
-            # stds = np.zeros_like(Xs, dtype=np.float)
 
             n_row, n_col = Xs.shape
             for rdx in xrange(n_row):
                 for cdx in xrange(n_col):
                     n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
-                    cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
-                                  (df.loc[:, 'win_length'] == win_length) &
-                                  (df.loc[:, 'alpha'] == alpha),
-                                  'cum_roi']
-                    # annualized_rois = np.power(cum_rois+1, 1./10) -1
+                    if prob_type=="min_cvar_sp":
+                        cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                      (df.loc[:, 'win_length'] == win_length) &
+                                      (df.loc[:, 'alpha'] == alpha),
+                                      'cum_roi']
+                    elif prob_type == "min_cvar_sip":
+                        cum_rois =  df.loc[
+                                (df.loc[:, 'max_portfolio_size'] == n_stock) &
+                                (df.loc[:, 'win_length'] == win_length) &
+                                (df.loc[:, 'alpha'] == alpha),
+                                'cum_roi']
+
                     mean = cum_rois.mean()
-                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
 
-            print adx, Zs
-            p = ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.6,
-                            cmap=plt.cm.coolwarm, norm=cm_norm
+            # print adx, Zs
+            print alpha, Zs
+            # surface
+            p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=0.6,
+                            cmap=plt.cm.coolwarm, norm=cm_norm,
+                            antialiased=True
                             )
-            # fig.colorbar(p)
-            ax.set_xlabel('portfolio size', fontsize=14)
-            # ax.tick_params(axis='both', labelsize=8)
 
-            ax.set_xlim(0, 50)
-            ax.set_ylabel('window length', fontsize=14)
-            ax.set_ylim(40, 240)
-            ax.set_zlabel('cumulative ROI', fontsize=14)
-            ax.set_zlim(-1, 2.8)
-
-            # projected on z
-            cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-1, alpha=0.6,
+            # contour, projected on z
+            cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-100, alpha=0.6,
                               cmap=plt.cm.coolwarm, norm=cm_norm)
-            # color bar
-            # cbaxes = ax.add_axes([0.8, 0.1, 0.03, 0.8])
-            # cbar = fig.colorbar(cset)
-            # cbar.ax.set_ylabel('verbosity coefficient')
 
-        cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-        fig.colorbar(p, cax=cbar_ax)
-
+        # share color bar
+        cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
+        fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax,
+                     ticks=np.arange(-100, 280+10, 20))
+        fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
+                            wspace=0.01, hspace=0.01)
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.eps'), format="eps",
+    #             dpi=600)
+    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'), format="pdf",
+    #             dpi=600)
     plt.show()
-
-
 
 if __name__ == '__main__':
     # all_results_to_sheet_xlsx("min_cvar_sip", "n_stock")
     # all_results_to_sheet_xlsx("min_cvar_sip", "win_length")
     # all_results_to_sheet_xlsx("min_cvar_sip", "alpha")
-    # all_results_to_4dpanel(prob_type="min_cvar_sp")
-    # all_results_to_xlsx()
+    # all_results_to_4dpanel(prob_type="min_cvar_sip")
+    # all_results_to_xlsx("min_cvar_sip")
     # all_results_roi_stats()
-    plot_4d_results(dim_z="alpha")
+    # plot_4d_results("min_cvar_sip", dim_z="alpha")
     # plot_results()
-    # reports = load_results("bah", 5)
-    # print reports
+    reports = load_results("min_ms_cvar_sp", 10, 220, alpha=0.50    )
+    print reports
     # bah_results_to_xlsx()
     # wdf = reports['wealth_df']
     # wfree = reports['risk_free_wealth']

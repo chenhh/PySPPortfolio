@@ -49,8 +49,8 @@ extensions = [
     ),
 
     Extension(
-              "ms_min_cvar_sp",
-              ["ms_min_cvar_sp.pyx",],
+              "min_ms_cvar_sp",
+              ["min_ms_cvar_sp.pyx",],
               include_dirs = [np.get_include()],
     ),
     Extension(
