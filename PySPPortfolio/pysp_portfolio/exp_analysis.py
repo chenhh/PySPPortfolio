@@ -380,13 +380,15 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                    '0.85', '0.90', '0.95')
 
     import matplotlib.pyplot as plt
+    import matplotlib as mpl
     from mpl_toolkits.mplot3d import axes3d
 
     fig = plt.figure()
-
+    fig.figsize(64,48)
     if dim_z == "n_stock":
         for mdx, n_stock in enumerate(stocks):
             ax = fig.add_subplot(2, 5, mdx+1, projection='3d')
+            ax.set_title('n_stock: {}'.format(n_stock))
             v_alphas = [float(v) for v in alphas]
             Xs, Ys = np.meshgrid(lengths, v_alphas)
             Zs = np.zeros_like(Xs, dtype=np.float)
@@ -447,9 +449,17 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
             ax.set_zlim(-1, 3)
 
     if dim_z == "alpha":
+        # position=fig.add_axes([0.93, 0.1, 0.02, 0.35])
+        # cbar = plt.colorbar(cset, cax=position)
+
+        # color normalization
+        cm_norm = mpl.colors.Normalize(vmin=-1, vmax=3, clip=False)
+
+
         for adx, value in enumerate(alphas):
             alpha = float(value)
             ax = fig.add_subplot(2, 5, adx+1, projection='3d')
+            ax.set_title('alpha: {:.0%}'.format(alpha))
             Xs, Ys = np.meshgrid(stocks, lengths)
             Zs = np.zeros_like(Xs, dtype=np.float)
             # stds = np.zeros_like(Xs, dtype=np.float)
@@ -467,19 +477,29 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                     Zs[rdx, cdx] = 0 if np.isnan(mean) else mean
 
             print adx, Zs
+            p = ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.6,
+                            cmap=plt.cm.coolwarm, norm=cm_norm
+                            )
+            # fig.colorbar(p)
+            ax.set_xlabel('portfolio size', fontsize=14)
+            # ax.tick_params(axis='both', labelsize=8)
+
+            ax.set_xlim(0, 50)
+            ax.set_ylabel('window length', fontsize=14)
+            ax.set_ylim(40, 240)
+            ax.set_zlabel('cumulative ROI', fontsize=14)
+            ax.set_zlim(-1, 2.8)
 
             # projected on z
-            cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=-1,
-                              cmap=plt.cm.coolwarm)
+            cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=-1, alpha=0.6,
+                              cmap=plt.cm.coolwarm, norm=cm_norm)
+            # color bar
+            # cbaxes = ax.add_axes([0.8, 0.1, 0.03, 0.8])
+            # cbar = fig.colorbar(cset)
+            # cbar.ax.set_ylabel('verbosity coefficient')
 
-            ax.plot_surface(Xs, Ys, Zs, rstride=2, cstride=2, alpha=0.4,
-                            cmap=plt.cm.coolwarm)
-            ax.set_xlabel('portfolio size')
-            ax.set_xlim(0, 50)
-            ax.set_ylabel('window length')
-            ax.set_ylim(40, 240)
-            ax.set_zlabel('cumulative ROI')
-            ax.set_zlim(-1, 3)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+        fig.colorbar(p, cax=cbar_ax)
 
     plt.show()
 
