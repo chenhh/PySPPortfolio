@@ -223,6 +223,3 @@ class BAHPortfolio(PortfolioReportMixin, ValidPortfolioParameterMixin):
             time() - t0))
 
         return reports
-
-
-

@@ -17,7 +17,7 @@ from PySPPortfolio.pysp_portfolio.py_min_ms_cvar_sp import (
 )
 
 def test_min_ms_cvar_sp():
-    n_period, n_stock, n_scenario = 25, 50, 200
+    n_period, n_stock, n_scenario = 25, 10, 200
     initial_money = 1e6
 
     symbols = EXP_SYMBOLS[:n_stock]
@@ -29,7 +29,7 @@ def test_min_ms_cvar_sp():
     allocated_risk_free_wealth = initial_money
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
-    alphas = [0.1, 0.2, 0.3]
+    alphas = [0.1, ]
     predict_risk_rois = np.random.randn(n_period, n_stock, n_scenario)
     predict_risk_free_rois = np.zeros(n_period)
 
@@ -51,7 +51,7 @@ def test_min_ms_cvar_sp():
 
 def test_min_ms_cvar_sp2():
     n_stock = 10
-    t_start_date, t_end_date = date(2007, 1, 23), date(2014, 12, 31)
+    t_start_date, t_end_date = date(2005, 1, 3), date(2014, 12, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
     # read rois panel
@@ -92,7 +92,8 @@ def test_min_ms_cvar_sp2():
                           allocated_risk_free_wealth, buy_trans_fee,
                           sell_trans_fee, alphas,
                           predict_risk_rois.as_matrix(),
-                          predict_risk_free_rois, 200, verbose=True)
+                          predict_risk_free_rois, 200,
+                        solver="cplex", verbose=False)
 
     # print res
     print "all_scenarios_min_cvar_sp_portfolio: "
