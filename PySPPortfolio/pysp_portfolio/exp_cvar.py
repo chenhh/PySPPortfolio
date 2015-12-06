@@ -13,6 +13,7 @@ from min_cvar_sp import (MinCVaRSPPortfolio, MinCVaREEVPortfolio)
 from min_cvar_sip import (MinCVaRSIPPortfolio,)
 from min_ms_cvar_sp import (MinMSCVaRSPPortfolio,)
 from buy_and_hold import (BAHPortfolio,)
+from best import (BestMSPortfolio,)
 
 
 def run_min_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
@@ -342,6 +343,54 @@ def run_bah_simulation(n_stock ,verbose=False):
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
     print ("BAH {} OK, {:.3f} secs".format(param, time()-t0))
 
+
+
+def run_best_ms_simulation(n_stock ,verbose=False):
+    """
+    The best multi-stage strategy,
+    """
+    t0 = time()
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+    param = "{}_{}_m{}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        n_stock)
+
+    symbols = EXP_SYMBOLS[:n_stock]
+    n_stock = len(symbols)
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # shape: (n_period, n_stock)
+    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols,
+                    'simple_roi'].T
+    n_exp_period = exp_risk_rois.shape[0]
+    exp_risk_free_rois = pd.Series(np.zeros(n_exp_period),
+                                   index=exp_risk_rois.index)
+
+    allocated_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
+    initial_wealth = 1e6
+
+
+    instance = BestMSPortfolio(symbols, exp_risk_rois, exp_risk_free_rois,
+                            allocated_risk_wealth, initial_wealth,
+                            start_date=START_DATE, end_date=END_DATE)
+    reports = instance.run()
+
+    file_name = 'best_ms_{}.pkl'.format(param)
+
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'best_ms')
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+
+    pd.to_pickle(reports, os.path.join(file_dir, file_name))
+    print ("best_ms {} OK, {:.3f} secs".format(param, time()-t0))
+
+
 if __name__ == '__main__':
     pass
     # for n_stock in xrange(5, 50+5, 5):
@@ -367,9 +416,11 @@ if __name__ == '__main__':
     #                            verbose=True)
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
-    run_min_ms_cvar_sp_simulation(10, 220, n_scenario=200,
-                               bias=False, scenario_cnt=1,
-                                  alphas=[0.5, 0.55],
-                               # alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-                               #          0.85, 0.9, 0.95],
-                               verbose=False)
+    # run_min_ms_cvar_sp_simulation(10, 220, n_scenario=200,
+    #                            bias=False, scenario_cnt=1,
+    #                               alphas=[0.5, 0.55],
+    #                            # alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
+    #                            #          0.85, 0.9, 0.95],
+    #                            verbose=False)
+    # for n_stock in xrange(15, 50+5, 5):
+    run_best_ms_simulation(20)
