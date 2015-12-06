@@ -12,16 +12,20 @@ from PySPPortfolio.pysp_portfolio import *
 from PySPPortfolio.pysp_portfolio.min_ms_cvar_sp import (
     min_ms_cvar_sp_portfolio,)
 
+from PySPPortfolio.pysp_portfolio.py_min_ms_cvar_sp import (
+    min_ms_cvar_sp_portfolio as py_min_ms_cvar_sp_portfolio
+)
+
 def test_min_ms_cvar_sp():
-    n_period, n_stock, n_scenario = 250, 50, 200
+    n_period, n_stock, n_scenario = 25, 50, 200
     initial_money = 1e6
 
     symbols = EXP_SYMBOLS[:n_stock]
     trans_dates = pd.date_range('2000/1/1', periods=n_period)
 
     risk_rois = np.random.randn(n_period, n_stock)
-    risk_free_roi = np.zeros(n_period)
-    allocated_risk_wealth = np.zeros(n_stock)
+    risk_free_roi = np.zeros(n_period, dtype=np.float)
+    allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
     allocated_risk_free_wealth = initial_money
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
@@ -31,7 +35,7 @@ def test_min_ms_cvar_sp():
 
     # model
     t0 = time()
-    res = min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois,
+    res = py_min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois,
                                   risk_free_roi,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
@@ -47,7 +51,7 @@ def test_min_ms_cvar_sp():
 
 def test_min_ms_cvar_sp2():
     n_stock = 10
-    t_start_date, t_end_date = date(2007, 1, 15), date(2014, 12, 31)
+    t_start_date, t_end_date = date(2007, 1, 23), date(2014, 12, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
     # read rois panel
@@ -61,12 +65,12 @@ def test_min_ms_cvar_sp2():
                                 symbols, 'simple_roi'].T
     n_period = len(risk_rois.index)
 
-    risk_free_roi = np.zeros(n_period)
-    allocated_risk_wealth = np.zeros(n_stock)
+    risk_free_roi = np.zeros(n_period, dtype=np.float)
+    allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
     allocated_risk_free_wealth = 1e6
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
-    alphas = [0.5, 0.55, ]
+    alphas = [0.5, ]
 
     # read scenario
     scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
@@ -81,13 +85,14 @@ def test_min_ms_cvar_sp2():
 
     # model
     t0 = time()
-    res = min_ms_cvar_sp_portfolio(symbols, risk_rois.index,
+    res = py_min_ms_cvar_sp_portfolio(symbols, risk_rois.index,
                                    risk_rois.as_matrix(),
                                   risk_free_roi,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
-                          sell_trans_fee, alphas, predict_risk_rois.as_matrix(),
-                          predict_risk_free_rois, 200, verbose=False)
+                          sell_trans_fee, alphas,
+                          predict_risk_rois.as_matrix(),
+                          predict_risk_free_rois, 200, verbose=True)
 
     # print res
     print "all_scenarios_min_cvar_sp_portfolio: "

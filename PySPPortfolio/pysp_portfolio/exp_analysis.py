@@ -509,7 +509,7 @@ def plot_4d_results(prob_type="min_cvar_sp", dim_z="alpha"):
                     Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
 
             # print adx, Zs
-            print alpha, Zs
+            print alpha
             # surface
             p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=0.6,
                             cmap=plt.cm.coolwarm, norm=cm_norm,
@@ -540,10 +540,10 @@ if __name__ == '__main__':
     # all_results_to_4dpanel(prob_type="min_cvar_sip")
     # all_results_to_xlsx("min_cvar_sip")
     # all_results_roi_stats()
-    # plot_4d_results("min_cvar_sip", dim_z="alpha")
+    plot_4d_results("min_cvar_sp", dim_z="alpha")
     # plot_results()
-    reports = load_results("min_ms_cvar_sp", 10, 220, alpha=0.50    )
-    print reports
+    # reports = load_results("min_ms_cvar_sp", 10, 220, alpha=0.50    )
+    # print reports
     # bah_results_to_xlsx()
     # wdf = reports['wealth_df']
     # wfree = reports['risk_free_wealth']
