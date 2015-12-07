@@ -16,7 +16,7 @@ Enter the following commands:
 
 You can then "cd X:yourpath" to navigate to your Python app and then
 build your C extensions by entering:
-    python setup.py build_ext --inplace --compiler=msvc
+    w
 
 the MSVC compiler default optimization level: /Ox (Full Optimization)
 https://msdn.microsoft.com/en-us/library/59a3b321.aspx

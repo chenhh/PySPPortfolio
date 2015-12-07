@@ -12,8 +12,8 @@ from PySPPortfolio.pysp_portfolio import *
 from PySPPortfolio.pysp_portfolio.min_ms_cvar_sp import (
     min_ms_cvar_sp_portfolio,)
 
-from PySPPortfolio.pysp_portfolio.py_min_ms_cvar_sp import (
-    min_ms_cvar_sp_portfolio as py_min_ms_cvar_sp_portfolio
+from PySPPortfolio.pysp_portfolio.min_ms_cvar_sp import (
+    min_ms_cvar_sp_portfolio,
 )
 
 def test_min_ms_cvar_sp():
@@ -35,7 +35,7 @@ def test_min_ms_cvar_sp():
 
     # model
     t0 = time()
-    res = py_min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois,
+    res = min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois,
                                   risk_free_roi,
                           allocated_risk_wealth,
                           allocated_risk_free_wealth, buy_trans_fee,
@@ -85,7 +85,7 @@ def test_min_ms_cvar_sp2():
 
     # model
     t0 = time()
-    res = py_min_ms_cvar_sp_portfolio(symbols, risk_rois.index,
+    res = min_ms_cvar_sp_portfolio(symbols, risk_rois.index,
                                    risk_rois.as_matrix(),
                                   risk_free_roi,
                           allocated_risk_wealth,

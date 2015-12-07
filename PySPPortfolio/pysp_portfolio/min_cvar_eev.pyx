@@ -22,12 +22,11 @@ from PySPPortfolio.pysp_portfolio import *
 from scenario.c_moment_matching import heuristic_moment_matching
 from min_cvar_sp import (MinCVaRSPPortfolio, )
 
-
 cimport numpy as cnp
 ctypedef cnp.float64_t FLOAT_t
 ctypedef cnp.intp_t INTP_t
 
-def min_cvar_eev_sp_portfolio(symbols,
+def min_cvar_eev_portfolio(symbols,
                           cnp.ndarray[FLOAT_t, ndim=1] risk_rois,
                           double risk_free_roi,
                           cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
@@ -107,9 +106,9 @@ def min_cvar_eev_sp_portfolio(symbols,
         buy_amount and sell_amount are first stage variable,
         risk_wealth is second stage variable.
         """
-        return (model.risk_wealth[mdx] ==
-                (1. + model.risk_rois[mdx]) * model.allocated_risk_wealth[mdx] +
-                model.buy_amounts[mdx] - model.sell_amounts[mdx])
+        return (model.risk_wealth[mdx] == (1. + model.risk_rois[mdx]) *
+                model.allocated_risk_wealth[mdx] + model.buy_amounts[mdx] -
+                model.sell_amounts[mdx])
 
     instance.risk_wealth_constraint = Constraint(
         instance.symbols, rule=risk_wealth_constraint_rule)
@@ -162,7 +161,7 @@ def min_cvar_eev_sp_portfolio(symbols,
     cdef double estimated_var = instance.Z.value
     cdef double estimated_cvar = instance.cvar_objective()
 
-    # fixed the first-stage variable
+    # fixed the first-stage variables
     instance.buy_amounts.fixed = True
     instance.sell_amounts.fixed = True
     instance.risk_wealth.fixed = True
@@ -194,8 +193,11 @@ def min_cvar_eev_sp_portfolio(symbols,
         estimated_eev_var_arr[sdx] = instance.Z.value
         estimated_eev_cvar_arr[sdx] = instance.cvar_objective()
 
+        print "scenario:{}, VaR:{}, CVaR:{}".format(sdx+1,
+            estimated_eev_var_arr[sdx], estimated_eev_cvar_arr[sdx])
+
     if verbose:
-        print "min_cvar_eev_sp_portfolio OK, {:.3f} secs".format(time() - t0)
+        print "min_cvar_eev_portfolio OK, {:.3f} secs".format(time() - t0)
 
     return {
         "buy_amounts": buy_amounts,
@@ -219,9 +221,10 @@ class MinCVaREEVPortfolio(MinCVaRSPPortfolio):
                  int window_length=WINDOW_LENGTH,
                  int n_scenario=N_SCENARIO,
                  bias=BIAS_ESTIMATOR,
-                 double alpha=0.05,
+                 double alpha=0.95,
                  int scenario_cnt=1,
                  verbose=False):
+
         super(MinCVaREEVPortfolio, self).__init__(
             symbols, risk_rois, risk_free_rois, initial_risk_wealth,
             initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
@@ -270,9 +273,9 @@ class MinCVaREEVPortfolio(MinCVaRSPPortfolio):
 
         # current exp_period index
         tdx = kwargs['tdx']
-        results = min_cvar_sp_portfolio(
+        results = min_cvar_eev_portfolio(
             self.symbols,
-            self.exp_risk_rois.iloc[tdx, :].as_matrix(),
+            self.exp_risk_rois.iloc[tdx].as_matrix(),
             self.risk_free_rois.iloc[tdx],
             kwargs['allocated_risk_wealth'].as_matrix(),
             kwargs['allocated_risk_free_wealth'],
