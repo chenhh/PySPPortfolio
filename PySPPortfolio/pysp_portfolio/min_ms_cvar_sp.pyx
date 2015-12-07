@@ -197,12 +197,16 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
 
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)
-
         # solve
         opt = SolverFactory(solver)
         if solver == "cplex":
-            opt.options["workmem"] = 2048
-        results = opt.solve(instance)
+            opt.options["workmem"] = 4096
+            # turnoff presolve
+            # opt.options['preprocessing_presolve'] = 'n'
+            # Barrier algorithm and its upper bound
+            opt.options['lpmethod'] = 4
+            opt.options['barrier_limits_objrange'] =1e75
+        results = opt.solve(instance, tee=True)
         instance.solutions.load_from(results)
         if verbose:
             display(instance)

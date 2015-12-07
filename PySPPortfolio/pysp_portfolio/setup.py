@@ -41,7 +41,6 @@ extensions = [
               include_dirs = [np.get_include()],
     ),
 
-
     Extension(
               "min_cvar_sp",
               ["min_cvar_sp.pyx",],
@@ -53,11 +52,19 @@ extensions = [
               ["min_ms_cvar_sp.pyx",],
               include_dirs = [np.get_include()],
     ),
+
     Extension(
               "min_cvar_sip",
               ["min_cvar_sip.pyx",],
               include_dirs = [np.get_include()],
     ),
+
+    Extension(
+              "min_cvar_eev",
+              ["min_cvar_eev.pyx",],
+              include_dirs = [np.get_include()],
+    ),
+
 ]
 
 setup(
