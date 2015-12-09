@@ -9,7 +9,7 @@ from time import time
 import numpy as np
 import pandas as pd
 from PySPPortfolio.pysp_portfolio import *
-from min_cvar_sp import (MinCVaRSPPortfolio, MinCVaREEVPortfolio)
+from min_cvar_sp import (MinCVaRSPPortfolio, )
 from min_cvar_sip import (MinCVaRSIPPortfolio,)
 from min_ms_cvar_sp import (MinMSCVaRSPPortfolio,)
 from buy_and_hold import (BAHPortfolio,)

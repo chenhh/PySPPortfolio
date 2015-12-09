@@ -312,9 +312,11 @@ def farmer_eev():
         instance.area['beet'].value))
 
     # fixed stage-1 variables
-    instance.area['wheat'].fixed = True
-    instance.area['corn'].fixed = True
-    instance.area['beet'].fixed = True
+    for plant in instance.plants:
+        instance.area[plant].fixed = True
+    # instance.area['wheat'].fixed = True
+    # instance.area['corn'].fixed = True
+    # instance.area['beet'].fixed = True
 
     for sdx in xrange(3):
         instance.del_component("min_wheat_constraint")
@@ -350,9 +352,10 @@ def farmer_eev():
                 sdx+1, -instance.min_cost_objective()))
 
 
+
 if __name__ == '__main__':
     # farmer_lp()
-    # farmer_sp()
+    farmer_sp()
     # farmer_vss(
     # farmer_wait_and_see()
-    farmer_eev()
+    # farmer_eev()

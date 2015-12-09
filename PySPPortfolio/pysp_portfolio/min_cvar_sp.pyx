@@ -105,8 +105,8 @@ def min_cvar_sp_portfolio(symbols,
         buy_amount and sell_amount are first stage variable,
         risk_wealth is second stage variable.
         """
-        return (model.risk_wealth[mdx] ==
-                (1. + model.risk_rois[mdx]) * model.allocated_risk_wealth[mdx] +
+        return (model.risk_wealth[mdx] == (1. + model.risk_rois[mdx]) *
+                model.allocated_risk_wealth[mdx] +
                 model.buy_amounts[mdx] - model.sell_amounts[mdx])
 
     instance.risk_wealth_constraint = Constraint(
@@ -143,12 +143,19 @@ def min_cvar_sp_portfolio(symbols,
                                     for sdx in xrange(n_scenario))
         return model.Z - 1. / (1. - model.alpha) * scenario_expectation
 
-    instance.cvar_objective = Objective(rule=cvar_objective_rule, sense=maximize)
+    instance.cvar_objective = Objective(rule=cvar_objective_rule,
+                                        sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
     results = opt.solve(instance)
     instance.solutions.load_from(results)
+    print ("Y:{}, VaR:{}, CVaR{}".format(
+        [instance.Ys[sdx].value for sdx in xrange(n_scenario)],
+        instance.Z.value,
+        instance.cvar_objective,
+    ))
+
     if verbose:
         display(instance)
 
