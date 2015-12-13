@@ -73,15 +73,16 @@ def farmer_lp():
     print ("LP objective: {}".format(-instance.min_cost_objective()))
 
 
-def farmer_sp():
+def farmer_sp(yields=None):
     # concrete model
     instance = ConcreteModel(name="Farmer_SP")
 
-    yields = np.array([
-        [3, 3.6, 24],
-        [2.5, 3, 20],
-        [2, 2.4, 16],
-    ])
+    if yields is None:
+        yields = np.array([
+            [3, 3.6, 24],
+            [2.5, 3, 20],
+            [2, 2.4, 16],
+        ])
 
     # set
     instance.plants = ["wheat", "corn", "beet"]
@@ -152,18 +153,20 @@ def farmer_sp():
     results = opt.solve(instance)
     instance.solutions.load_from(results)
     # display(instance)
-    print (" SP objective: {}".format(-instance.min_cost_objective()))
+    print ("SP: {}".format(-instance.min_cost_objective()))
+    return -instance.min_cost_objective()
 
 
-def farmer_wait_and_see():
+def farmer_wait_and_see(yields=None):
     # concrete model
+    if yields is None:
+        yields = np.array([
+            [3, 3.6, 24],
+            [2.5, 3, 20],
+            [2, 2.4, 16],
+        ])
 
-    yields = np.array([
-        [3, 3.6, 24],
-        [2.5, 3, 20],
-        [2, 2.4, 16],
-    ])
-
+    obj_values = np.zeros(3)
     for sdx in xrange(3):
         # concrete model
         instance = ConcreteModel(name="Farmer_wait_and_see_{}".format(sdx))
@@ -228,17 +231,19 @@ def farmer_wait_and_see():
         results = opt.solve(instance)
         instance.solutions.load_from(results)
         # display(instance)
-        print (" WS objective: {}".format(-instance.min_cost_objective()))
+        # print (" WS objective: {}".format(-instance.min_cost_objective()))
+        obj_values[sdx] = -instance.min_cost_objective()
+    print "WS:", obj_values.mean()
+    return obj_values.mean()
 
-
-def farmer_eev():
+def farmer_eev(yields=None):
     """ value of stochastic solution """
-
-    yields = np.array([
-        [3, 3.6, 24],
-        [2.5, 3, 20],
-        [2, 2.4, 16],
-    ])
+    if yields is None:
+        yields = np.array([
+            [3, 3.6, 24],
+            [2.5, 3, 20],
+            [2, 2.4, 16],
+        ])
 
     yields_mean = yields.mean(axis=0)
 
@@ -306,10 +311,11 @@ def farmer_eev():
     results = opt.solve(instance)
     instance.solutions.load_from(results)
     # display(instance)
-    print ("stage 1, profit:{}".format(-instance.min_cost_objective()))
-    print ("area: wheat:{} corn:{} beet:{}".format(
-        instance.area['wheat'].value, instance.area['corn'].value,
-        instance.area['beet'].value))
+    print ("EV: {}".format(-instance.min_cost_objective()))
+    EV = -instance.min_cost_objective()
+    # print ("area: wheat:{} corn:{} beet:{}".format(
+    #     instance.area['wheat'].value, instance.area['corn'].value,
+    #     instance.area['beet'].value))
 
     # fixed stage-1 variables
     for plant in instance.plants:
@@ -318,6 +324,7 @@ def farmer_eev():
     # instance.area['corn'].fixed = True
     # instance.area['beet'].fixed = True
 
+    obj_values = np.zeros(3)
     for sdx in xrange(3):
         instance.del_component("min_wheat_constraint")
         instance.del_component("min_corn_constraint")
@@ -343,19 +350,26 @@ def farmer_eev():
 
         instance.beat_price_constraint = Constraint(rule=beet_price_rule)
 
-        # solve stage-1
+        # solve stage-2
         opt = SolverFactory("cplex")
         results = opt.solve(instance)
         instance.solutions.load_from(results)
         # display(instance)
-        print ("scenario:{}, profit:{}".format(
-                sdx+1, -instance.min_cost_objective()))
+        # print ("scenario:{}, profit:{}".format(
+        #         sdx+1, -instance.min_cost_objective()))
+        obj_values[sdx] = -instance.min_cost_objective()
+    print "EEV:",obj_values.mean()
 
-
+    return EV, obj_values.mean()
 
 if __name__ == '__main__':
     # farmer_lp()
-    farmer_sp()
-    # farmer_vss(
-    # farmer_wait_and_see()
-    # farmer_eev()
+    for _ in xrange(1000):
+        yields = np.random.rand(3,3)*5
+        yields[:, 2] += 20
+        print yields
+        sp = farmer_sp(yields)
+        ws = farmer_wait_and_see(yields)
+        ev, eev = farmer_eev(yields)
+
+        assert ws>=sp>=eev

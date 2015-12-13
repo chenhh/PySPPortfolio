@@ -258,6 +258,6 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--prob_type", required=True, type=str)
-    parser.add_argument("-c", "--scenario_cnt", required=True, type=int)
+    parser.add_argument("-c", "--max_scenario_cnt", required=True, type=int)
     args = parser.parse_args()
-    dispatch_experiment_parameters(args.prob_type, args.scenario_cnt)
+    dispatch_experiment_parameters(args.prob_type, args.max_scenario_cnt)

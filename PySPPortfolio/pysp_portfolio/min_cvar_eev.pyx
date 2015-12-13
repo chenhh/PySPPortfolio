@@ -166,9 +166,11 @@ def min_cvar_eev_portfolio(symbols,
     for mdx in instance.symbols:
         instance.buy_amounts[mdx].fixed = True
         instance.sell_amounts[mdx].fixed = True
-        # instance.risk_wealth[mdx].fixed = True
+        instance.risk_wealth[mdx].fixed = True
+    instance.risk_free_wealth.fixed = True
 
-    # instance.risk_free_wealth.fixed = True
+    # Z is viewed as the first-stage variable
+    instance.Z.fixed = True
 
     estimated_eev_var_arr = np.zeros(n_scenario)
     estimated_eev_cvar_arr = np.zeros(n_scenario)
@@ -191,32 +193,11 @@ def min_cvar_eev_portfolio(symbols,
         opt = SolverFactory(solver)
         results = opt.solve(instance)
         instance.solutions.load_from(results)
-        # print ("solver status: {}".format(results.solver.status))
-        # print ("solver termination cond: {}".format(
-        #     results.solver.termination_condition))
 
         # extract results
         estimated_eev_var_arr[sdx] = instance.Z.value
         estimated_eev_cvar_arr[sdx] = instance.cvar_objective()
 
-
-        print "scenario:{}, Y:{}, VaR:{}, CVaR:{}".format(
-            sdx+1, instance.Y.value,
-            estimated_eev_var_arr[sdx], estimated_eev_cvar_arr[sdx])
-
-        print "risk:{}, risk_free:{}, fwealth:{}".format(
-            [instance.risk_wealth[mdx].value for mdx in instance.symbols],
-            instance.risk_free_wealth.value,
-            sum(instance.risk_wealth[mdx].value *
-                (1+instance.all_predict_risk_rois[mdx, sdx]) for
-                mdx in instance.symbols)
-        )
-    print "sorted:"
-    estimated_eev_cvar_arr.sort()
-    print estimated_eev_cvar_arr
-    edx = int(n_scenario * alpha)
-    print estimated_eev_cvar_arr[:edx].mean()
-    print estimated_eev_cvar_arr.mean()
     if verbose:
         print "min_cvar_eev_portfolio OK, {:.3f} secs".format(time() - t0)
 

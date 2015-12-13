@@ -12,6 +12,7 @@ from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio, )
 from min_cvar_sip import (MinCVaRSIPPortfolio,)
 from min_ms_cvar_sp import (MinMSCVaRSPPortfolio,)
+from min_cvar_eev import (MinCVaREEVPortfolio,)
 from buy_and_hold import (BAHPortfolio,)
 from best import (BestMSPortfolio, BestPortfolio)
 
@@ -294,7 +295,7 @@ def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
         os.makedirs(file_dir)
 
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
-    print ("min cvar sp {} OK, {:.3f} secs".format(param, time()-t0))
+    print ("min cvar eev {} OK, {:.3f} secs".format(param, time()-t0))
 
     return reports
 
@@ -459,8 +460,10 @@ if __name__ == '__main__':
     #         except ValueError as e:
     #             print e
     #             continue
+    run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
     # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
+
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
     # run_min_ms_cvar_sp_simulation(10, 220, n_scenario=200,
@@ -470,5 +473,5 @@ if __name__ == '__main__':
     #                            #          0.85, 0.9, 0.95],
     #                            verbose=False)
     # for n_stock in xrange(15, 50+5, 5):
-    run_best_simulation(10)
+    # run_best_simulation(10)
     # run_best_ms_simulation(5)
