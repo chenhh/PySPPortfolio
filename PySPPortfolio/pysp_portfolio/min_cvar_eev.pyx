@@ -146,7 +146,7 @@ def min_cvar_eev_portfolio(symbols,
                                         sense=maximize)
 
     # 1st-stage solve
-    opt = SolverFactory(solver, solver_io="python")
+    opt = SolverFactory(solver)
     results = opt.solve(instance)
     instance.solutions.load_from(results)
 
@@ -190,7 +190,7 @@ def min_cvar_eev_portfolio(symbols,
         instance.cvar_constraint = Constraint(rule=cvar_constraint_rule)
 
         # 2nd-stage solve
-        opt = SolverFactory(solver, solver_io="python")
+        opt = SolverFactory(solver)
         results = opt.solve(instance)
         instance.solutions.load_from(results)
 
