@@ -543,4 +543,13 @@ if __name__ == '__main__':
     # plot_3d_results("min_cvar_sp", z_dim='cum_roi')
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
-    plot_3d_results("min_cvar_sp", z_dim='SPA_c_pvalue')
+    # plot_3d_results("min_cvar_sp", z_dim='SPA_c_pvalue')
+
+    res = load_results("min_cvar_eev", 5, 240, scenario_cnt=4, alpha=0.9)
+    # print res['eev_cvar_arr']
+
+    res2 = load_results("min_cvar_sp", 5, 240, scenario_cnt=4, alpha=0.9)
+    # print res2['cvar_arr']
+    print res['final_wealth']
+    print res2['final_wealth']
+    print  (res2['cvar_arr'] - res['eev_cvar_arr']).mean()
