@@ -460,7 +460,9 @@ if __name__ == '__main__':
     #         except ValueError as e:
     #             print e
     #             continue
-    run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
+    # run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
+    for m in xrange(5, 55, 5):
+        run_bah_simulation(m)
     # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
 

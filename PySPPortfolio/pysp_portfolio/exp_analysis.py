@@ -5,10 +5,19 @@ License: GPL v2
 """
 import os
 from time import time
+from datetime import date
 import pandas as pd
 import numpy as np
+import scipy.stats as spstats
 from PySPPortfolio.pysp_portfolio import *
 from gen_results import (all_experiment_parameters,)
+
+def load_rois(symbol=None):
+    if symbol is None:
+        symbol = "TAIEX_2005_largest50cap_panel"
+
+    return pd.read_pickle(
+            os.path.join(SYMBOLS_PKL_DIR, "{}.pkl".format(symbol)))
 
 def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
                      bias=False, scenario_cnt=1, alpha=0.95):
@@ -78,6 +87,7 @@ def all_results_to_sheet_xlsx(prob_type="min_cvar_sip", sheet="alpha",
               'start_date', 'end_date', 'n_exp_period',
               'trans_fee_loss',
               'cum_roi', 'daily_roi', 'daily_mean_roi', 'daily_std_roi',
+               'daily_skew_roi',
               'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
@@ -168,6 +178,7 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
               'start_date', 'end_date', 'n_exp_period',
               'trans_fee_loss',
               'cum_roi', 'daily_roi', 'daily_mean_roi', 'daily_std_roi',
+               'daily_skew_roi',
               'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
@@ -227,6 +238,7 @@ def all_results_to_4dpanel(prob_type="min_cvar_sp",
               'start_date', 'end_date', 'n_exp_period',
               'trans_fee_loss',
               'cum_roi', 'daily_roi', 'daily_mean_roi', 'daily_std_roi',
+              'daily_skew_roi',
               'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
@@ -274,7 +286,8 @@ def bah_results_to_xlsx():
     n_stocks = range(5, 50+5, 5)
     columns = ['n_stock', 'start_date', 'end_date', 'n_exp_period',
                'trans_fee_loss', 'cum_roi', 'daily_roi', 'daily_mean_roi',
-               'daily_std_roi', 'daily_kurt_roi', 'sharpe', 'sortino_full',
+               'daily_std_roi',  'daily_skew_roi', 'daily_kurt_roi',
+               'sharpe', 'sortino_full',
                'sortino_partial', 'max_abs_drawdown', 'SPA_l_pvalue',
                'SPA_c_pvalue', 'SPA_u_pvalue', 'simulation_time']
 
@@ -373,7 +386,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     z_dim: {"cum_roi", "ann_roi", "std_roi"}
 
     """
-    if not prob_type in ("min_cvar_sp", "min_cvar_sip"):
+    if not prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
     data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
@@ -460,7 +473,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
         for rdx in xrange(n_row):
             for cdx in xrange(n_col):
                 n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
-                if prob_type=="min_cvar_sp":
+                if prob_type in ("min_cvar_sp", "min_cvar_eev"):
                     if z_dim in ('cum_roi', 'ann_roi'):
                         cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
                                       (df.loc[:, 'win_length'] == win_length) &
@@ -522,6 +535,32 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     # format="pdf", dpi=600)
     plt.show()
 
+def stock_statistics():
+    import csv
+    symbols = EXP_SYMBOLS
+    panel = load_rois()
+
+    with open(os.path.join(TMP_DIR, 'stat.csv'), 'wb') as csvfile:
+        fieldnames = ['name', "R_c", "R_a", "mu", "std", "skew", "kurt"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        for symbol in symbols:
+            rois = panel[START_DATE:END_DATE, symbol, 'simple_roi']
+            rois[0] = 0
+            R_c = (1+rois).prod() -1
+            R_a = np.power(R_c+1, 1./10) -1
+            writer.writerow({"name": symbol,
+                             "R_c": R_c,
+                             "R_a": R_a,
+                             "mu": rois.mean(),
+                             "std": rois.std(ddof=1),
+                             "skew": spstats.skew(rois, bias=False),
+                             "kurt": spstats.kurtosis(rois, bias=False)})
+            print symbol, R_c
+
+
+
+
 if __name__ == '__main__':
     # all_results_to_sheet_xlsx("min_cvar_sp", "n_stock")
     # all_results_to_sheet_xlsx("min_cvar_sp", "win_length")
@@ -536,20 +575,21 @@ if __name__ == '__main__':
 
     # all_results_to_xlsx("min_cvar_sp")
     # all_results_to_xlsx("min_cvar_sip")
+    # all_results_to_xlsx("min_cvar_eev")
 
     # all_results_roi_stats("min_cvar_sp")
     # all_results_roi_stats("min_cvar_sip")
     # plot_3d_results("min_cvar_sp")
-    # plot_3d_results("min_cvar_sp", z_dim='cum_roi')
+    # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
     # plot_3d_results("min_cvar_sp", z_dim='SPA_c_pvalue')
-
-    res = load_results("min_cvar_eev", 5, 240, scenario_cnt=4, alpha=0.9)
+    bah_results_to_xlsx()
+    # res = load_results("min_cvar_eev", 5, 240, scenario_cnt=4, alpha=0.9)
     # print res['eev_cvar_arr']
 
-    res2 = load_results("min_cvar_sp", 5, 240, scenario_cnt=4, alpha=0.9)
+    # res2 = load_results("min_cvar_sp", 5, 240, scenario_cnt=4, alpha=0.9)
     # print res2['cvar_arr']
-    print res['final_wealth']
-    print res2['final_wealth']
-    print  (res2['cvar_arr'] - res['eev_cvar_arr']).mean()
+
+    # print load_rois()
+    # stock_statistics()
