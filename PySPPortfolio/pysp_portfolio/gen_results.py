@@ -67,6 +67,28 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     return set(all_params)
 
 
+
+def special_experiment_parameters(prob_type, max_scenario_cnts):
+    """
+    file_name of all experiment parameters
+    n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
+    win_length: {50, 60, ..., 240}
+    n_scenario:  200
+    biased: {unbiased,}
+    cnt: {1,2,3}
+    alpha: (0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95)
+
+    """
+    # combinations: 10 * 20 * 3 * 10 = 6000
+    all_params = []
+    if prob_type == "min_cvar_eev":
+        all_params.append((5, 190, 200, "unbiased", 1, 0.85))
+        all_params.append((10, 110, 200, "unbiased", 3, 0.6))
+        all_params.append((15, 100, 200, "unbiased", 5, 0.65))
+        all_params.append((20, 190, 200, "unbiased", 1, 0.85))
+
+    return set(all_params)
+
 def checking_finished_parameters(prob_type, max_scenario_cnts):
     """
     return unfinished experiment parameters.
