@@ -59,8 +59,8 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
                 for bias in ("unbiased",):
                     for cnt in xrange(1, max_scenario_cnts+1):
                         if prob_type in ("min_cvar_eev_objective",):
-                            all_params.append(n_stock, win_length, n_scenario,
-                                              bias, cnt)
+                            all_params.append((n_stock, win_length, n_scenario,
+                                              bias, cnt))
                         else:
                             for alpha in ('0.50', '0.55', '0.60', '0.65',
                                           '0.70', '0.75', '0.80', '0.85',
