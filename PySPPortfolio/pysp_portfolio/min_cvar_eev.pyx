@@ -233,15 +233,22 @@ class MinCVaREEVPortfolio(MinCVaRSPPortfolio):
             start_date, end_date, window_length, n_scenario, bias,
             alpha, scenario_cnt, verbose)
 
-        self.eev_objective = False
+        self.eev_objective = eev_objectve
         self.eev_cvar_arr = pd.Series(np.zeros(self.n_exp_period),
                                   index = self.exp_risk_rois.index)
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaREEV_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-            self.n_stock, self.window_length, self.n_scenario,
-             "biased" if self.bias_estimator else "unbiased",
-             self.scenario_cnt, self.alpha)
+        if self.eev_objective is False:
+            return "MinCVaREEV_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+                self.n_stock, self.window_length, self.n_scenario,
+                "biased" if self.bias_estimator else "unbiased",
+                self.scenario_cnt, self.alpha)
+        else:
+            return "MinCVaREEVObjective_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+                self.n_stock, self.window_length, self.n_scenario,
+                "biased" if self.bias_estimator else "unbiased",
+                self.scenario_cnt, self.alpha)
+
 
     def add_results_to_reports(self, reports, *args, **kwargs):
         """ add additional items to reports """
