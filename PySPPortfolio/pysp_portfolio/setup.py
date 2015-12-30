@@ -65,6 +65,12 @@ extensions = [
               include_dirs = [np.get_include()],
     ),
 
+    Extension(
+              "min_cvar_eevip",
+              ["min_cvar_eevip.pyx",],
+              include_dirs = [np.get_include()],
+    ),
+
 ]
 
 setup(
