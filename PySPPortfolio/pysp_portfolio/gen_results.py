@@ -170,8 +170,13 @@ def checking_working_parameters(prob_type, max_scenario_cnts):
     for param_key, node in data.items():
         # key:  n_stock, win_length, _scenario, biased, cnt, alpha
         keys =  param_key.split('|')
-        param = (int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
-                 int(keys[4]), keys[5])
+        if prob_type not in ("min_cvar_eev_objective",):
+            param = (int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
+                     int(keys[4]), keys[5])
+        else:
+            # key:  n_stock, win_length, _scenario, biased, cnt
+            param =(int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
+                     int(keys[4]))
         if param in all_params:
             all_params.remove(param)
             print ("checking_working {}: {} under processing on {}.".format(
