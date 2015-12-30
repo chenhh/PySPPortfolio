@@ -9,7 +9,11 @@ from datetime import date
 import pandas as pd
 import numpy as np
 import scipy.stats as spstats
+import statsmodels.stats.stattools as stat_tools
+import statsmodels.tsa.stattools as tsa_tools
 from PySPPortfolio.pysp_portfolio import *
+import utils
+from arch.bootstrap.multiple_comparrison import (SPA, )
 from gen_results import (all_experiment_parameters,)
 
 def load_rois(symbol=None):
@@ -302,6 +306,71 @@ def bah_results_to_xlsx():
 
     df.to_excel(os.path.join(TMP_DIR, 'BAH.xlsx'))
 
+def significant_star(val):
+    if val <= 0.01:
+        star = "***"
+    elif val <= 0.05:
+        star = "**"
+    elif val <= 0.1:
+        star = "*"
+    else:
+        star = ""
+    return star
+
+def bah_results_to_latex():
+    """ buy and hold """
+    n_stocks = range(5, 50+5, 5)
+    columns = ['n_stock', 'R_cum', 'R_ann', 'mu',
+               'sigma', 'skew', 'kurt', 'Sortino',
+               'sharpe',  'JB', 'ADF',
+               'SPA']
+    with open(os.path.join(TMP_DIR, 'bah_stat_txt.txt'), 'wb') as texfile:
+        texfile.write("{} \\ \hline \n".format(" & ".join(columns)))
+
+        for n_stock in n_stocks:
+            results = load_results("bah", n_stock)
+            wealth_arr = (results['wealth_df'].sum(axis=1) +
+                         results['risk_free_wealth'])
+            rois = wealth_arr.pct_change()
+            rois[0] = 0
+            # print rois
+
+            R_c = (1+rois).prod() -1
+            R_a = np.power(R_c+1, 1./10) -1
+            sharpe = utils.sharpe(rois)
+            sortino = utils.sortino_full(rois)[0]
+            jb = stat_tools.jarque_bera(rois)[1]
+            jb_str = "{:>4.2f}".format(jb*100)
+
+            adf_c = tsa_tools.adfuller(rois, regression='c')[1]
+            adf_ct = tsa_tools.adfuller(rois, regression='ct')[1]
+            adf_ctt = tsa_tools.adfuller(rois, regression='ctt')[1]
+            adf_nc = tsa_tools.adfuller(rois, regression='nc')[1]
+            adf = max(adf_c, adf_ct, adf_ctt, adf_nc)
+            spa_value = 0
+            for _ in xrange(10):
+                spa = SPA(rois, np.zeros(wealth_arr.size), reps=5000)
+                spa.seed(np.random.randint(0, 2 ** 31 - 1))
+                spa.compute()
+                if spa.pvalues[1] > spa_value :
+                    spa_value = spa.pvalues[1]
+
+            row = ["{:>3}".format(n_stock),
+                   "{:>6.2f}".format(R_c*100),
+                   "{:>4.2f}".format(R_a*100),
+                   "{:>6.4f}".format(rois.mean()*100),
+                   "{:>6.4f}".format(rois.std(ddof=1)*100),
+                   "{:>5.2f}".format(spstats.skew(rois, bias=False)),
+                   "{:>4.2f}".format(spstats.kurtosis(rois, bias=False)),
+                   "{:>4.2f}".format(sharpe*100),
+                   "{:>4.2f}".format(sortino*100),
+                   "{:<3} {:>4.2f}".format(significant_star(jb), jb*100),
+                   "{:<3} {:>4.2f}".format(significant_star(adf), adf*100),
+                   "{:<3} {:>4.2f}".format(significant_star(spa_value),
+                                           spa_value * 100),
+                   ]
+            texfile.write("{} \\\\ \hline \n".format(" & ".join(row)))
+            print "BAH: {} OK".format(n_stock)
 
 def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     """
@@ -399,7 +468,10 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
 
     #axes
     stocks = np.arange(5, 50+5, 5)
-    lengths = np.arange(50, 240 + 10, 10)
+    if prob_type == "min_cvar_sip":
+        lengths = np.arange(60, 240 + 10, 10)
+    else:
+        lengths = np.arange(60, 240 + 10, 10)
     alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
                    '0.85', '0.90', '0.95')
 
@@ -449,7 +521,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
             ax.set_zlabel(r'Average Sortino ratio (%)', fontsize=22,
                       fontname="Times New Roman", linespacing=4.5)
         elif z_dim == "SPA_c_pvalue":
-            ax.set_zlabel(r'Average pvalue of SPA test (%)', fontsize=22,
+            ax.set_zlabel(r'Average P values of SPA test (%)', fontsize=22,
                       fontname="Times New Roman", linespacing=4.5)
 
         ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
@@ -468,6 +540,8 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
 
         Xs, Ys = np.meshgrid(stocks, lengths)
         Zs = np.zeros_like(Xs, dtype=np.float)
+
+
 
         n_row, n_col = Xs.shape
         for rdx in xrange(n_row):
@@ -510,9 +584,16 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
 
                 Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
 
+        if prob_type == "min_cvar_sp":
+            # n_stock = 50, window = 50
+            Zs[-1, 0] = np.nan
+
         print alpha, Zs
 
         # contour, projected on z
+        # cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=LOWER_BOUND,
+        #                    alpha=1, cmap=plt.cm.coolwarm, norm=cm_norm,
+        #                    zorder=1)
         # cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=LOWER_BOUND,
         #                    alpha=1, cmap=plt.cm.coolwarm, norm=cm_norm,
         #                    zorder=1)
@@ -535,29 +616,259 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     # format="pdf", dpi=600)
     plt.show()
 
-def stock_statistics():
+def plot_3d_eev(z_dim="cum_roi"):
+    data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                       '{}_results_all.pkl'.format("min_cvar_eev"))
+    df = pd.read_pickle(data_path)
+    alpha = "0.50"
+    # set alpha column to str
+    for rdx in xrange(df.index.size):
+        df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+
+      #axes
+    stocks = np.arange(5, 50+5, 5)
+    lengths = np.arange(60, 240 + 10, 10)
+    # alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+    #                '0.85', '0.90', '0.95')
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import axes3d
+
+    # figure size in inches
+    fig = plt.figure( figsize=(64,48), facecolor='white')
+
+    # normalized color bar
+    if z_dim == "cum_roi":
+        LOWER_BOUND, UPPER_BOUND, STEP = -100, 600, 100
+        COLOR_STEP = 50
+    elif z_dim == "ann_roi":
+        LOWER_BOUND, UPPER_BOUND, STEP = -10, 20, 4
+        COLOR_STEP = 2
+    elif z_dim in ("sharpe",):
+        LOWER_BOUND, UPPER_BOUND, STEP = -5, 8, 2
+        COLOR_STEP = 2
+    elif z_dim == "sortino_full":
+        LOWER_BOUND, UPPER_BOUND, STEP = -5, 10, 2
+        COLOR_STEP = 2
+    elif z_dim == "SPA_c_pvalue":
+        LOWER_BOUND, UPPER_BOUND, STEP = 0, 100, 10
+        COLOR_STEP = 10
+
+    cm_norm = mpl.colors.Normalize(vmin=LOWER_BOUND, vmax=UPPER_BOUND,
+                                   clip=False)
+
+    ax = fig.add_subplot(1,1,1,projection='3d', xlim=(50, 5), ylim=(40, 240))
+    ax.set_zlim(LOWER_BOUND, UPPER_BOUND)
+
+    if z_dim == "cum_roi":
+        ax.set_zlabel(r'Average cumulative returns (%)', fontsize=22,
+                  fontname="Times New Roman", linespacing=4.5)
+
+    elif z_dim == "ann_roi":
+        ax.set_zlabel(r'Average annaualized returns (%)', fontsize=22,
+                  fontname="Times New Roman", linespacing=4.5)
+    elif z_dim == "sharpe":
+        ax.set_zlabel(r'Average Sharpe ratio (%)', fontsize=22,
+                  fontname="Times New Roman", linespacing=4.5)
+    elif z_dim == "sortino_full":
+        ax.set_zlabel(r'Average Sortino ratio (%)', fontsize=22,
+                  fontname="Times New Roman", linespacing=4.5)
+    elif z_dim == "SPA_c_pvalue":
+        ax.set_zlabel(r'Average P values of SPA test (%)', fontsize=22,
+                  fontname="Times New Roman", linespacing=4.5)
+
+    # ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
+    #              y=1.02, fontsize=30)
+    ax.set_xlabel(r'$M$', fontsize=24)
+    ax.set_ylabel(r'$h$', fontsize=24)
+    ax.tick_params(labelsize=10, pad=0, )
+    ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
+                       fontname="Times New Roman")
+    ax.set_yticklabels(np.arange(50, 240 + 10, 50), fontsize=12,
+                       # rotation=-30,
+                       fontname="Times New Roman")
+    ax.set_zticklabels(np.arange(LOWER_BOUND, UPPER_BOUND, STEP),
+                       rotation=90, fontsize=12,
+                       fontname="Times New Roman")
+
+    Xs, Ys = np.meshgrid(stocks, lengths)
+    Zs = np.zeros_like(Xs, dtype=np.float)
+
+    n_row, n_col = Xs.shape
+    for rdx in xrange(n_row):
+        for cdx in xrange(n_col):
+            n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
+            if z_dim in ('cum_roi', 'ann_roi'):
+                cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                              (df.loc[:, 'win_length'] == win_length) &
+                              (df.loc[:, 'alpha'] == alpha),
+                              'cum_roi']
+            elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
+                values=  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                              (df.loc[:, 'win_length'] == win_length) &
+                              (df.loc[:, 'alpha'] == alpha),
+                              z_dim]
+
+            if z_dim == "cum_roi":
+                mean = cum_rois.mean()
+            elif z_dim == "ann_roi":
+                # 2005~2014
+                mean = (np.power(cum_rois+1, 1./10) - 1).mean()
+            elif  z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
+                mean = values.mean()
+            print rdx, cdx, mean
+            Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+
+
+    print alpha, Zs
+
+    # contour, projected on z
+    # cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=LOWER_BOUND,
+    #                    alpha=1, cmap=plt.cm.coolwarm, norm=cm_norm,
+    #                    zorder=1)
+    # cset = ax.contourf(Xs, Ys, Zs, zdir='z', offset=LOWER_BOUND,
+    #                    alpha=1, cmap=plt.cm.coolwarm, norm=cm_norm,
+    #                    zorder=1)
+
+    # surface
+    p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=1,
+                    cmap=plt.cm.coolwarm, norm=cm_norm, zorder=0,
+                    antialiased=True)
+
+    # share color bar
+    cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
+    fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax,
+                 ticks=np.arange(LOWER_BOUND, UPPER_BOUND+COLOR_STEP/2,
+                                 COLOR_STEP))
+
+    fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
+                        wspace=0.01, hspace=0.01)
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'),
+    # format="pdf", dpi=600)
+    plt.show()
+
+def stock_statistics(latex=True):
     import csv
     symbols = EXP_SYMBOLS
     panel = load_rois()
 
-    with open(os.path.join(TMP_DIR, 'stat.csv'), 'wb') as csvfile:
-        fieldnames = ['name', "R_c", "R_a", "mu", "std", "skew", "kurt"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-        for symbol in symbols:
+
+    with open(os.path.join(TMP_DIR, 'stat.csv'), 'wb') as csvfile, \
+         open(os.path.join(TMP_DIR, 'stat_txt.txt'), 'wb') as texfile:
+        fieldnames = ["rank",'name', "R_c", "R_a", "mu", "std", "skew", "kurt",
+                      "sharpe", "sortino", "jb", "adf_c", "adf_ct",
+                      "adf_ctt", "adf_nc", "spa"]
+        texnames = ["rank",'name', "R_c(%)", "R_a(%)", "mu(%)", "std(%)",
+                    "skew", "kurt", "sharpe(%)", "sortino(%)", "jb",
+                    "adf", "SPA"]
+
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        texfile.write("{} \\ \hline \n".format(" & ".join(texnames)))
+
+        for sdx, symbol in enumerate(symbols):
             rois = panel[START_DATE:END_DATE, symbol, 'simple_roi']
             rois[0] = 0
             R_c = (1+rois).prod() -1
             R_a = np.power(R_c+1, 1./10) -1
-            writer.writerow({"name": symbol,
-                             "R_c": R_c,
-                             "R_a": R_a,
-                             "mu": rois.mean(),
-                             "std": rois.std(ddof=1),
-                             "skew": spstats.skew(rois, bias=False),
-                             "kurt": spstats.kurtosis(rois, bias=False)})
-            print symbol, R_c
+            sharpe = utils.sharpe(rois)
+            sortino = utils.sortino_full(rois)[0]
+            jb = stat_tools.jarque_bera(rois)[1]
+            adf_c = tsa_tools.adfuller(rois, regression='c')[1]
+            adf_ct = tsa_tools.adfuller(rois, regression='ct')[1]
+            adf_ctt = tsa_tools.adfuller(rois, regression='ctt')[1]
+            adf_nc = tsa_tools.adfuller(rois, regression='nc')[1]
+            adf = max(adf_c, adf_ct, adf_ctt, adf_nc)
 
+            spa_value = 0
+            for _ in xrange(10):
+                spa = SPA(rois, np.zeros(rois.size), reps=5000)
+                spa.seed(np.random.randint(0, 2 ** 31 - 1))
+                spa.compute()
+                if spa.pvalues[1] > spa_value :
+                    spa_value = spa.pvalues[1]
+
+            writer.writerow({
+                "rank": sdx+1,
+                "name": symbol,
+                "R_c": R_c,
+                "R_a": R_a,
+                "mu": rois.mean(),
+                "std": rois.std(ddof=1),
+                "skew": spstats.skew(rois, bias=False),
+                "kurt": spstats.kurtosis(rois, bias=False),
+                "sharpe": sharpe,
+                "sortino": sortino,
+                "jb": jb,
+                "adf_c": adf_c,
+                "adf_ct": adf_ct,
+                "adf_ctt": adf_ctt,
+                "adf_nc": adf_nc,
+                "spa": spa_value,
+            })
+            row = ["{:>3}".format(sdx+1), symbol,
+                   "{:>6.2f}".format(R_c*100),
+                   "{:>6.2f}".format(R_a*100),
+                   "{:>7.4f}".format(rois.mean()*100),
+                   "{:>7.4f}".format(rois.std(ddof=1)*100),
+                   "{:>5.2f}".format(spstats.skew(rois, bias=False)),
+                   "{:>4.2f}".format(spstats.kurtosis(rois, bias=False)),
+                   "{:>5.2f}".format(sharpe*100),
+                   "{:>5.2f}".format(sortino*100),
+                   "{:<3} {:>4.2f}".format(significant_star(jb), jb*100 ),
+                   "{:<3} {:>4.2f}".format(significant_star(adf), adf*100),
+                   "{:<3} {:>4.2f}".format(significant_star(spa_value),
+                                           spa_value * 100),
+                   ]
+            texfile.write("{} \\\\ \hline \n".format(" & ".join(row)))
+            print sdx+1, symbol, R_c, jb
+
+
+def plot_best_parameters(prob_type='min_cvar_sp'):
+    import csv
+
+    sample_dates = [date(2005,1,3), date(2006, 1, 2), date(2007, 1, 2),
+                    date(2008, 1, 2), date(2009, 1, 5), date(2010,1,4),
+                    date(2011, 1, 3), date(2012,1,2), date(2013, 1, 2),
+                    date(2014,1,2), date(2014, 12, 31)]
+    if prob_type == "min_cvar_sp":
+        params = [(5, 190, 0.85, 1), (10, 110, 0.6, 3), (15, 100, 0.65, 5),
+                  (20, 110, 0.65, 4), (25, 120, 0.5, 1), (30, 120, 0.5, 5),
+                  (35, 110, 0.5, 5), (40, 110, 0.5, 3), (45, 150, 0.5, 2),
+                  (50, 120, 0.5, 3)]
+    elif prob_type == "min_cvar_sip":
+        params = [(5, 200, 0.6, 1), (10, 240, 0.65, 1), (15, 140, 0.6, 1),
+                  (20, 120, 0.5, 3), (25, 90, 0.5, 3), (30, 120, 0.55, 1),
+                  (35, 90, 0.5, 3), (40, 120, 0.5, 3), (45, 120, 0.5, 3),
+                  (50, 90, 0.5, 3)]
+    elif prob_type == "bah":
+        params = range(5, 55, 5)
+
+    file_name = os.path.join(TMP_DIR, 'best_{}.csv'.format(prob_type))
+    with open(file_name, 'wb') as csvfile:
+        writer = csv.writer(csvfile)
+
+        heads = [d for d in sample_dates]
+        heads.insert(0, "param")
+        writer.writerow(heads)
+        for p in params:
+            print p
+            if prob_type in ('min_cvar_sp', 'min_cvar_sip'):
+                res = load_results(prob_type, p[0], p[1],
+                                   scenario_cnt=p[3], alpha=p[2])
+                wealths = res['wealth_df'].sum(axis=1) + res['risk_free_wealth']
+                vals = [wealths.loc[s_date]/1e6 for s_date in sample_dates]
+                vals.insert(0, "({},{},{:.0%})".format(p[0],p[1],p[2]))
+
+            elif prob_type == "bah":
+                res = load_results(prob_type, p)
+                wealths = res['wealth_df'].sum(axis=1) + res['risk_free_wealth']
+                vals = [wealths.loc[s_date]/1e6 for s_date in sample_dates]
+                vals.insert(0, p)
+
+            writer.writerow(vals)
 
 
 
@@ -579,17 +890,16 @@ if __name__ == '__main__':
 
     # all_results_roi_stats("min_cvar_sp")
     # all_results_roi_stats("min_cvar_sip")
-    # plot_3d_results("min_cvar_sp")
+    # plot_3d_results("min_cvar_sip")
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
+    plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
     # plot_3d_results("min_cvar_sp", z_dim='SPA_c_pvalue')
-    bah_results_to_xlsx()
-    # res = load_results("min_cvar_eev", 5, 240, scenario_cnt=4, alpha=0.9)
-    # print res['eev_cvar_arr']
-
-    # res2 = load_results("min_cvar_sp", 5, 240, scenario_cnt=4, alpha=0.9)
-    # print res2['cvar_arr']
-
-    # print load_rois()
+    # plot_3d_results("min_cvar_sip", z_dim='SPA_c_pvalue')
+    # bah_results_to_xlsx()
+    # plot_best_parameters("min_cvar_sp")
+    # plot_best_parameters("min_cvar_sip")
+    # plot_best_parameters("bah")
     # stock_statistics()
+    # bah_results_to_latex()

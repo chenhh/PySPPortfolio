@@ -235,7 +235,7 @@ def run_min_ms_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 
 def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
                                bias=False, scenario_cnt=1, alpha=0.95,
-                               verbose=False):
+                               verbose=False,  eev_objectve=False):
     """
     2nd stage expected of expected value simulation
 
@@ -285,17 +285,26 @@ def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
                            initial_risk_wealth, initial_risk_free_wealth,
                            window_length=win_length, n_scenario=n_scenario,
                            bias=bias, alpha=alpha, scenario_cnt=scenario_cnt,
-                           verbose=verbose)
+                           verbose=verbose,  eev_objectve=eev_objectve)
     reports = instance.run()
 
-    file_name = 'min_cvar_eev_{}.pkl'.format(param)
+    if  eev_objectve is False:
+        file_name = 'min_cvar_eev_{}.pkl'.format(param)
+        file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_cvar_eev')
+        if not os.path.exists(file_dir):
+            os.makedirs(file_dir)
 
-    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_cvar_eev')
-    if not os.path.exists(file_dir):
-        os.makedirs(file_dir)
+        pd.to_pickle(reports, os.path.join(file_dir, file_name))
+        print ("min cvar eev {} OK, {:.3f} secs".format(param, time()-t0))
+    else:
+        file_name = 'min_cvar_eev_objective_{}.pkl'.format(param)
+        file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_cvar_eev_objective')
+        if not os.path.exists(file_dir):
+            os.makedirs(file_dir)
 
-    pd.to_pickle(reports, os.path.join(file_dir, file_name))
-    print ("min cvar eev {} OK, {:.3f} secs".format(param, time()-t0))
+        pd.to_pickle(reports, os.path.join(file_dir, file_name))
+        print ("min cvar eev objective {} OK, {:.3f} secs".format(param, time()-t0))
+
 
     return reports
 
