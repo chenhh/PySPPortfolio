@@ -22,7 +22,7 @@ def get_results_dir(prob_type):
     prob_type: str, {min_cvar_sp, min_cvar_sip}
     """
     if prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev",
-                     "min_ms_cvar_sp"):
+                     "min_ms_cvar_sp", "min_cvar_eev_objective"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
