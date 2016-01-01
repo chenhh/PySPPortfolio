@@ -496,8 +496,8 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
         LOWER_BOUND, UPPER_BOUND, STEP = -5, 10, 2
         COLOR_STEP = 2
     elif z_dim == "SPA_c_pvalue":
-        LOWER_BOUND, UPPER_BOUND, STEP = 0, 100, 10
-        COLOR_STEP = 10
+        LOWER_BOUND, UPPER_BOUND, STEP = 0, 12, 2
+        COLOR_STEP = 2
 
     cm_norm = mpl.colors.Normalize(vmin=LOWER_BOUND, vmax=UPPER_BOUND,
                                    clip=False)
@@ -521,7 +521,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
             ax.set_zlabel(r'Average Sortino ratio (%)', fontsize=22,
                       fontname="Times New Roman", linespacing=4.5)
         elif z_dim == "SPA_c_pvalue":
-            ax.set_zlabel(r'Average P values of SPA test (%)', fontsize=22,
+            ax.set_zlabel(r'P values (%)', fontsize=22,
                       fontname="Times New Roman", linespacing=4.5)
 
         ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
@@ -540,8 +540,6 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
 
         Xs, Ys = np.meshgrid(stocks, lengths)
         Zs = np.zeros_like(Xs, dtype=np.float)
-
-
 
         n_row, n_col = Xs.shape
         for rdx in xrange(n_row):
@@ -587,8 +585,10 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
         if prob_type == "min_cvar_sp":
             # n_stock = 50, window = 50
             Zs[-1, 0] = np.nan
+        if z_dim == "SPA_c_pvalue":
+            Zs[Zs > UPPER_BOUND] = UPPER_BOUND
 
-        print alpha, Zs
+        print alpha, Zs, UPPER_BOUND
 
         # contour, projected on z
         # cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=LOWER_BOUND,
@@ -612,7 +612,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
                         wspace=0.01, hspace=0.01)
     # plt.tight_layout()
-    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'),
+    # plt.savefig(os.path.join(TMP_DIR, '{}_{}.pdf'.format(prob_type, z_dim)),
     # format="pdf", dpi=600)
     plt.show()
 
@@ -745,16 +745,14 @@ def plot_3d_eev(z_dim="cum_roi"):
     fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
                         wspace=0.01, hspace=0.01)
     # plt.tight_layout()
-    # plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'),
-    # format="pdf", dpi=600)
+    plt.savefig(os.path.join(TMP_DIR, 'cumulative_roi.pdf'),
+    format="pdf", dpi=600)
     plt.show()
 
 def stock_statistics(latex=True):
     import csv
     symbols = EXP_SYMBOLS
     panel = load_rois()
-
-
 
     with open(os.path.join(TMP_DIR, 'stat.csv'), 'wb') as csvfile, \
          open(os.path.join(TMP_DIR, 'stat_txt.txt'), 'wb') as texfile:
@@ -827,6 +825,9 @@ def stock_statistics(latex=True):
 
 
 def plot_best_parameters(prob_type='min_cvar_sp'):
+    """
+    according to the mean cum_roi
+    """
     import csv
 
     sample_dates = [date(2005,1,3), date(2006, 1, 2), date(2007, 1, 2),
@@ -834,42 +835,163 @@ def plot_best_parameters(prob_type='min_cvar_sp'):
                     date(2011, 1, 3), date(2012,1,2), date(2013, 1, 2),
                     date(2014,1,2), date(2014, 12, 31)]
     if prob_type == "min_cvar_sp":
-        params = [(5, 190, 0.85, 1), (10, 110, 0.6, 3), (15, 100, 0.65, 5),
-                  (20, 110, 0.65, 4), (25, 120, 0.5, 1), (30, 120, 0.5, 5),
-                  (35, 110, 0.5, 5), (40, 110, 0.5, 3), (45, 150, 0.5, 2),
-                  (50, 120, 0.5, 3)]
+        params = [(5, 150, 0.8), (10, 90, 0.5), (15, 100, 0.65),
+                  (20, 110, 0.6), (25, 120, 0.55), (30, 190, 0.7),
+                  (35, 120, 0.55), (40, 100, 0.5), (45, 120, 0.55),
+                  (50, 120, 0.55)]
     elif prob_type == "min_cvar_sip":
-        params = [(5, 200, 0.6, 1), (10, 240, 0.65, 1), (15, 140, 0.6, 1),
-                  (20, 120, 0.5, 3), (25, 90, 0.5, 3), (30, 120, 0.55, 1),
-                  (35, 90, 0.5, 3), (40, 120, 0.5, 3), (45, 120, 0.5, 3),
-                  (50, 90, 0.5, 3)]
+        params = [(5, 200, 0.5), (10, 130, 0.5), (15, 120, 0.5),
+                  (20, 120, 0.5), (25, 120, 0.55), (30, 120, 0.55),
+                  (35, 120, 0.55), (40, 120, 0.55), (45, 120, 0.55),
+                  (50, 120, 0.55)]
     elif prob_type == "bah":
         params = range(5, 55, 5)
 
-    file_name = os.path.join(TMP_DIR, 'best_{}.csv'.format(prob_type))
+    file_name = os.path.join(TMP_DIR, 'best_{}_process.csv'.format(prob_type))
     with open(file_name, 'wb') as csvfile:
         writer = csv.writer(csvfile)
 
         heads = [d for d in sample_dates]
         heads.insert(0, "param")
+        heads.append("JB")
+        heads.append('ADF')
         writer.writerow(heads)
         for p in params:
             print p
             if prob_type in ('min_cvar_sp', 'min_cvar_sip'):
-                res = load_results(prob_type, p[0], p[1],
-                                   scenario_cnt=p[3], alpha=p[2])
-                wealths = res['wealth_df'].sum(axis=1) + res['risk_free_wealth']
-                vals = [wealths.loc[s_date]/1e6 for s_date in sample_dates]
-                vals.insert(0, "({},{},{:.0%})".format(p[0],p[1],p[2]))
+                wealths = None
+                JB, ADF = 1,1
+                for s_cnt in xrange(1, 4):
+                    res = load_results(prob_type, p[0], p[1],
+                                       scenario_cnt=s_cnt, alpha=p[2])
+                    wealth_proc = (res['wealth_df'].sum(axis=1) + res[
+                            'risk_free_wealth'])
+                    if wealths is None:
+                        wealths = wealth_proc
+                    else:
+                        wealths +=  wealth_proc
+
+                    rois =  wealth_proc.pct_change()
+                    rois[0] = 0
+
+                    jb = stat_tools.jarque_bera(rois)[1]
+                    adf_c = tsa_tools.adfuller(rois, regression='c')[1]
+                    adf_ct = tsa_tools.adfuller(rois, regression='ct')[1]
+                    adf_ctt = tsa_tools.adfuller(rois, regression='ctt')[1]
+                    adf_nc = tsa_tools.adfuller(rois, regression='nc')[1]
+                    adf = max(adf_c, adf_ct, adf_ctt, adf_nc)
+                    if jb < JB:
+                        JB = jb
+                    if adf < ADF:
+                        ADF = adf
+
+                vals = [wealths.loc[s_date]/3/1e6 for s_date in sample_dates]
+                vals.insert(0, "({},{},{:.0%})".format(
+                        p[0],p[1],p[2]))
+                vals.append(JB)
+                vals.append(ADF)
+                writer.writerow(vals)
 
             elif prob_type == "bah":
                 res = load_results(prob_type, p)
                 wealths = res['wealth_df'].sum(axis=1) + res['risk_free_wealth']
                 vals = [wealths.loc[s_date]/1e6 for s_date in sample_dates]
                 vals.insert(0, p)
+                writer.writerow(vals)
 
-            writer.writerow(vals)
 
+def table_best_parameter(prob_type='min_cvar_sp'):
+    """
+    res columns
+    Index([u'n_stock', u'win_length', u'alpha', u'scenario_cnt',
+    u'start_date', u'end_date', u'n_exp_period', u'trans_fee_loss',
+    u'cum_roi',
+       u'daily_roi', u'daily_mean_roi', u'daily_std_roi', u'daily_skew_roi',
+       u'daily_kurt_roi', u'sharpe', u'sortino_full', u'sortino_partial',
+       u'max_abs_drawdown', u'SPA_l_pvalue', u'SPA_c_pvalue', u'SPA_u_pvalue',
+       u'simulation_time'],
+      dtype='object')
+    """
+
+    if prob_type == "min_cvar_sp":
+        df = pd.read_pickle(os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                                "min_cvar_sp_results_all.pkl"))
+    elif prob_type == "min_cvar_sip":
+        df = pd.read_pickle(os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                                "min_cvar_sip_results_all.pkl"))
+     # set alpha column to str
+    for rdx in xrange(df.index.size):
+        df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+
+    n_stocks = range(5, 55, 5)
+    win_lengths = range(50, 240 + 10, 10)
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
+
+    texnames = ["n_stock", 'win_length', 'alpha' , "R_c", "R_a", "mu", "std",
+                    "skew", "kurt", "sharpe", "sortino",  "SPA"]
+    res_df = pd.DataFrame(
+            np.zeros((len(n_stocks) * len(win_lengths) * len(alphas),
+                      len(texnames))),
+            columns=texnames
+    )
+    # the best parameter by portfolio size
+    res_best_df = pd.DataFrame(np.zeros((len(n_stocks), len(texnames))),
+                               columns=texnames)
+
+    count = 0
+    for n_stock in n_stocks:
+        for win_length in win_lengths:
+            for alpha in alphas:
+                if prob_type == "min_cvar_sp":
+                    values =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                          (df.loc[:, 'win_length'] == win_length) &
+                                          (df.loc[:, 'alpha'] == alpha), :]
+                elif prob_type == "min_cvar_sip":
+                    values =  df.loc[(df.loc[:,'max_portfolio_size']==n_stock) &
+                                          (df.loc[:, 'win_length'] == win_length) &
+                                          (df.loc[:, 'alpha'] == alpha), :]
+                res_df.ix[count, 'n_stock'] = n_stock
+                res_df.ix[count, 'win_length'] = win_length
+                res_df.ix[count, 'alpha'] = float(alpha)
+
+                cum_roi = values['cum_roi'].mean()
+                res_df.ix[count, 'R_c'] = cum_roi
+
+                ann_roi = np.power(cum_roi+1, 1./10) -1
+                res_df.ix[count, 'R_a'] = ann_roi
+                res_df.ix[count, 'mu'] =values['daily_mean_roi'].mean()
+                res_df.ix[count, 'std'] =values['daily_std_roi'].mean()
+                res_df.ix[count, 'skew'] =values['daily_skew_roi'].mean()
+                res_df.ix[count, 'kurt'] =values['daily_kurt_roi'].mean()
+                res_df.ix[count, 'sharpe'] =values['sharpe'].mean()
+                res_df.ix[count, 'sortino'] =values['sortino_full'].mean()
+                if len(values['SPA_c_pvalue']) > 0:
+                    res_df.ix[count, 'SPA'] =max(values['SPA_c_pvalue'])
+
+                print n_stock, win_length, alpha, "OK"
+
+                # update
+                count += 1
+    # print res_df
+    res_df.to_excel(os.path.join(TMP_DIR, 'best_{}.xlsx').format(prob_type))
+
+    for ndx, n_stock in enumerate(n_stocks):
+        tmp_df = res_df.loc[res_df.loc[:,'n_stock']==n_stock, :]
+        best_rec = tmp_df.sort_values('R_c', ascending=False).iloc[0]
+        res_best_df.iloc[ndx] = best_rec
+
+
+    res_best_df.to_excel(os.path.join(
+            TMP_DIR, 'best_mean_stock_{}.xlsx').format(prob_type))
+    res_best_df.to_pickle(os.path.join(
+            TMP_DIR, 'best_mean_stock_{}.pkl').format(prob_type))
+
+# def best_mean_stock_latex(prob_type='min_cvar_sp'):
+#     df = pd.read_excel(os.path.join(TMP_DIR,
+#                                      "best_mean_stock_P{.xlsx"))
+#     with open(os.path.join(TMP_DIR, "best_mean_stock_{}.txt".format(min_cvar_)))
+#     for rdx in len(df):
 
 
 if __name__ == '__main__':
@@ -892,7 +1014,7 @@ if __name__ == '__main__':
     # all_results_roi_stats("min_cvar_sip")
     # plot_3d_results("min_cvar_sip")
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
-    plot_3d_eev()
+    # plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
     # plot_3d_results("min_cvar_sp", z_dim='SPA_c_pvalue')
@@ -903,3 +1025,7 @@ if __name__ == '__main__':
     # plot_best_parameters("bah")
     # stock_statistics()
     # bah_results_to_latex()
+    # table_best_parameter("min_cvar_sp")
+    # table_best_parameter("min_cvar_sip")
+    # best_mean_stock_latex()
+    pass

@@ -177,26 +177,40 @@ def min_cvar_eev_portfolio(symbols,
 
     if eev_objective == True:
         for sdx in xrange(n_scenario):
+            scen_roi = predict_risk_rois[:, sdx]
+            portfolio_value = (
+                sum((1+scen_roi[mdx])* instance.risk_wealth[mdx].value
+                    for mdx in np.arange(n_stock)) +
+                instance.risk_free_wealth.value)
+
+            if estimated_var <= portfolio_value:
+                estimated_eev_cvar_arr[sdx] = estimated_var
+            else:
+                diff = (estimated_var - portfolio_value)
+                estimated_eev_cvar_arr[sdx] =( estimated_var -
+                                               1/(1-alpha) * diff)
+
+
             # delete old CVaR constraint
-            instance.del_component("cvar_constraint")
-
-            # update CVaR constraint
-            def cvar_constraint_rule(model):
-                """ auxiliary variable Y depends on scenario. CVaR <= VaR """
-                wealth = sum((1. + model.all_predict_risk_rois[mdx, sdx]) *
-                             model.risk_wealth[mdx]
-                             for mdx in model.symbols)
-                return model.Y >= (model.Z - wealth)
-
-            instance.cvar_constraint = Constraint(rule=cvar_constraint_rule)
-
-            # 2nd-stage solve
-            opt = SolverFactory(solver)
-            results = opt.solve(instance)
-            instance.solutions.load_from(results)
-
-            # extract results
-            estimated_eev_cvar_arr[sdx] = instance.cvar_objective()
+            # instance.del_component("cvar_constraint")
+            #
+            # # update CVaR constraint
+            # def cvar_constraint_rule(model):
+            #     """ auxiliary variable Y depends on scenario. CVaR <= VaR """
+            #     wealth = sum((1. + model.all_predict_risk_rois[mdx, sdx]) *
+            #                  model.risk_wealth[mdx]
+            #                  for mdx in model.symbols)
+            #     return model.Y >= (model.Z - wealth)
+            #
+            # instance.cvar_constraint = Constraint(rule=cvar_constraint_rule)
+            #
+            # # 2nd-stage solve
+            # opt = SolverFactory(solver)
+            # results = opt.solve(instance)
+            # instance.solutions.load_from(results)
+            #
+            # # extract results
+            # estimated_eev_cvar_arr[sdx] = instance.cvar_objective()
 
     if verbose:
         print "min_cvar_eev_portfolio OK, {:.3f} secs".format(time() - t0)
