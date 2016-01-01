@@ -304,7 +304,7 @@ def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
 def run_min_cvar_eevip_simulation(max_portfolio_size, window_length,
                                 n_scenario=200,
                                bias=False, scenario_cnt=1, alpha=0.95,
-                               verbose=False, eev_objectve=False):
+                               verbose=False):
     """
     2nd stage expected of expected value simulation
 
@@ -362,14 +362,11 @@ def run_min_cvar_eevip_simulation(max_portfolio_size, window_length,
                             alpha=alpha,
                             scenario_cnt=scenario_cnt,
                             verbose=verbose,
-                            eev_objectve=eev_objectve)
+                            )
 
     reports = instance.run()
 
-    if eev_objectve is True:
-        prob_name = "min_cvar_eevip"
-    else:
-        prob_name = "min_cvar_eevip_objective"
+    prob_name = "min_cvar_eevip"
     file_name = '{}_{}.pkl'.format(prob_name, param)
     file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, prob_name)
     if not os.path.exists(file_dir):
@@ -543,8 +540,8 @@ if __name__ == '__main__':
     #             print e
     #             continue
     # run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
-    for m in xrange(5, 55, 5):
-        run_bah_simulation(m)
+    # for m in xrange(5, 55, 5):
+    #     run_bah_simulation(m)
     # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
 
@@ -559,3 +556,4 @@ if __name__ == '__main__':
     # for n_stock in xrange(15, 50+5, 5):
     # run_best_simulation(10)
     # run_best_ms_simulation(5)
+    run_min_cvar_eevip_simulation(10, 190)
