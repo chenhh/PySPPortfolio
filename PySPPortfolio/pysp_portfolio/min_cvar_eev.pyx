@@ -39,7 +39,7 @@ def min_cvar_eev_portfolio(symbols,
                           int n_scenario,
                           str solver=DEFAULT_SOLVER,
                           int verbose=False,
-                          int eev_objective=False):
+                          ):
     """
     given mean scenario vector, solve the first-stage buy and sell amounts
 
@@ -175,42 +175,41 @@ def min_cvar_eev_portfolio(symbols,
 
     estimated_eev_cvar_arr = np.zeros(n_scenario)
 
-    if eev_objective == True:
-        for sdx in xrange(n_scenario):
-            scen_roi = predict_risk_rois[:, sdx]
-            portfolio_value = (
-                sum((1+scen_roi[mdx])* instance.risk_wealth[mdx].value
-                    for mdx in np.arange(n_stock)) +
-                instance.risk_free_wealth.value)
+    # EEV
+    for sdx in xrange(n_scenario):
+        scen_roi = predict_risk_rois[:, sdx]
+        portfolio_value = (
+            sum((1+scen_roi[mdx])* instance.risk_wealth[mdx].value
+                for mdx in np.arange(n_stock)) +
+            instance.risk_free_wealth.value)
 
-            if estimated_var <= portfolio_value:
-                estimated_eev_cvar_arr[sdx] = estimated_var
-            else:
-                diff = (estimated_var - portfolio_value)
-                estimated_eev_cvar_arr[sdx] =( estimated_var -
-                                               1/(1-alpha) * diff)
+        if estimated_var <= portfolio_value:
+            estimated_eev_cvar_arr[sdx] = estimated_var
+        else:
+            diff = (estimated_var - portfolio_value)
+            estimated_eev_cvar_arr[sdx] =( estimated_var -
+                                           1/(1-alpha) * diff)
 
-
-            # delete old CVaR constraint
-            # instance.del_component("cvar_constraint")
-            #
-            # # update CVaR constraint
-            # def cvar_constraint_rule(model):
-            #     """ auxiliary variable Y depends on scenario. CVaR <= VaR """
-            #     wealth = sum((1. + model.all_predict_risk_rois[mdx, sdx]) *
-            #                  model.risk_wealth[mdx]
-            #                  for mdx in model.symbols)
-            #     return model.Y >= (model.Z - wealth)
-            #
-            # instance.cvar_constraint = Constraint(rule=cvar_constraint_rule)
-            #
-            # # 2nd-stage solve
-            # opt = SolverFactory(solver)
-            # results = opt.solve(instance)
-            # instance.solutions.load_from(results)
-            #
-            # # extract results
-            # estimated_eev_cvar_arr[sdx] = instance.cvar_objective()
+        # delete old CVaR constraint
+        # instance.del_component("cvar_constraint")
+        #
+        # # update CVaR constraint
+        # def cvar_constraint_rule(model):
+        #     """ auxiliary variable Y depends on scenario. CVaR <= VaR """
+        #     wealth = sum((1. + model.all_predict_risk_rois[mdx, sdx]) *
+        #                  model.risk_wealth[mdx]
+        #                  for mdx in model.symbols)
+        #     return model.Y >= (model.Z - wealth)
+        #
+        # instance.cvar_constraint = Constraint(rule=cvar_constraint_rule)
+        #
+        # # 2nd-stage solve
+        # opt = SolverFactory(solver)
+        # results = opt.solve(instance)
+        # instance.solutions.load_from(results)
+        #
+        # # extract results
+        # estimated_eev_cvar_arr[sdx] = instance.cvar_objective()
 
     if verbose:
         print "min_cvar_eev_portfolio OK, {:.3f} secs".format(time() - t0)
@@ -238,8 +237,7 @@ class MinCVaREEVPortfolio(MinCVaRSPPortfolio):
                  bias=BIAS_ESTIMATOR,
                  double alpha=0.95,
                  int scenario_cnt=1,
-                 verbose=False,
-                 eev_objectve=False):
+                 verbose=False):
 
         super(MinCVaREEVPortfolio, self).__init__(
             symbols, risk_rois, risk_free_rois, initial_risk_wealth,
@@ -247,22 +245,14 @@ class MinCVaREEVPortfolio(MinCVaRSPPortfolio):
             start_date, end_date, window_length, n_scenario, bias,
             alpha, scenario_cnt, verbose)
 
-        self.eev_objective = eev_objectve
         self.eev_cvar_arr = pd.Series(np.zeros(self.n_exp_period),
                                   index = self.exp_risk_rois.index)
 
     def get_trading_func_name(self, *args, **kwargs):
-        if self.eev_objective is False:
-            return "MinCVaREEV_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-                self.n_stock, self.window_length, self.n_scenario,
-                "biased" if self.bias_estimator else "unbiased",
-                self.scenario_cnt, self.alpha)
-        else:
-            return "MinCVaREEVObjective_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-                self.n_stock, self.window_length, self.n_scenario,
-                "biased" if self.bias_estimator else "unbiased",
-                self.scenario_cnt, self.alpha)
-
+        return "MinCVaREEV_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+            self.n_stock, self.window_length, self.n_scenario,
+            "biased" if self.bias_estimator else "unbiased",
+            self.scenario_cnt, self.alpha)
 
     def add_results_to_reports(self, reports, *args, **kwargs):
         """ add additional items to reports """
@@ -304,6 +294,5 @@ class MinCVaREEVPortfolio(MinCVaRSPPortfolio):
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
-            eev_objective=self.eev_objective
         )
         return results

@@ -22,7 +22,7 @@ def get_results_dir(prob_type):
     prob_type: str, {min_cvar_sp, min_cvar_sip}
     """
     if prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev",
-                     "min_ms_cvar_sp", "min_cvar_eev_objective"):
+                     "min_ms_cvar_sp"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -44,8 +44,7 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     all_params = []
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
-            if prob_type in ( "min_cvar_sp", 'min_cvar_eev', "min_ms_cvar_sp",
-                              "min_cvar_eev_objective"):
+            if prob_type in ( "min_cvar_sp", 'min_cvar_eev', "min_ms_cvar_sp"):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
@@ -58,16 +57,12 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
             for n_scenario in (200,):
                 for bias in ("unbiased",):
                     for cnt in xrange(1, max_scenario_cnts+1):
-                        if prob_type in ("min_cvar_eev_objective",):
-                            all_params.append((n_stock, win_length, n_scenario,
-                                              bias, cnt))
-                        else:
-                            for alpha in ('0.50', '0.55', '0.60', '0.65',
-                                          '0.70', '0.75', '0.80', '0.85',
-                                          '0.90', '0.95'):
-                                all_params.append(
-                                   (n_stock, win_length,
-                                    n_scenario,bias, cnt, alpha))
+                        for alpha in ('0.50', '0.55', '0.60', '0.65',
+                                      '0.70', '0.75', '0.80', '0.85',
+                                      '0.90', '0.95'):
+                            all_params.append(
+                               (n_stock, win_length,
+                                n_scenario,bias, cnt, alpha))
 
     return set(all_params)
 
@@ -111,8 +106,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     # get all params
     all_params = all_experiment_parameters(prob_type, max_scenario_cnts)
 
-    if prob_type in ("min_cvar_sp", "min_cvar_eev", "min_ms_cvar_sp",
-                     "min_cvar_eev_objective",):
+    if prob_type in ("min_cvar_sp", "min_cvar_eev", "min_ms_cvar_sp"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_*.pkl".format(prob_type)))
     elif prob_type == "min_cvar_sip":
@@ -124,8 +118,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
         exp_params = name.split('_')
         if prob_type in ("min_cvar_sp", "min_cvar_eev"):
             params = exp_params[5:]
-        elif prob_type in ("min_cvar_sip", "min_ms_cvar_sp",
-                           "min_cvar_eev_objective",):
+        elif prob_type in ("min_cvar_sip", "min_ms_cvar_sp"):
             params = exp_params[6:]
         n_stock = int(params[0][params[0].rfind('m')+1:])
         win_length = int(params[1][params[1].rfind('w')+1:])
@@ -170,13 +163,10 @@ def checking_working_parameters(prob_type, max_scenario_cnts):
     for param_key, node in data.items():
         # key:  n_stock, win_length, _scenario, biased, cnt, alpha
         keys =  param_key.split('|')
-        if prob_type not in ("min_cvar_eev_objective",):
-            param = (int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
-                     int(keys[4]), keys[5])
-        else:
-            # key:  n_stock, win_length, _scenario, biased, cnt
-            param =(int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
-                     int(keys[4]))
+
+        param = (int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
+                 int(keys[4]), keys[5])
+
         if param in all_params:
             all_params.remove(param)
             print ("checking_working {}: {} under processing on {}.".format(
@@ -244,11 +234,9 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                 print ("unfinished: {}".format(u_param))
 
         param = unfinished_params.pop()
-        if prob_type not in ("min_cvar_eev_objective",):
-            n_stock, win_length, n_scenario, bias, cnt, alpha = param
-            alpha = float(alpha)
-        else:
-            n_stock, win_length, n_scenario, bias, cnt = param
+        n_stock, win_length, n_scenario, bias, cnt, alpha = param
+        alpha = float(alpha)
+
 
         bias = True if bias == "biased" else False
 
@@ -274,9 +262,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
             elif prob_type == "min_cvar_eev":
                 run_min_cvar_eev_simulation(n_stock, win_length, n_scenario,
                                bias, cnt, alpha, eev_objectve=False)
-            elif prob_type == "min_cvar_eev_objective":
-                run_min_cvar_eev_simulation(n_stock, win_length, n_scenario,
-                               bias, cnt, 0.5, eev_objectve=True)
+
             elif prob_type == "min_ms_cvar_sp":
                 # after run one alpha, it will runs all alphas
                 # and write it to corresponding files, and the cehcking
