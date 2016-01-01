@@ -67,7 +67,6 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     return set(all_params)
 
 
-
 def special_experiment_parameters(prob_type, max_scenario_cnts):
     """
     file_name of all experiment parameters
@@ -261,7 +260,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                                 n_scenario, bias, cnt, alpha)
             elif prob_type == "min_cvar_eev":
                 run_min_cvar_eev_simulation(n_stock, win_length, n_scenario,
-                               bias, cnt, alpha, eev_objectve=False)
+                               bias, cnt, alpha)
 
             elif prob_type == "min_ms_cvar_sp":
                 # after run one alpha, it will runs all alphas
