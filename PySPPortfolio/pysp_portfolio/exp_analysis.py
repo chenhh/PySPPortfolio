@@ -486,6 +486,9 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     if z_dim == "cum_roi":
         LOWER_BOUND, UPPER_BOUND, STEP = -100, 280, 50
         COLOR_STEP = 20
+    if z_dim == "cum_roi_diff":
+        LOWER_BOUND, UPPER_BOUND, STEP = -200, 400, 50
+        COLOR_STEP = 20
     elif z_dim == "ann_roi":
         LOWER_BOUND, UPPER_BOUND, STEP = -10, 20, 4
         COLOR_STEP = 2
@@ -615,6 +618,232 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     # plt.savefig(os.path.join(TMP_DIR, '{}_{}.pdf'.format(prob_type, z_dim)),
     # format="pdf", dpi=600)
     plt.show()
+
+def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
+    if not prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev"):
+        raise ValueError("unknown problem type: {}".format(prob_type))
+
+    data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                       '{}_results_all.pkl'.format(prob_type))
+    df = pd.read_pickle(data_path)
+
+    # set alpha column to str
+    for rdx in xrange(df.index.size):
+        df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+
+    #axes
+    stocks = np.arange(5, 50+5, 5)
+    lengths = np.arange(50, 240 + 10, 10)
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+
+    # figure size in inches
+    fig = plt.figure( figsize=(64,48), facecolor='white')
+
+    cm_norm = mpl.colors.Normalize(vmin=-100, vmax=300,
+                                   clip=False)
+    for adx, alpha in enumerate(alphas):
+        ax = fig.add_subplot(2, 5, adx+1,
+                             xlim=(50, 5), ylim=(50, 240))
+
+        ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
+                     y=1.02, fontsize=24)
+        ax.set_xlabel(r'$M$', fontsize=20)
+        ax.set_ylabel(r'$h$', fontsize=20)
+        ax.tick_params(labelsize=10, pad=2, )
+        ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
+                           fontname="Times New Roman")
+        ax.set_yticks(lengths)
+        ax.set_yticklabels(lengths, fontsize=12,
+                           rotation=0,
+                           fontname="Times New Roman")
+        # ax.set_zticklabels(np.arange(LOWER_BOUND, UPPER_BOUND, STEP),
+        #                    rotation=90, fontsize=12,
+        #                    fontname="Times New Roman")
+
+        Xs, Ys = np.meshgrid(stocks, lengths)
+        Zs = np.zeros_like(Xs, dtype=np.float)
+
+        n_row, n_col = Xs.shape
+        for rdx in xrange(n_row):
+            for cdx in xrange(n_col):
+                n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
+                if prob_type in ("min_cvar_sp", "min_cvar_eev"):
+                    if z_dim in ('cum_roi', 'ann_roi'):
+                        cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                      (df.loc[:, 'win_length'] == win_length) &
+                                      (df.loc[:, 'alpha'] == alpha),
+                                      'cum_roi']
+                    elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
+                        values=  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                      (df.loc[:, 'win_length'] == win_length) &
+                                      (df.loc[:, 'alpha'] == alpha),
+                                      z_dim]
+
+                elif prob_type == "min_cvar_sip":
+                    if z_dim in ('cum_roi', 'ann_roi'):
+                        cum_rois =  df.loc[
+                                (df.loc[:, 'max_portfolio_size'] == n_stock) &
+                                (df.loc[:, 'win_length'] == win_length) &
+                                (df.loc[:, 'alpha'] == alpha),
+                                'cum_roi']
+                    elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
+                        values =  df.loc[
+                                (df.loc[:,'max_portfolio_size']==n_stock) &
+                                (df.loc[:, 'win_length'] == win_length) &
+                                (df.loc[:, 'alpha'] == alpha),
+                                z_dim]
+
+
+                if z_dim == "cum_roi":
+                    mean = cum_rois.mean()
+                elif z_dim == "ann_roi":
+                    # 2005~2014
+                    mean = (np.power(cum_rois+1, 1./10) - 1).mean()
+                elif  z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
+                    mean = values.mean()
+
+                Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+
+        if prob_type == "min_cvar_sp":
+            # n_stock = 50, window = 50
+            Zs[-1, 0] = 0
+
+
+        print alpha, Zs
+
+        # contour, projected on z
+        cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm)
+        # surface
+        # p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=1,
+        #                 cmap=plt.cm.coolwarm, norm=cm_norm, zorder=0,
+        #                 antialiased=True)
+
+    # share color bar
+    cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
+    # color_range = np.arange(-100, 320, 40)
+    cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax,
+                        )
+    # cbar.set_ticks([-100, 0, 300])
+    # cbar.set_ticklabels(color_range)
+    # cbar.update_ticks()
+
+    # fig.subplots_adjust(left=0.02, bottom=0.02, right=0.95, top=0.98,
+    #                     wspace=0.1, hspace=0.1)
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(TMP_DIR, '{}_{}.pdf'.format(prob_type, z_dim)),
+    # format="pdf", dpi=600)
+    plt.show()
+
+
+
+def plot_3d_VSS(prob_type="min_cvar_sp"):
+    data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                       '{}_results_all.pkl'.format(prob_type))
+    df = pd.read_pickle(data_path)
+
+    data_path2 = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                       'min_cvar_eev_results_all.pkl')
+    df2 = pd.read_pickle(data_path2)
+
+    # set alpha column to str
+    for rdx in xrange(df.index.size):
+        df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+        df2.ix[rdx, 'alpha'] = "{:.2f}".format(df2.ix[rdx, 'alpha'])
+
+    #axes
+    stocks = np.arange(5, 50+5, 5)
+    lengths = np.arange(60, 240 + 10, 10)
+    alphas = ('0.50', '0.55', '0.60', '0.65', '0.70', '0.75', '0.80',
+                   '0.85', '0.90', '0.95')
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import axes3d
+
+    # figure size in inches
+    fig = plt.figure( figsize=(64,48), facecolor='white')
+
+    # normalized color bar
+    LOWER_BOUND, UPPER_BOUND, STEP = -100, 280, 50
+    COLOR_STEP = 20
+    cm_norm = mpl.colors.Normalize(vmin=LOWER_BOUND, vmax=UPPER_BOUND,
+                                   clip=False)
+
+    for adx, alpha in enumerate(alphas):
+        ax = fig.add_subplot(2, 5, adx+1, projection='3d',
+                             xlim=(50, 5), ylim=(40, 240))
+        ax.set_zlim(LOWER_BOUND, UPPER_BOUND)
+        ax.set_zlabel(r'Average VSS', fontsize=22,
+                      fontname="Times New Roman", linespacing=4.5)
+
+        ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
+                     y=1.02, fontsize=30)
+        ax.set_xlabel(r'$M$', fontsize=24)
+        ax.set_ylabel(r'$h$', fontsize=24)
+        ax.tick_params(labelsize=10, pad=0, )
+        ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
+                           fontname="Times New Roman")
+        ax.set_yticklabels(np.arange(50, 240 + 10, 50), fontsize=12,
+                           # rotation=-30,
+                           fontname="Times New Roman")
+        ax.set_zticklabels(np.arange(LOWER_BOUND, UPPER_BOUND, STEP),
+                           rotation=90, fontsize=12,
+                           fontname="Times New Roman")
+
+        Xs, Ys = np.meshgrid(stocks, lengths)
+        Zs = np.zeros_like(Xs, dtype=np.float)
+
+        n_row, n_col = Xs.shape
+        for rdx in xrange(n_row):
+            for cdx in xrange(n_col):
+                n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
+                if prob_type in ("min_cvar_sp", ):
+                    cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
+                                  (df.loc[:, 'win_length'] == win_length) &
+                                  (df.loc[:, 'alpha'] == alpha),
+                                  'cum_roi']
+
+                elif prob_type == "min_cvar_sip":
+                    cum_rois =  df.loc[
+                            (df.loc[:, 'max_portfolio_size'] == n_stock) &
+                            (df.loc[:, 'win_length'] == win_length) &
+                            (df.loc[:, 'alpha'] == alpha),
+                                'cum_roi']
+
+                mean = cum_rois.mean()
+
+                Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+
+        if prob_type == "min_cvar_sp":
+            # n_stock = 50, window = 50
+            Zs[-1, 0] = np.nan
+
+        print alpha, Zs, UPPER_BOUND
+
+        # surface
+        p = ax.plot_surface(Xs, Ys, Zs, rstride=1, cstride=1, alpha=1,
+                        cmap=plt.cm.coolwarm, norm=cm_norm, zorder=0,
+                        antialiased=True)
+
+    # share color bar
+    cbar_ax = fig.add_axes([0.96, 0.125, 0.01, 0.75])
+    fig.colorbar(p, ax=fig.get_axes(), cax=cbar_ax,
+                 ticks=np.arange(LOWER_BOUND, UPPER_BOUND+COLOR_STEP/2,
+                                 COLOR_STEP))
+
+    fig.subplots_adjust(left=0.01, bottom=0.02, right=0.95, top=0.98,
+                        wspace=0.01, hspace=0.01)
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(TMP_DIR, '{}_{}.pdf'.format(prob_type, z_dim)),
+    # format="pdf", dpi=600)
+    plt.show()
+
+
+
 
 def plot_3d_eev(z_dim="cum_roi"):
     data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
@@ -987,11 +1216,33 @@ def table_best_parameter(prob_type='min_cvar_sp'):
     res_best_df.to_pickle(os.path.join(
             TMP_DIR, 'best_mean_stock_{}.pkl').format(prob_type))
 
-# def best_mean_stock_latex(prob_type='min_cvar_sp'):
-#     df = pd.read_excel(os.path.join(TMP_DIR,
-#                                      "best_mean_stock_P{.xlsx"))
-#     with open(os.path.join(TMP_DIR, "best_mean_stock_{}.txt".format(min_cvar_)))
-#     for rdx in len(df):
+def best_mean_stock_latex(prob_type='min_cvar_sip'):
+    pkl = os.path.join(TMP_DIR, "best_mean_stock_{}.pkl".format(prob_type))
+    df = pd.read_pickle(pkl)
+    print df.columns
+    with open(os.path.join(TMP_DIR, "best_mean_stock_{}.txt".format(prob_type)), 'wb') as \
+            texfile:
+        for rdx in xrange(df.index.size):
+            param = "({:.0f}, {:.0f}, {:.0f}\%)".format(df.ix[rdx, 'n_stock'],
+                                            df.ix[rdx, 'win_length'],
+                                            df.ix[rdx, 'alpha']*100)
+            row = ["{:>14}".format(param),
+                   "{:>6.2f}".format(df.ix[rdx, 'R_c']*100),
+                   "{:>4.2f}".format(df.ix[rdx, 'R_a']*100),
+                   "{:>6.4f}".format(df.ix[rdx, 'mu']*100),
+                   "{:>6.4f}".format(df.ix[rdx, 'std']*100),
+                   "{:>5.2f}".format(df.ix[rdx, 'skew']),
+                   "{:>4.2f}".format(df.ix[rdx, 'kurt']),
+                   "{:>4.2f}".format(df.ix[rdx, 'sharpe']*100),
+                   "{:>4.2f}".format(df.ix[rdx, 'sortino']*100),
+                   "{:<3} {:>4.2f}".format(significant_star(0), 0*100),
+                   "{:<3} {:>4.2f}".format(significant_star(0), 0*100),
+                   "{:<3} {:>4.2f}".format(significant_star(df.ix[rdx, 'SPA']),
+                                           df.ix[rdx, 'SPA'] * 100),
+                   ]
+            texfile.write("{} \\\\ \hline \n".format(" & ".join(row)))
+            print param
+
 
 
 if __name__ == '__main__':
@@ -1014,6 +1265,7 @@ if __name__ == '__main__':
     # all_results_roi_stats("min_cvar_sip")
     # plot_3d_results("min_cvar_sip")
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
+    plot_2d_contour("min_cvar_sp")
     # plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
