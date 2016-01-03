@@ -13,8 +13,9 @@ import glob
 import os
 from PySPPortfolio.pysp_portfolio import *
 from exp_cvar import (run_min_cvar_sip_simulation, run_min_cvar_sp_simulation,
+                  run_min_cvar_sp2_simulation,
                   run_min_cvar_eev_simulation, run_min_ms_cvar_sp_simulation,
-                      run_min_cvar_eevip_simulation)
+                  run_min_cvar_eevip_simulation)
 
 def get_results_dir(prob_type):
     """
@@ -22,7 +23,8 @@ def get_results_dir(prob_type):
     ----------------
     prob_type: str, {min_cvar_sp, min_cvar_sip}
     """
-    if prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev",
+    if prob_type in ("min_cvar_sp", "min_cvar_sp2", "min_cvar_sip",
+                     "min_cvar_eev",
                      "min_cvar_eevip", "min_ms_cvar_sp"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
@@ -45,7 +47,8 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     all_params = []
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
-            if prob_type in ( "min_cvar_sp", 'min_cvar_eev', "min_ms_cvar_sp"):
+            if prob_type in ( "min_cvar_sp", "min_cvar_sp2", 'min_cvar_eev',
+                              "min_ms_cvar_sp"):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
@@ -106,7 +109,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     # get all params
     all_params = all_experiment_parameters(prob_type, max_scenario_cnts)
 
-    if prob_type in ("min_cvar_sp", "min_cvar_eev", "min_ms_cvar_sp"):
+    if prob_type in ("min_cvar_sp", "min_cvar_sp2",
+                     "min_cvar_eev", "min_ms_cvar_sp"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_*.pkl".format(prob_type)))
     elif prob_type in ("min_cvar_sip", "min_cvar_eevip"):
@@ -116,7 +120,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep)+1: pkl.rfind('.')]
         exp_params = name.split('_')
-        if prob_type in ("min_cvar_sp", "min_cvar_eev"):
+        if prob_type in ("min_cvar_sp", "min_cvar_sp2", "min_cvar_eev"):
             params = exp_params[5:]
         elif prob_type in ("min_cvar_sip","min_cvar_eevip", "min_ms_cvar_sp"):
             params = exp_params[6:]
@@ -252,6 +256,9 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
         try:
             if prob_type == 'min_cvar_sp':
                 run_min_cvar_sp_simulation(n_stock, win_length, n_scenario,
+                               bias, cnt, alpha)
+            elif prob_type == 'min_cvar_sp2':
+                run_min_cvar_sp2_simulation(n_stock, win_length, n_scenario,
                                bias, cnt, alpha)
             elif prob_type == "min_cvar_sip":
                 run_min_cvar_sip_simulation(n_stock, win_length,
