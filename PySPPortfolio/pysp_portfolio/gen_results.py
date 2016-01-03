@@ -13,7 +13,7 @@ import glob
 import os
 from PySPPortfolio.pysp_portfolio import *
 from exp_cvar import (run_min_cvar_sip_simulation, run_min_cvar_sp_simulation,
-                  run_min_cvar_sp2_simulation,
+                  run_min_cvar_sp2_simulation, run_min_cvar_sip2_simulation,
                   run_min_cvar_eev_simulation, run_min_ms_cvar_sp_simulation,
                   run_min_cvar_eevip_simulation)
 
@@ -23,7 +23,8 @@ def get_results_dir(prob_type):
     ----------------
     prob_type: str, {min_cvar_sp, min_cvar_sip}
     """
-    if prob_type in ("min_cvar_sp", "min_cvar_sp2", "min_cvar_sip",
+    if prob_type in ("min_cvar_sp", "min_cvar_sp2",
+                     "min_cvar_sip", "min_cvar_sip2",
                      "min_cvar_eev",
                      "min_cvar_eevip", "min_ms_cvar_sp"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
@@ -52,7 +53,8 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
-            elif prob_type in ("min_cvar_sip", "min_cvar_eevip"):
+            elif prob_type in ("min_cvar_sip", "min_cvar_sip2",
+                               "min_cvar_eevip"):
                 # because the candidate set is 50, therefore all
                 # experiments of windows length = 50 is excluded.
                 if win_length == 50:
@@ -113,7 +115,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
                      "min_cvar_eev", "min_ms_cvar_sp"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_*.pkl".format(prob_type)))
-    elif prob_type in ("min_cvar_sip", "min_cvar_eevip"):
+    elif prob_type in ("min_cvar_sip","min_cvar_sip2", "min_cvar_eevip"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_all50_*.pkl".format(prob_type)))
 
@@ -122,7 +124,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
         exp_params = name.split('_')
         if prob_type in ("min_cvar_sp", "min_cvar_sp2", "min_cvar_eev"):
             params = exp_params[5:]
-        elif prob_type in ("min_cvar_sip","min_cvar_eevip", "min_ms_cvar_sp"):
+        elif prob_type in ("min_cvar_sip", "min_cvar_sip2",
+                           "min_cvar_eevip", "min_ms_cvar_sp"):
             params = exp_params[6:]
         n_stock = int(params[0][params[0].rfind('m')+1:])
         win_length = int(params[1][params[1].rfind('w')+1:])
@@ -262,6 +265,9 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                                bias, cnt, alpha)
             elif prob_type == "min_cvar_sip":
                 run_min_cvar_sip_simulation(n_stock, win_length,
+                                n_scenario, bias, cnt, alpha)
+            elif prob_type == "min_cvar_sip2":
+                run_min_cvar_sip2_simulation(n_stock, win_length,
                                 n_scenario, bias, cnt, alpha)
             elif prob_type == "min_cvar_eev":
                 run_min_cvar_eev_simulation(n_stock, win_length, n_scenario,

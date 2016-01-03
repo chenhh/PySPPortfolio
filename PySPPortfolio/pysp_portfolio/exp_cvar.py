@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio, MinCVaRSPPortfolio2 )
-from min_cvar_sip import (MinCVaRSIPPortfolio,)
+from min_cvar_sip import (MinCVaRSIPPortfolio,MinCVaRSIPPortfolio2)
 from min_ms_cvar_sp import (MinMSCVaRSPPortfolio,)
 from min_cvar_eev import (MinCVaREEVPortfolio,)
 from min_cvar_eevip import (MinCVaREEVIPPortfolio,)
@@ -223,6 +223,81 @@ def run_min_cvar_sip_simulation(max_portfolio_size, window_length,
 
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
     print ("min cvar sip {} OK, {:.3f} secs".format(param, time()-t0))
+
+    return reports
+
+
+def run_min_cvar_sip2_simulation(max_portfolio_size, window_length,
+                                n_scenario=200, bias=False, scenario_cnt=1,
+                                alpha=0.95, verbose=False):
+    """
+    2nd stage SIP simulation
+    in the model, all stocks are used as candidate symbols.
+
+    Parameters:
+    -------------------
+    max_portfolio_size: integer, number of stocks in the portfolio.
+    window_length: integer, number of periods for estimating scenarios
+    n_scenario, int, number of scenarios
+    bias: bool, biased moment estimators or not
+    scenario_cnt: count of generated scenarios, default = 1
+    alpha: float, for conditional risk
+
+    Returns:
+    --------------------
+    reports
+    """
+    t0 = time()
+    max_portfolio_size = int(max_portfolio_size)
+    window_length = int(window_length)
+    n_scenario = int(n_scenario)
+    alpha = float(alpha)
+
+    symbols = EXP_SYMBOLS
+    n_stock = len(symbols)
+    param = "{}_{}_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        len(symbols), max_portfolio_size, window_length, n_scenario,
+        "biased" if bias else "unbiased", scenario_cnt, alpha)
+
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # shape: (n_period, n_stock)
+    risk_rois =roi_panel.loc[:, symbols, 'simple_roi'].T
+    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols, 'simple_roi'].T
+    n_period = exp_risk_rois.shape[0]
+    risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
+    initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
+    initial_risk_free_wealth = 1e6
+
+    instance = MinCVaRSIPPortfolio2(symbols, max_portfolio_size,
+                            risk_rois, risk_free_rois,
+                            initial_risk_wealth,
+                            initial_risk_free_wealth,
+                            window_length=window_length,
+                            n_scenario=n_scenario,
+                            bias=bias,
+                            alpha=alpha,
+                            scenario_cnt=scenario_cnt,
+                            verbose=verbose)
+
+    reports = instance.run()
+
+    file_name = 'min_cvar_sip2_{}.pkl'.format(param)
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, 'min_cvar_sip2')
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+
+    pd.to_pickle(reports, os.path.join(file_dir, file_name))
+    print ("min cvar sip2 {} OK, {:.3f} secs".format(param, time()-t0))
 
     return reports
 
@@ -610,7 +685,7 @@ if __name__ == '__main__':
     # run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
     # for m in xrange(5, 55, 5):
     #     run_bah_simulation(m)
-    run_min_cvar_sp2_simulation(10, 220, scenario_cnt=1, alpha=0.95,
+    run_min_cvar_sip2_simulation(10, 190, scenario_cnt=1, alpha=0.95,
                                verbose=True)
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
