@@ -610,8 +610,8 @@ if __name__ == '__main__':
     # run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
     # for m in xrange(5, 55, 5):
     #     run_bah_simulation(m)
-    # run_min_cvar_sip_simulation(5, 100, scenario_cnt=1, alpha=0.95,
-    #                            verbose=True)
+    run_min_cvar_sp2_simulation(10, 220, scenario_cnt=1, alpha=0.95,
+                               verbose=True)
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
@@ -624,4 +624,4 @@ if __name__ == '__main__':
     # for n_stock in xrange(15, 50+5, 5):
     # run_best_simulation(10)
     # run_best_ms_simulation(5)
-    run_min_cvar_eevip_simulation(10, 190)
+    # run_min_cvar_eevip_simulation(10, 190)

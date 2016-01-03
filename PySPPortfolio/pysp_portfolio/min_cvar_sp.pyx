@@ -599,7 +599,7 @@ class MinCVaRSPPortfolio2(SPTradingPortfolio):
         cvar_arr: pandas.Series, conditional value at risk of each period
         """
 
-        super(MinCVaRSPPortfolio, self).__init__(
+        super(MinCVaRSPPortfolio2, self).__init__(
            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
             start_date, end_date, window_length, n_scenario, bias, verbose)
@@ -747,7 +747,7 @@ class MinCVaRSPPortfolio2(SPTradingPortfolio):
 
         # current exp_period index
         tdx = kwargs['tdx']
-        results = min_cvar_sp_portfolio(
+        results = min_cvar_sp_portfolio2(
             self.symbols,
             self.exp_risk_rois.iloc[tdx, :].as_matrix(),
             self.risk_free_rois.iloc[tdx],
