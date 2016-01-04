@@ -42,7 +42,7 @@ def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
             n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
             scenario_cnt, alpha)
-    elif prob_type == "min_cvar_sip":
+    elif prob_type in ("min_cvar_sip", "min_cvar_eevip"):
         param = "{}_{}_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
             len(EXP_SYMBOLS), n_stock, win_length, n_scenario,
