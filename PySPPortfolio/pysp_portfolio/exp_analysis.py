@@ -187,7 +187,7 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
 
-    if prob_type == "min_cvar_sip":
+    if prob_type in("min_cvar_sip", "min_cvar_eevip"):
         columns.append("max_portfolio_size")
 
     # output all combination to a sheet
@@ -1360,7 +1360,8 @@ if __name__ == '__main__':
     # plot_2d_contour("min_cvar_sip", z_dim="cum_roi")
     # plot_2d_eev_contour("min_cvar_eev")
     # plot_2d_contour("min_cvar_sip", z_dim='SPA_c_pvalue')
-    plot_2d_eev_VSS()
+    # plot_2d_eev_VSS()
+    all_results_to_xlsx("min_cvar_eevip")
     # plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
