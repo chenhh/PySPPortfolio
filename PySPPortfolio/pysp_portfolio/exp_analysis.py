@@ -217,7 +217,7 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
 
             for col_key in columns:
                 if col_key == "VSS_mean":
-                    result_df.loc[key, col_key] = results['vss'].mean()
+                    result_df.loc[key, col_key] = results['vss_arr'].mean()
                 elif col_key not in ('win_length', 'scenario_cnt'):
                     result_df.loc[key, col_key] = results[col_key]
                 else:
