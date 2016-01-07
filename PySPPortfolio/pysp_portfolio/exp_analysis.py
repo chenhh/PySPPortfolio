@@ -186,8 +186,10 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
               'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
+    if prob_type in ("min_cvar_sp2",):
+        columns.insert(8, "VSS_mean")
 
-    if prob_type in("min_cvar_sip", "min_cvar_eevip"):
+    if prob_type in("min_cvar_sip", "min_cvar_sip2", "min_cvar_eevip"):
         columns.append("max_portfolio_size")
 
     # output all combination to a sheet
@@ -214,6 +216,8 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
             for col_key in columns:
                 if col_key not in ('win_length', 'scenario_cnt'):
                     result_df.loc[key, col_key] = results[col_key]
+                elif col_key == "VSS_mean":
+                    result_df.loc[key, col_key] = results['vss'].mean()
                 else:
                     result_df.loc[key, 'win_length'] = w
                     result_df.loc[key, 'scenario_cnt'] = c
@@ -777,14 +781,13 @@ def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
 def plot_2d_eev_contour(prob_type="min_cvar_eev",
                         z_dims=("cum_roi", "SPA_c_pvalue"),
                         alpha="0.50"):
-    if not prob_type in  ("min_cvar_eev",):
+    if not prob_type in  ("min_cvar_eev", "min_cvar_eevip"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
     # figure size in inches
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     fig = plt.figure( figsize=(64,48), facecolor='white')
-
 
     for zdx, z_dim in enumerate(z_dims):
         pkl = os.path.join(TMP_DIR,
@@ -814,7 +817,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
             cm_norm = mpl.colors.Normalize(vmin=-100, vmax=300, clip=False)
             color_range = np.arange(-100, 300+20, 20)
 
-            if prob_type == "min_cvar_eev":
+            if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
                 cm_norm = mpl.colors.Normalize(vmin=-100, vmax=320, clip=False)
                 color_range = np.arange(-100, 320+20, 20)
 
@@ -842,7 +845,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
 
         if pkl_exist is True:
             Xs, Ys, Zs = alpha_data[alpha]
-            if prob_type == "min_cvar_eev":
+            if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
                 Zs[Zs > 300] = 320
 
             if z_dim == "SPA_c_pvalue":
@@ -854,7 +857,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
             for rdx in xrange(n_row):
                 for cdx in xrange(n_col):
                     n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
-                    if prob_type in ("min_cvar_sp", "min_cvar_eev"):
+                    if prob_type in ("min_cvar_eev",):
                         if z_dim in ('cum_roi', 'ann_roi'):
                             cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
                                           (df.loc[:, 'win_length'] == win_length) &
@@ -867,13 +870,16 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
                                           (df.loc[:, 'alpha'] == alpha),
                                           z_dim]
 
-                    elif prob_type == "min_cvar_sip":
+                    elif prob_type in ("min_cvar_eevip",):
                         if z_dim in ('cum_roi', 'ann_roi'):
                             cum_rois =  df.loc[
                                     (df.loc[:, 'max_portfolio_size'] == n_stock) &
                                     (df.loc[:, 'win_length'] == win_length) &
                                     (df.loc[:, 'alpha'] == alpha),
                                     'cum_roi']
+                            print ("M:{}, W:{}, alpha:{}, cum_roi:{}".format(
+                                n_stock, win_length, alpha, cum_rois.mean()
+                            ))
                         elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
                             values =  df.loc[
                                     (df.loc[:,'max_portfolio_size']==n_stock) &
@@ -893,10 +899,6 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
                         mean = 0.11 if mean > 0.1 else mean
 
                     Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
-
-            if prob_type == "min_cvar_sp":
-                # n_stock = 50, window = 50
-                Zs[-1, 0] = 0
 
             alpha_data[alpha] = (Xs, Ys, Zs)
 
@@ -921,8 +923,10 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
         cbar.set_label(cbar_label_name, labelpad=1, size=20,
                        fontname="Times New Roman")
 
-        if prob_type == "min_cvar_eev":
+        if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
+            print "plot_2d_eev_contour: {}".format(prob_type)
             labels = range(-100, 300+20, 20)
+            print labels
             labels.append(">320")
             cbar.set_ticklabels(labels)
 
@@ -1352,16 +1356,16 @@ if __name__ == '__main__':
     # all_results_to_xlsx("min_cvar_sp")
     # all_results_to_xlsx("min_cvar_sip")
     # all_results_to_xlsx("min_cvar_eev")
-
+    all_results_to_xlsx("min_cvar_sp2", 3)
     # all_results_roi_stats("min_cvar_sp")
     # all_results_roi_stats("min_cvar_sip")
     # plot_3d_results("min_cvar_sip")
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
     # plot_2d_contour("min_cvar_sip", z_dim="cum_roi")
-    # plot_2d_eev_contour("min_cvar_eev")
+    # plot_2d_eev_contour("min_cvar_eevip")
     # plot_2d_contour("min_cvar_sip", z_dim='SPA_c_pvalue')
     # plot_2d_eev_VSS()
-    all_results_to_xlsx("min_cvar_eevip")
+    # all_results_to_xlsx("min_cvar_eevip")
     # plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
