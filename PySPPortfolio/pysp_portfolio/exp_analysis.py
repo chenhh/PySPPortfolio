@@ -187,7 +187,8 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
               'daily_kurt_roi', 'sharpe', 'sortino_full', 'sortino_partial',
               'max_abs_drawdown', 'SPA_l_pvalue', 'SPA_c_pvalue',
               'SPA_u_pvalue', 'simulation_time']
-    if prob_type in ("min_cvar_sp2",):
+
+    if prob_type in ("min_cvar_sp2", "min_cvar_sip2"):
         columns.insert(8, "VSS_mean")
 
     if prob_type in("min_cvar_sip", "min_cvar_sip2", "min_cvar_eevip"):
@@ -215,10 +216,10 @@ def all_results_to_xlsx(prob_type="min_cvar_sp",
             key = "m{}_w{}_s200_unbiased_{}_a{}".format(m,w,c,a)
 
             for col_key in columns:
-                if col_key not in ('win_length', 'scenario_cnt'):
-                    result_df.loc[key, col_key] = results[col_key]
-                elif col_key == "VSS_mean":
+                if col_key == "VSS_mean":
                     result_df.loc[key, col_key] = results['vss'].mean()
+                elif col_key not in ('win_length', 'scenario_cnt'):
+                    result_df.loc[key, col_key] = results[col_key]
                 else:
                     result_df.loc[key, 'win_length'] = w
                     result_df.loc[key, 'scenario_cnt'] = c
