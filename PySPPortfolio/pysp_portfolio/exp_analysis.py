@@ -781,7 +781,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
     # figure size in inches
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    fig = plt.figure( figsize=(64,48), facecolor='white')
+    fig = plt.figure( figsize=(48, 64), facecolor='white')
 
     pkl = os.path.join(TMP_DIR, "{}_alpha_data_{}.pkl".format(
             prob_type, z_dim))
@@ -1325,7 +1325,7 @@ if __name__ == '__main__':
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
     # plot_2d_contour("min_cvar_sip", z_dim="cum_roi")
     plot_2d_eev_contour("min_cvar_eev", z_dim="cum_roi")
-    # plot_2d_eev_contour("min_cvar_eev", z_dim="SPA_c_pvalue")
+    # plot_2d_eev_contour("min_cvar_eevip", z_dim="SPA_c_pvalue")
     #
     # plot_2d_eev_contour("min_cvar_eevip", z_dim="cum_roi")
     # plot_2d_eev_contour("min_cvar_eevip", z_dim="SPA_c_pvalue")
