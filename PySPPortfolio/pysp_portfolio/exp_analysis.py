@@ -816,7 +816,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
         cm_norm = mpl.colors.Normalize(vmin=0, vmax=11, clip=False)
         color_range = np.arange(0, 10+2)
 
-    ax = fig.add_subplot(1, 1, 1, xlim=(5, 50), ylim=ylim)
+    ax = fig.add_subplot(1, 2, 1, xlim=(5, 50), ylim=ylim)
 
     # ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
     #              y=1.02, fontsize=24)
@@ -1324,7 +1324,7 @@ if __name__ == '__main__':
     # plot_3d_results("min_cvar_sip")
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
     # plot_2d_contour("min_cvar_sip", z_dim="cum_roi")
-    plot_2d_eev_contour("min_cvar_eev", z_dim="cum_roi")
+    # plot_2d_eev_contour("min_cvar_eevip", z_dim="cum_roi")
     # plot_2d_eev_contour("min_cvar_eevip", z_dim="SPA_c_pvalue")
     #
     # plot_2d_eev_contour("min_cvar_eevip", z_dim="cum_roi")
@@ -1332,7 +1332,8 @@ if __name__ == '__main__':
 
     # plot_2d_contour("min_cvar_sp2", z_dim='VSS_mean')
     # plot_2d_eev_VSS()
-    # all_results_to_xlsx("min_cvar_eevip")
+    # plot_2d_VSS("min_cvar_sip2")
+    all_results_to_xlsx("min_cvar_sip2", 1)
     # plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
