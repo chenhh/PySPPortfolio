@@ -626,16 +626,20 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     plt.show()
 
 def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
-    if not prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev"):
+    if not prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev",
+                         "min_cvar_sp2", 'min_cvar_sip2'):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
-    pkl = os.path.join(TMP_DIR, "{}_alpha_data_{}.pkl".format(prob_type, z_dim))
+    pkl = os.path.join(TMP_DIR, "{}_alpha_data_{}.pkl".format(
+            prob_type, z_dim))
+
     if not os.path.exists(pkl):
         alpha_data = {}
         pkl_exist = False
         data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
                        '{}_results_all.pkl'.format(prob_type))
         df = pd.read_pickle(data_path)
+        print df.columns
         # set alpha column to str
         for rdx in xrange(df.index.size):
             df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
@@ -645,7 +649,7 @@ def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
 
     #axes
     stocks = np.arange(5, 50+5, 5)
-    if prob_type == "min_cvar_sip":
+    if prob_type in ("min_cvar_sip", "min_cvar_sip2"):
         lengths = np.arange(60, 240 + 10, 10)
     else:
         lengths = np.arange(50, 240 + 10, 10)
@@ -658,84 +662,69 @@ def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
     # figure size in inches
     fig = plt.figure( figsize=(64,48), facecolor='white')
 
+    # set color range
     if z_dim == 'cum_roi':
         cm_norm = mpl.colors.Normalize(vmin=-100, vmax=300, clip=False)
         color_range = np.arange(-100, 300+10, 20)
     elif z_dim == "SPA_c_pvalue":
         cm_norm = mpl.colors.Normalize(vmin=0, vmax=11, clip=False)
         color_range = np.arange(0, 10+2)
+    elif z_dim == "VSS_mean":
+        cm_norm = mpl.colors.Normalize(vmin=0, vmax=4, clip=False)
+        color_range = np.arange(0, 4+0.2, 0.3)
 
     for adx, alpha in enumerate(alphas):
-        if prob_type == "min_cvar_sip":
+        if prob_type in ("min_cvar_sip", "min_cvar_sip2"):
             ylim=(60, 240)
         else:
             ylim=(50, 240)
         ax = fig.add_subplot(2, 5, adx+1, xlim=(5, 50), ylim=ylim)
 
         ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
-                     y=1.02, fontsize=24)
+                     y=1.02, fontsize=18)
         # labelpad - number of points between the axis and its label
-        ax.set_xlabel(r'$M$', fontsize=20, labelpad=-1)
-        ax.set_ylabel(r'$h$', fontsize=20, labelpad=-1)
-        ax.tick_params(labelsize=10, pad=2, )
+        ax.set_xlabel(r'$M$', fontsize=14, labelpad=-2)
+        ax.set_ylabel(r'$h$', fontsize=14, labelpad=-2)
+        ax.tick_params(labelsize=10, pad=1,)
         ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
                            fontname="Times New Roman")
         ax.set_yticks(lengths)
         ax.set_yticklabels(lengths, fontsize=12, fontname="Times New Roman")
 
         if pkl_exist is True:
+            # cache exist
             Xs, Ys, Zs = alpha_data[alpha]
             if z_dim == "SPA_c_pvalue":
                 Zs[Zs > 10] = 11
         else:
+            # cache not exist
             Xs, Ys = np.meshgrid(stocks, lengths)
             n_row, n_col = Xs.shape
             Zs = np.zeros_like(Xs, dtype=np.float)
             for rdx in xrange(n_row):
                 for cdx in xrange(n_col):
                     n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
-                    if prob_type in ("min_cvar_sp", "min_cvar_eev"):
-                        if z_dim in ('cum_roi', 'ann_roi'):
-                            cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
-                                          (df.loc[:, 'win_length'] == win_length) &
-                                          (df.loc[:, 'alpha'] == alpha),
-                                          'cum_roi']
-                        elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
-                            values=  df.loc[(df.loc[:,'n_stock']==n_stock) &
-                                          (df.loc[:, 'win_length'] == win_length) &
-                                          (df.loc[:, 'alpha'] == alpha),
-                                          z_dim]
+                    if prob_type in ("min_cvar_sp", "min_cvar_sp2",
+                                     "min_cvar_eev"):
+                        stock_key = 'n_stock'
+                    elif prob_type in ("min_cvar_sip", "min_cvar_sip2"):
+                        stock_key = 'max_portfolio_size'
 
-                    elif prob_type == "min_cvar_sip":
-                        if z_dim in ('cum_roi', 'ann_roi'):
-                            cum_rois =  df.loc[
-                                    (df.loc[:, 'max_portfolio_size'] == n_stock) &
+                    values=  df.loc[(df.loc[:,stock_key]==n_stock) &
                                     (df.loc[:, 'win_length'] == win_length) &
                                     (df.loc[:, 'alpha'] == alpha),
-                                    'cum_roi']
-                        elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
-                            values =  df.loc[
-                                    (df.loc[:,'max_portfolio_size']==n_stock) &
-                                    (df.loc[:, 'win_length'] == win_length) &
-                                    (df.loc[:, 'alpha'] == alpha),
-                                    z_dim]
+                                     z_dim]
 
-                    if z_dim == "cum_roi":
-                        mean = cum_rois.mean()
-                    elif z_dim == "ann_roi":
-                        # 2005~2014
-                        mean = (np.power(cum_rois+1, 1./10) - 1).mean()
-                    elif  z_dim in ("sharpe", "sortino_full"):
-                        mean = values.mean()
-                    elif z_dim == "SPA_c_pvalue":
+                    if z_dim == "SPA_c_pvalue":
                         mean = max(values) if len(values) > 0 else 0
                         mean = 0.11 if mean > 0.1 else mean
 
-                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+                    elif z_dim == "VSS_mean":
+                        mean = values.mean() / 1e6
+                    else:
+                        mean = values.mean()
 
-            if prob_type == "min_cvar_sp":
-                # n_stock = 50, window = 50
-                Zs[-1, 0] = 0
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
 
             alpha_data[alpha] = (Xs, Ys, Zs)
 
@@ -750,14 +739,18 @@ def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
 
     # share color bar,  rect [left, bottom, width, height]
     cbar_ax = fig.add_axes([0.92, 0.125, 0.015, 0.75])
-    print fig.get_axes()
+    # print fig.get_axes()
     cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax,
                         ticks=color_range)
+    print "Z_dim:", z_dim
+    print "z_range:", np.min(Zs), np.max(Zs)
     cbar.ax.tick_params(labelsize=12)
     if z_dim == "cum_roi":
         cbar_label_name = "Average cumulative returns (%)"
     elif z_dim == "SPA_c_pvalue":
         cbar_label_name = "P values (%)"
+    elif z_dim == "VSS_mean":
+        cbar_label_name = "VSS (%)"
 
     cbar.set_label(cbar_label_name, labelpad=1, size=20,
                    fontname="Times New Roman")
@@ -781,8 +774,7 @@ def plot_2d_contour(prob_type="min_cvar_sp", z_dim="cum_roi"):
 
 
 def plot_2d_eev_contour(prob_type="min_cvar_eev",
-                        z_dims=("cum_roi", "SPA_c_pvalue"),
-                        alpha="0.50"):
+                        z_dim="cum_roi", alpha="0.50"):
     if not prob_type in  ("min_cvar_eev", "min_cvar_eevip"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
@@ -791,154 +783,122 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
     import matplotlib.pyplot as plt
     fig = plt.figure( figsize=(64,48), facecolor='white')
 
-    for zdx, z_dim in enumerate(z_dims):
-        pkl = os.path.join(TMP_DIR,
-                           "{}_alpha_data_{}.pkl".format(prob_type, z_dim))
-        if not os.path.exists(pkl):
-            alpha_data = {}
-            pkl_exist = False
-            data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
-                           '{}_results_all.pkl'.format(prob_type))
-            df = pd.read_pickle(data_path)
+    pkl = os.path.join(TMP_DIR, "{}_alpha_data_{}.pkl".format(
+            prob_type, z_dim))
+    if not os.path.exists(pkl):
+        alpha_data = {}
+        pkl_exist = False
+        data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                       '{}_results_all.pkl'.format(prob_type))
+        df = pd.read_pickle(data_path)
 
-            # set alpha column to str
-            for rdx in xrange(df.index.size):
-                df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
-        else:
-            alpha_data = pd.read_pickle(pkl)
-            pkl_exist = True
+        # set alpha column to str
+        for rdx in xrange(df.index.size):
+            df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+    else:
+        alpha_data = pd.read_pickle(pkl)
+        pkl_exist = True
 
-        #axes
-        stocks = np.arange(5, 50+5, 5)
-        if prob_type == "min_cvar_eevip":
-            lengths = np.arange(60, 240 + 10, 10)
-        else:
-            lengths = np.arange(50, 240 + 10, 10)
+    #axes
+    stocks = np.arange(5, 50+5, 5)
+    if prob_type == "min_cvar_eevip":
+        lengths = np.arange(60, 240 + 10, 10)
+        ylim=(60, 240)
+    else:
+        lengths = np.arange(50, 240 + 10, 10)
+        ylim=(50, 240)
 
-        if z_dim == 'cum_roi':
-            cm_norm = mpl.colors.Normalize(vmin=-100, vmax=300, clip=False)
-            color_range = np.arange(-100, 300+20, 20)
+    if z_dim == 'cum_roi':
+        cm_norm = mpl.colors.Normalize(vmin=-100, vmax=320, clip=False)
+        color_range = np.arange(-100, 320+20, 20)
 
-            if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
-                cm_norm = mpl.colors.Normalize(vmin=-100, vmax=320, clip=False)
-                color_range = np.arange(-100, 320+20, 20)
+    elif z_dim == "SPA_c_pvalue":
+        cm_norm = mpl.colors.Normalize(vmin=0, vmax=11, clip=False)
+        color_range = np.arange(0, 10+2)
 
-        elif z_dim == "SPA_c_pvalue":
-            cm_norm = mpl.colors.Normalize(vmin=0, vmax=11, clip=False)
-            color_range = np.arange(0, 10+2)
+    ax = fig.add_subplot(1, 1, 1, xlim=(5, 50), ylim=ylim)
 
-        if prob_type in ("min_cvar_eevip",):
-            ylim=(60, 240)
-        else:
-            ylim=(50, 240)
-        ax = fig.add_subplot(1, 2, zdx+1, xlim=(5, 50), ylim=ylim)
+    # ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
+    #              y=1.02, fontsize=24)
 
-        # ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha)*100.)),
-        #              y=1.02, fontsize=24)
-
-        # labelpad - number of points between the axis and its label
-        ax.set_xlabel(r'$M$', fontsize=20, labelpad=-1)
-        ax.set_ylabel(r'$h$', fontsize=20, labelpad=-1)
-        ax.tick_params(labelsize=10, pad=2, )
-        ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
-                           fontname="Times New Roman")
-        ax.set_yticks(lengths)
-        ax.set_yticklabels(lengths, fontsize=12, fontname="Times New Roman")
-
-        if pkl_exist is True:
-            Xs, Ys, Zs = alpha_data[alpha]
-            if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
-                Zs[Zs > 300] = 320
-
-            if z_dim == "SPA_c_pvalue":
-                Zs[Zs > 10] = 11
-        else:
-            Xs, Ys = np.meshgrid(stocks, lengths)
-            n_row, n_col = Xs.shape
-            Zs = np.zeros_like(Xs, dtype=np.float)
-            for rdx in xrange(n_row):
-                for cdx in xrange(n_col):
-                    n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
-                    if prob_type in ("min_cvar_eev",):
-                        if z_dim in ('cum_roi', 'ann_roi'):
-                            cum_rois =  df.loc[(df.loc[:,'n_stock']==n_stock) &
-                                          (df.loc[:, 'win_length'] == win_length) &
-                                          (df.loc[:, 'alpha'] == alpha),
-                                          'cum_roi']
-
-                        elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
-                            values=  df.loc[(df.loc[:,'n_stock']==n_stock) &
-                                          (df.loc[:, 'win_length'] == win_length) &
-                                          (df.loc[:, 'alpha'] == alpha),
-                                          z_dim]
-
-                    elif prob_type in ("min_cvar_eevip",):
-                        if z_dim in ('cum_roi', 'ann_roi'):
-                            cum_rois =  df.loc[
-                                    (df.loc[:, 'max_portfolio_size'] == n_stock) &
-                                    (df.loc[:, 'win_length'] == win_length) &
-                                    (df.loc[:, 'alpha'] == alpha),
-                                    'cum_roi']
-                            print ("M:{}, W:{}, alpha:{}, cum_roi:{}".format(
-                                n_stock, win_length, alpha, cum_rois.mean()
-                            ))
-                        elif z_dim in ("sharpe", "sortino_full", "SPA_c_pvalue"):
-                            values =  df.loc[
-                                    (df.loc[:,'max_portfolio_size']==n_stock) &
-                                    (df.loc[:, 'win_length'] == win_length) &
-                                    (df.loc[:, 'alpha'] == alpha),
-                                    z_dim]
-
-                    if z_dim == "cum_roi":
-                        mean = cum_rois.mean()
-                    elif z_dim == "ann_roi":
-                        # 2005~2014
-                        mean = (np.power(cum_rois+1, 1./10) - 1).mean()
-                    elif  z_dim in ("sharpe", "sortino_full"):
-                        mean = values.mean()
-                    elif z_dim == "SPA_c_pvalue":
-                        mean = max(values) if len(values) > 0 else 0
-                        mean = 0.11 if mean > 0.1 else mean
-
-                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
-
-            alpha_data[alpha] = (Xs, Ys, Zs)
-
-        if pkl_exist is False:
-            pd.to_pickle(alpha_data, pkl)
-
-        print alpha, Zs
-
-        # contour, projected on z
-        cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
-                            levels=color_range)
-
-        # share color bar,  rect [left, bottom, width, height]
-        # cbar_ax[0] = fig.add_axes([0.92, 0.125, 0.01, 0.75])
-        cbar = fig.colorbar(cset, ax=ax, ticks=color_range)
-        cbar.ax.tick_params(labelsize=12)
-        if z_dim == "cum_roi":
-            cbar_label_name = "Average cumulative returns (%)"
-        elif z_dim == "SPA_c_pvalue":
-            cbar_label_name = "P values (%)"
-
-        cbar.set_label(cbar_label_name, labelpad=1, size=20,
+    # labelpad - number of points between the axis and its label
+    ax.set_xlabel(r'$M$', fontsize=20, labelpad=-1)
+    ax.set_ylabel(r'$h$', fontsize=20, labelpad=-1)
+    ax.tick_params(labelsize=10, pad=2, )
+    ax.set_xticklabels(np.arange(5, 50+5, 5), fontsize=12,
                        fontname="Times New Roman")
+    ax.set_yticks(lengths)
+    ax.set_yticklabels(lengths, fontsize=12, fontname="Times New Roman")
 
+    if pkl_exist is True:
+        Xs, Ys, Zs = alpha_data[alpha]
         if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
-            print "plot_2d_eev_contour: {}".format(prob_type)
-            labels = range(-100, 300+20, 20)
-            print labels
-            labels.append(">320")
-            cbar.set_ticklabels(labels)
+            Zs[Zs > 300] = 320
 
         if z_dim == "SPA_c_pvalue":
-            cbar.set_ticklabels([0,1,2,3,4,5,6,7,8,9,10, ">10"])
-        cbar.update_ticks()
+            Zs[Zs > 10] = 11
+    else:
+        Xs, Ys = np.meshgrid(stocks, lengths)
+        n_row, n_col = Xs.shape
+        Zs = np.zeros_like(Xs, dtype=np.float)
+        for rdx in xrange(n_row):
+            for cdx in xrange(n_col):
+                n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
+                if prob_type in ("min_cvar_eev",):
+                    stock_key = 'n_stock'
+                elif prob_type in ('min_cvar_eevip',):
+                    stock_key = 'max_portfolio_size'
+
+                values=  df.loc[(df.loc[:,stock_key]==n_stock) &
+                                  (df.loc[:, 'win_length'] == win_length) &
+                                  (df.loc[:, 'alpha'] == alpha),
+                                  z_dim]
+
+                if z_dim == "SPA_c_pvalue":
+                    mean = max(values) if len(values) > 0 else 0
+                    mean = 0.11 if mean > 0.1 else mean
+                else:
+                    mean = values.mean()
+
+                Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+
+        alpha_data[alpha] = (Xs, Ys, Zs)
+
+    if pkl_exist is False:
+        pd.to_pickle(alpha_data, pkl)
+
+    print alpha, Zs
+
+    # contour, projected on z
+    cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
+                        levels=color_range)
+
+    # share color bar,  rect [left, bottom, width, height]
+    # cbar_ax[0] = fig.add_axes([0.92, 0.125, 0.01, 0.75])
+    cbar = fig.colorbar(cset, ax=ax, ticks=color_range)
+    cbar.ax.tick_params(labelsize=12)
+    if z_dim == "cum_roi":
+        cbar_label_name = "Average cumulative returns (%)"
+    elif z_dim == "SPA_c_pvalue":
+        cbar_label_name = "P values (%)"
+
+    cbar.set_label(cbar_label_name, labelpad=1, size=20,
+                   fontname="Times New Roman")
+
+    if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
+        print "plot_2d_eev_contour: {}".format(prob_type)
+        labels = range(-100, 300+20, 20)
+        print labels
+        labels.append(">320")
+        cbar.set_ticklabels(labels)
+
+    if z_dim == "SPA_c_pvalue":
+        cbar.set_ticklabels([0,1,2,3,4,5,6,7,8,9,10, ">10"])
+    cbar.update_ticks()
 
     plt.show()
 
-def plot_2d_eev_VSS(prob_type="min_cvar_eev"):
+def plot_2d_VSS(prob_type="min_cvar_sp2"):
 
     pkl = os.path.join(TMP_DIR, "{}_VSS_alpha_data.pkl".format(prob_type))
     if not os.path.exists(pkl):
@@ -969,7 +929,7 @@ def plot_2d_eev_VSS(prob_type="min_cvar_eev"):
 
     #axes
     stocks = np.arange(5, 50+5, 5)
-    if prob_type == "min_cvar_eevip":
+    if prob_type == "min_cvar_sip2":
         lengths = np.arange(60, 240 + 10, 10)
     else:
         lengths = np.arange(50, 240 + 10, 10)
@@ -986,7 +946,7 @@ def plot_2d_eev_VSS(prob_type="min_cvar_eev"):
     color_range = np.arange(-100, 100, 10)
 
     for adx, alpha in enumerate(alphas):
-        if prob_type == "min_cvar_eevip":
+        if prob_type == "min_cvar_sip2":
             ylim=(60, 240)
         else:
             ylim=(50, 240)
@@ -1358,14 +1318,19 @@ if __name__ == '__main__':
     # all_results_to_xlsx("min_cvar_sp")
     # all_results_to_xlsx("min_cvar_sip")
     # all_results_to_xlsx("min_cvar_eev")
-    all_results_to_xlsx("min_cvar_sp2", 3)
+    # all_results_to_xlsx("min_cvar_sp2", 3)
     # all_results_roi_stats("min_cvar_sp")
     # all_results_roi_stats("min_cvar_sip")
     # plot_3d_results("min_cvar_sip")
     # plot_3d_results("min_cvar_eev", z_dim='cum_roi')
     # plot_2d_contour("min_cvar_sip", z_dim="cum_roi")
-    # plot_2d_eev_contour("min_cvar_eevip")
-    # plot_2d_contour("min_cvar_sip", z_dim='SPA_c_pvalue')
+    plot_2d_eev_contour("min_cvar_eev", z_dim="cum_roi")
+    # plot_2d_eev_contour("min_cvar_eev", z_dim="SPA_c_pvalue")
+    #
+    # plot_2d_eev_contour("min_cvar_eevip", z_dim="cum_roi")
+    # plot_2d_eev_contour("min_cvar_eevip", z_dim="SPA_c_pvalue")
+
+    # plot_2d_contour("min_cvar_sp2", z_dim='VSS_mean')
     # plot_2d_eev_VSS()
     # all_results_to_xlsx("min_cvar_eevip")
     # plot_3d_eev()
