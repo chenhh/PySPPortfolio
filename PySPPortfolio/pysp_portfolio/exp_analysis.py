@@ -902,25 +902,6 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
 
     pkl = os.path.join(TMP_DIR, "{}_VSS_alpha_data.pkl".format(prob_type))
     if not os.path.exists(pkl):
-        # alpha_data = {}
-        # pkl_exist = False
-        # data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
-        #                '{}_results_all.pkl'.format(prob_type))
-        # eev_df = pd.read_pickle(data_path)
-        # # set alpha column to str
-        # for rdx in xrange(eev_df.index.size):
-        #     eev_df.ix[rdx, 'alpha'] = "{:.2f}".format(eev_df.ix[rdx, 'alpha'])
-        #
-        # if prob_type == "min_cvar_eev":
-        #     sp_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
-        #                'min_cvar_sp_results_all.pkl')
-        #     sp_df = pd.read_pickle(sp_path)
-        # elif prob_type == "min_cvar_eevip":
-        #     sp_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
-        #                'min_cvar_sip_results_all.pkl')
-        #     sp_df = pd.read_pickle(sp_path)
-        # for rdx in xrange(sp_df.index.size):
-        #     sp_df.ix[rdx, 'alpha'] = "{:.2f}".format(sp_df.ix[rdx, 'alpha'])
         pkl_exist = False
         alpha_data = {}
     else:
@@ -965,7 +946,7 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
 
         if pkl_exist is True:
             Xs, Ys, Zs = alpha_data[alpha]
-            Zs = Zs * 100
+            # Zs = Zs * 100
         else:
             Xs, Ys = np.meshgrid(stocks, lengths)
             n_row, n_col = Xs.shape
@@ -1012,7 +993,7 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
                         ticks=color_range)
     cbar.ax.tick_params(labelsize=12)
 
-    cbar_label_name = "Average VSS"
+    cbar_label_name = "Average $VSS$"
 
     cbar.set_label(cbar_label_name, labelpad=1, size=20,
                    fontname="Times New Roman")
@@ -1333,7 +1314,7 @@ if __name__ == '__main__':
     # plot_2d_contour("min_cvar_sp2", z_dim='VSS_mean')
     # plot_2d_eev_VSS()
     # plot_2d_VSS("min_cvar_sip2")
-    all_results_to_xlsx("min_cvar_sip2", 1)
+    # all_results_to_xlsx("min_cvar_sip2", 1)
     # plot_3d_eev()
     # plot_3d_results("min_cvar_sp", z_dim='ann_roi')
     # plot_3d_results("min_cvar_sip", z_dim='sortino_full')
@@ -1343,7 +1324,7 @@ if __name__ == '__main__':
     # plot_best_parameters("min_cvar_sp")
     # plot_best_parameters("min_cvar_sip")
     # plot_best_parameters("bah")
-    # stock_statistics()
+    stock_statistics()
     # bah_results_to_latex()
     # table_best_parameter("min_cvar_sp")
     # table_best_parameter("min_cvar_sip")
