@@ -69,7 +69,7 @@ def farmer_lp():
     opt = SolverFactory("cplex")
     results = opt.solve(instance)
     instance.solutions.load_from(results)
-    # display(instance)
+    display(instance)
     print ("LP objective: {}".format(-instance.min_cost_objective()))
 
 
@@ -125,8 +125,10 @@ def farmer_sp(yields=None):
 
     # constraint
     def beet_price_rule(model, sdx):
-        return (model.beet_price['high', sdx] + model.beet_price['low', sdx]
-                <= yields[sdx, 2] * model.area['beet'])
+        return (yields[sdx, 2] * model.area['beet'] -
+                model.beet_price['high', sdx] -
+                model.beet_price['low', sdx] >= 0
+                )
 
     instance.beat_price_constraint = Constraint(
         instance.scenarios, rule=beet_price_rule)
@@ -152,7 +154,7 @@ def farmer_sp(yields=None):
     opt = SolverFactory("cplex")
     results = opt.solve(instance)
     instance.solutions.load_from(results)
-    # display(instance)
+    display(instance)
     print ("SP: {}".format(-instance.min_cost_objective()))
     return -instance.min_cost_objective()
 
@@ -362,14 +364,643 @@ def farmer_eev(yields=None):
 
     return EV, obj_values.mean()
 
-if __name__ == '__main__':
-    # farmer_lp()
-    for _ in xrange(1000):
-        yields = np.random.rand(3,3)*5
-        yields[:, 2] += 20
-        print yields
-        sp = farmer_sp(yields)
-        ws = farmer_wait_and_see(yields)
-        ev, eev = farmer_eev(yields)
+def farmer_3stage_independent_sp():
+    # concrete model
+    instance = ConcreteModel(name="Farmer_3stage_independent_SP")
 
-        assert ws>=sp>=eev
+
+    yields = np.array([
+        [3, 3.6, 24],
+        [2.5, 3, 20],
+        [2, 2.4, 16],
+    ])
+
+    yields2 = np.array([
+        [2.8, 3.1, 24],
+        [3.2, 2.9, 22],
+        [2.7, 3.2, 19],
+        [2.4, 3.1, 26],
+        [2, 2, 20],
+        [1.7, 3, 24],
+    ])
+
+    # set
+    instance.plants = ["wheat", "corn", "beet"]
+    instance.action = ["buy", "sell"]
+    instance.price = ["high", "low"]
+    instance.scenarios = range(len(yields))
+    instance.scenarios2 = range(len(yields2))
+
+    # stage 1 decision variables
+    instance.area = Var(instance.plants, within=NonNegativeReals)
+    instance.wheat_act = Var(instance.action, instance.scenarios,
+                             within=NonNegativeReals)
+    instance.corn_act = Var(instance.action, instance.scenarios,
+                            within=NonNegativeReals)
+    instance.beet_price = Var(instance.price, instance.scenarios,
+                              bounds=(0, 6000))
+
+    # stage 2
+    instance.area2 = Var(instance.plants, instance.scenarios,
+                         within=NonNegativeReals)
+    instance.wheat_act2 = Var(instance.action, instance.scenarios2,
+                             within=NonNegativeReals)
+
+    instance.corn_act2 = Var(instance.action, instance.scenarios2,
+                        within=NonNegativeReals)
+    instance.beet_price2 = Var(instance.price, instance.scenarios2,
+                           bounds=(0, 6000))
+
+    # 1st constraint
+    def area_rule(model):
+        return sum(instance.area[pdx] for pdx in instance.plants) <= 500
+
+    instance.area_constraint = Constraint(rule=area_rule)
+
+    # 1st constraint
+    def min_wheat_rule(model, sdx):
+        return (yields[sdx, 0] * model.area['wheat'] +
+                model.wheat_act["buy", sdx] -
+                model.wheat_act["sell", sdx] -200 >= 0 )
+
+    instance.min_wheat_constraint = Constraint(
+        instance.scenarios, rule=min_wheat_rule)
+
+    # 1st constraint
+    def min_corn_rule(model, sdx):
+        return (yields[sdx, 1] * model.area['corn'] +
+                model.corn_act['buy', sdx] -
+                model.corn_act['sell', sdx] -240 >= 0)
+
+    instance.min_corn_constraint = Constraint(
+        instance.scenarios, rule=min_corn_rule)
+
+    # 1st constraint
+    def beet_price_rule(model, sdx):
+        return (yields[sdx, 2] * model.area['beet'] -
+                model.beet_price['high', sdx] -
+                model.beet_price['low', sdx] >= 0
+                )
+
+    instance.beat_price_constraint = Constraint(
+        instance.scenarios, rule=beet_price_rule)
+
+    # 2nd constraint
+    def area2_rule(model, sdx):
+        return sum(instance.area2[pdx, sdx] for pdx in instance.plants) <= 500
+
+    instance.area2_constraint = Constraint(instance.scenarios,
+                                           rule=area2_rule)
+
+    # 2nd constraint
+    def min_wheat2_rule(model, sdx):
+        adx = int(sdx/2)
+        return (yields2[sdx, 0] * model.area2['wheat', adx] +
+                model.wheat_act2["buy", sdx] -
+                model.wheat_act2["sell", sdx] - 200 >= 0)
+
+    instance.min_wheat2_constraint = Constraint(
+        instance.scenarios2, rule=min_wheat2_rule)
+
+    # 2nd constraint
+    def min_corn2_rule(model, sdx):
+        adx = int(sdx / 2)
+        return (yields2[sdx, 1] * model.area2['corn', adx] +
+                model.corn_act2['buy', sdx] -
+                model.corn_act2['sell', sdx] - 240 >= 0)
+
+    instance.min_corn2_constraint = Constraint(
+        instance.scenarios2, rule=min_corn2_rule)
+
+    # 2nd constraint
+    def beet_price2_rule(model, sdx):
+        adx = int(sdx / 2)
+        return (yields2[sdx, 2] * model.area2['beet', adx] -
+                model.beet_price2['high', sdx] -
+                model.beet_price2['low', sdx] >= 0)
+
+    instance.beat_price2_constraint = Constraint(
+        instance.scenarios2, rule=beet_price2_rule)
+
+    # objective
+    def min_cost_rule(model):
+        grow_cost = (150 * model.area['wheat'] + 230 * model.area['corn'] +
+                     260 * model.area['beet'])
+
+        probs = np.ones(3)/3.
+        scenario_cost = 0
+        for sdx in instance.scenarios:
+            wheat_cost =  (238 * model.wheat_act['buy', sdx] -
+                           170 * model.wheat_act['sell', sdx])
+            corn_cost = (210 * model.corn_act['buy', sdx] -
+                          150 * model.corn_act['sell', sdx])
+            beet_cost = - (36 * model.beet_price['high', sdx] +
+                           10 * model.beet_price['low', sdx])
+            scenario_cost += probs[sdx] * (wheat_cost + corn_cost + beet_cost)
+
+        s1_cost =  grow_cost + scenario_cost
+
+        grow_cost2 = 0
+        for sdx in instance.scenarios:
+            grow_cost2 += probs[sdx]*(
+                            150 * model.area2['wheat', sdx] +
+                            230 * model.area2['corn', sdx] +
+                            260 * model.area2['beet', sdx])
+
+        scenario_cost2 = 0
+        probs2 = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
+
+        for sdx in instance.scenarios2:
+            adx = int(sdx/2)
+            wheat_cost2 = (238 * model.wheat_act2['buy', sdx] -
+                            170 * model.wheat_act2['sell', sdx])
+            corn_cost2 = (210 * model.corn_act2['buy', sdx] -
+                           150 * model.corn_act2['sell', sdx])
+            beet_cost2 = -(36 * model.beet_price2['high', sdx] +
+                            10 * model.beet_price2['low', sdx])
+            scenario_cost2 += probs[adx] * probs2[sdx] * (
+                    wheat_cost2 + corn_cost2 + beet_cost2)
+
+        s2_cost = grow_cost2 + scenario_cost2
+
+        return s1_cost + s2_cost
+
+    instance.min_cost_objective = Objective(rule=min_cost_rule,
+                                            sense=minimize)
+    # solve
+    opt = SolverFactory("cplex")
+    results = opt.solve(instance)
+    instance.solutions.load_from(results)
+    display(instance)
+    print ("3stage_SP: {}".format(-instance.min_cost_objective()))
+    return -instance.min_cost_objective()
+
+
+def farmer_sp2():
+    # concrete model
+    instance = ConcreteModel(name="Farmer_SP2")
+
+
+    # yields = np.array([
+    #     [2.8, 3.1, 24],
+    #     [3.2, 2.9, 22],
+    # ])
+    # yields = np.array([
+    #     [2.7, 3.2, 19],
+    #     [2.4, 3.1, 26],
+    # ])
+    yields = np.array([
+        [2, 2, 20],
+        [1.7, 3, 24],
+    ])
+
+    # probs = np.array([0.4, 0.6])
+    # probs = np.array([0.7, 0.3])
+    probs = np.array([0.5, 0.5])
+
+    # set
+    instance.plants = ["wheat", "corn", "beet"]
+    instance.action = ["buy", "sell"]
+    instance.price = ["high", "low"]
+    instance.scenarios = range(2)
+
+    # decision variables
+    instance.area = Var(instance.plants, within=NonNegativeReals)
+    instance.wheat_act = Var(instance.action, instance.scenarios,
+                             within=NonNegativeReals)
+    instance.corn_act = Var(instance.action, instance.scenarios,
+                            within=NonNegativeReals)
+    instance.beet_price = Var(instance.price, instance.scenarios,
+                              bounds=(0, 6000))
+
+    # constraint
+    def area_rule(model):
+        return sum(instance.area[pdx] for pdx in instance.plants) <= 500
+
+    instance.area_constraint = Constraint(rule=area_rule)
+
+    # constraint
+    def min_wheat_rule(model, sdx):
+        return (yields[sdx, 0] * model.area['wheat'] +
+                model.wheat_act["buy", sdx] -
+                model.wheat_act["sell", sdx] >= 200)
+
+    instance.min_wheat_constraint = Constraint(
+        instance.scenarios, rule=min_wheat_rule)
+
+    # constraint
+    def min_corn_rule(model, sdx):
+        return (yields[sdx, 1] * model.area['corn'] +
+                model.corn_act['buy', sdx] -
+                model.corn_act['sell', sdx] >= 240)
+
+    instance.min_corn_constraint = Constraint(
+        instance.scenarios, rule=min_corn_rule)
+
+    # constraint
+    def beet_price_rule(model, sdx):
+        return (model.beet_price['high', sdx] + model.beet_price['low', sdx]
+                <= yields[sdx, 2] * model.area['beet'])
+
+    instance.beat_price_constraint = Constraint(
+        instance.scenarios, rule=beet_price_rule)
+
+    # objective
+    def min_cost_rule(model):
+        grow_cost = (150 * model.area['wheat'] + 230 * model.area['corn'] +
+                     260 * model.area['beet'])
+
+        wheat_cost, corn_cost, beet_cost = 0, 0, 0
+        for sdx in instance.scenarios:
+            wheat_cost += probs[sdx]* (238 * model.wheat_act['buy', sdx] -
+                           170 * model.wheat_act['sell', sdx])
+            corn_cost += probs[sdx]* (210 * model.corn_act['buy', sdx] -
+                          150 * model.corn_act['sell', sdx])
+            beet_cost += -probs[sdx]* (36 * model.beet_price['high', sdx] +
+                           10 * model.beet_price['low', sdx])
+        return grow_cost + wheat_cost + corn_cost + beet_cost
+
+    instance.min_cost_objective = Objective(rule=min_cost_rule,
+                                            sense=minimize)
+    # solve
+    opt = SolverFactory("cplex")
+    results = opt.solve(instance)
+    instance.solutions.load_from(results)
+    display(instance)
+    print ("SP2: {}".format(-instance.min_cost_objective()))
+    return -instance.min_cost_objective()
+
+def farmer_3stage_dependent_sp():
+    # concrete model
+    instance = ConcreteModel(name="Farmer_3stage_dependent_SP")
+
+
+    yields = np.array([
+        [3, 3.6, 24],
+        [2.5, 3, 20],
+        [2, 2.4, 16],
+    ])
+
+    yields2 = np.array([
+        [2.8, 3.1, 24],
+        [3.2, 2.9, 22],
+        [2.7, 3.2, 19],
+        [2.4, 3.1, 26],
+        [2, 2, 20],
+        [1.7, 3, 24],
+    ])
+
+    # set
+    instance.plants = ["wheat", "corn", "beet"]
+    instance.action = ["buy", "sell"]
+    instance.price = ["high", "low"]
+    instance.scenarios = range(len(yields))
+    instance.scenarios2 = range(len(yields2))
+
+    #parameters
+    instance.reminder = Param(instance.plants, default=0)
+
+    # stage 1 decision variables
+    instance.area = Var(instance.plants, within=NonNegativeReals)
+    instance.wheat_act = Var(instance.action, instance.scenarios,
+                             within=NonNegativeReals)
+    instance.corn_act = Var(instance.action, instance.scenarios,
+                            within=NonNegativeReals)
+    instance.beet_price = Var(instance.price, instance.scenarios,
+                              bounds=(0, 6000))
+    instance.reminder2 = Var(instance.plants, instance.scenarios,
+                             within=NonNegativeReals)
+    # stage 2
+    instance.area2 = Var(instance.plants, instance.scenarios,
+                         within=NonNegativeReals)
+    instance.wheat_act2 = Var(instance.action, instance.scenarios2,
+                             within=NonNegativeReals)
+
+    instance.corn_act2 = Var(instance.action, instance.scenarios2,
+                        within=NonNegativeReals)
+    instance.beet_price2 = Var(instance.price, instance.scenarios2,
+                           bounds=(0, 6000))
+
+    # 1st constraint
+    def area_rule(model):
+        return sum(instance.area[pdx] for pdx in instance.plants) <= 500
+
+    instance.area_constraint = Constraint(rule=area_rule)
+
+    # 1st constraint
+    def min_wheat_rule(model, sdx):
+        return (model.reminder2['wheat', sdx] ==
+                yields[sdx, 0] * model.area['wheat'] +
+                model.wheat_act["buy", sdx] -
+                model.wheat_act["sell", sdx] +
+                model.reminder['wheat'] - 200)
+
+    instance.min_wheat_constraint = Constraint(
+        instance.scenarios, rule=min_wheat_rule)
+
+    # 1st constraint
+    def min_corn_rule(model, sdx):
+        return (model.reminder2['corn', sdx] ==
+                yields[sdx, 1] * model.area['corn'] +
+                model.corn_act['buy', sdx] -
+                model.corn_act['sell', sdx] +
+                model.reminder['corn'] - 240)
+
+    instance.min_corn_constraint = Constraint(
+        instance.scenarios, rule=min_corn_rule)
+
+    # 1st constraint
+    def beet_price_rule(model, sdx):
+        return (model.reminder2['beet', sdx] ==
+                yields[sdx, 2] * model.area['beet'] +
+                model.reminder['beet'] -
+                model.beet_price['high',sdx] -
+                model.beet_price['low', sdx] )
+
+    instance.beat_price_constraint = Constraint(
+        instance.scenarios, rule=beet_price_rule)
+
+
+    # 2nd constraint
+    def area2_rule(model, sdx):
+        return sum(instance.area2[pdx, sdx] for pdx in instance.plants) <= 500
+
+    instance.area2_constraint = Constraint(instance.scenarios,
+                                           rule=area2_rule)
+
+    # 2nd constraint
+    def min_wheat2_rule(model, sdx):
+        adx = int(sdx/2)
+        return (yields2[sdx, 0] * model.area2['wheat', adx] +
+                model.wheat_act2["buy", sdx] -
+                model.wheat_act2["sell", sdx] +
+                model.reminder2['wheat', adx]
+                >= 200)
+
+    instance.min_wheat2_constraint = Constraint(
+        instance.scenarios2, rule=min_wheat2_rule)
+
+    # 2nd constraint
+    def min_corn2_rule(model, sdx):
+        adx = int(sdx / 2)
+        return (yields2[sdx, 1] * model.area2['corn', adx] +
+                model.corn_act2['buy', sdx] -
+                model.corn_act2['sell', sdx] +
+                model.reminder2['corn', adx] >= 240)
+
+    instance.min_corn2_constraint = Constraint(
+        instance.scenarios2, rule=min_corn2_rule)
+
+    # 2nd constraint
+    def beet_price2_rule(model, sdx):
+        adx = int(sdx / 2)
+        return (model.beet_price2['high', sdx] + model.beet_price2['low', sdx]
+                <= yields2[sdx, 2] * model.area2['beet', adx] +
+                   model.reminder2['beet', adx]
+                )
+
+    instance.beat_price2_constraint = Constraint(
+        instance.scenarios2, rule=beet_price2_rule)
+
+    # objective
+    def min_cost_rule(model):
+        grow_cost = (150 * model.area['wheat'] + 230 * model.area['corn'] +
+                     260 * model.area['beet'])
+
+        wheat_cost, corn_cost, beet_cost = 0, 0, 0
+        for sdx in instance.scenarios:
+            wheat_cost += (238 * model.wheat_act['buy', sdx] -
+                           170 * model.wheat_act['sell', sdx])
+            corn_cost += (210 * model.corn_act['buy', sdx] -
+                          150 * model.corn_act['sell', sdx])
+            beet_cost += -(36 * model.beet_price['high', sdx] +
+                           10 * model.beet_price['low', sdx])
+
+        s1_cost =  grow_cost + wheat_cost / 3 + corn_cost / 3 + beet_cost / 3
+
+        grow_cost2 = 0
+        for sdx in instance.scenarios:
+            grow_cost2 += 1./3*(150 * model.area2['wheat', sdx] +
+                                230 * model.area2['corn', sdx] +
+                                260 * model.area2['beet', sdx])
+
+        wheat_cost2, corn_cost2, beet_cost2 = 0, 0, 0
+        probs = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
+
+        for sdx in instance.scenarios2:
+            wheat_cost2 += probs[sdx]*(
+                          238 * model.wheat_act2['buy', sdx] -
+                          170 * model.wheat_act2['sell', sdx])
+            corn_cost2 += probs[sdx]*(210 * model.corn_act2['buy', sdx] -
+                          150 * model.corn_act2['sell', sdx])
+            beet_cost2 += -probs[sdx]*(36 * model.beet_price2['high', sdx] +
+                           10 * model.beet_price2['low', sdx])
+
+        s2_cost = grow_cost2 + wheat_cost2 / 3 + corn_cost2 / 3 + beet_cost2 / 3
+
+        return s1_cost + s2_cost
+
+    instance.min_cost_objective = Objective(rule=min_cost_rule,
+                                            sense=minimize)
+    # solve
+    opt = SolverFactory("cplex")
+    results = opt.solve(instance)
+    instance.solutions.load_from(results)
+    display(instance)
+    print ("3stage_SP: {}".format(-instance.min_cost_objective()))
+    return -instance.min_cost_objective()
+
+
+def farmer_3stage_dependent_stage_sp():
+    # concrete model
+    instance = ConcreteModel(name="Farmer_3stage_dependent_stage_SP")
+
+
+    yields = np.array([
+        [3, 3.6, 24],
+        [2.5, 3, 20],
+        [2, 2.4, 16],
+    ])
+
+    yields2 = np.array([
+        # [2.8, 3.1, 24],
+        # [3.2, 2.9, 22],
+        [2.7, 3.2, 19],
+        [2.4, 3.1, 26],
+        # [2, 2, 20],
+        # [1.7, 3, 24],
+    ])
+
+    # set
+    instance.plants = ["wheat", "corn", "beet"]
+    instance.action = ["buy", "sell"]
+    instance.price = ["high", "low"]
+    instance.scenarios = range(len(yields))
+    instance.scenarios2 = range(len(yields2))
+
+    #parameters
+    instance.reminder = Param(instance.plants, default=0)
+    instance.adx = 1
+
+    # stage 1 decision variables
+    instance.area = Var(instance.plants, within=NonNegativeReals)
+    instance.wheat_act = Var(instance.action, instance.scenarios,
+                             within=NonNegativeReals)
+    instance.corn_act = Var(instance.action, instance.scenarios,
+                            within=NonNegativeReals)
+    instance.beet_price = Var(instance.price, instance.scenarios,
+                              bounds=(0, 6000))
+    instance.reminder2 = Var(instance.plants, instance.scenarios,
+                             within=NonNegativeReals)
+    # stage 2
+    instance.area2 = Var(instance.plants,
+                         within=NonNegativeReals)
+    instance.wheat_act2 = Var(instance.action, instance.scenarios2,
+                             within=NonNegativeReals)
+
+    instance.corn_act2 = Var(instance.action, instance.scenarios2,
+                        within=NonNegativeReals)
+    instance.beet_price2 = Var(instance.price, instance.scenarios2,
+                           bounds=(0, 6000))
+
+    # 1st constraint
+    def area_rule(model):
+        return sum(instance.area[pdx] for pdx in instance.plants) <= 500
+
+    instance.area_constraint = Constraint(rule=area_rule)
+
+    # 1st constraint
+    def min_wheat_rule(model, sdx):
+        return (model.reminder2['wheat', sdx] ==
+                yields[sdx, 0] * model.area['wheat'] +
+                model.wheat_act["buy", sdx] -
+                model.wheat_act["sell", sdx] +
+                model.reminder['wheat'] - 200)
+
+    instance.min_wheat_constraint = Constraint(
+        instance.scenarios, rule=min_wheat_rule)
+
+    # 1st constraint
+    def min_corn_rule(model, sdx):
+        return (model.reminder2['corn', sdx] ==
+                yields[sdx, 1] * model.area['corn'] +
+                model.corn_act['buy', sdx] -
+                model.corn_act['sell', sdx] +
+                model.reminder['corn'] - 240)
+
+    instance.min_corn_constraint = Constraint(
+        instance.scenarios, rule=min_corn_rule)
+
+    # 1st constraint
+    def beet_price_rule(model, sdx):
+        return (model.reminder2['beet', sdx] ==
+                yields[sdx, 2] * model.area['beet'] +
+                model.reminder['beet'] -
+                model.beet_price['high',sdx] -
+                model.beet_price['low', sdx] )
+
+    instance.beat_price_constraint = Constraint(
+        instance.scenarios, rule=beet_price_rule)
+
+
+    # 2nd constraint
+    def area2_rule(model):
+        return sum(instance.area2[pdx] for pdx in instance.plants) <= 500
+
+    instance.area2_constraint = Constraint(instance.scenarios,
+                                           rule=area2_rule)
+
+    # 2nd constraint
+    def min_wheat2_rule(model, sdx):
+        adx = model.adx
+        return (yields2[sdx, 0] * model.area2['wheat'] +
+                model.wheat_act2["buy", sdx] -
+                model.wheat_act2["sell", sdx] +
+                model.reminder2['wheat', adx] >= 200)
+
+    instance.min_wheat2_constraint = Constraint(
+        instance.scenarios2, rule=min_wheat2_rule)
+
+    # 2nd constraint
+    def min_corn2_rule(model, sdx):
+        adx = model.adx
+        return (yields2[sdx, 1] * model.area2['corn'] +
+                model.corn_act2['buy', sdx] -
+                model.corn_act2['sell', sdx] +
+                model.reminder2['corn', adx] >= 240)
+
+    instance.min_corn2_constraint = Constraint(
+        instance.scenarios2, rule=min_corn2_rule)
+
+    # 2nd constraint
+    def beet_price2_rule(model, sdx):
+        adx = model.adx
+        return (model.beet_price2['high', sdx] + model.beet_price2['low', sdx]
+                <= yields2[sdx, 2] * model.area2['beet'] +
+                   model.reminder2['beet', adx]
+                )
+
+    instance.beat_price2_constraint = Constraint(
+        instance.scenarios2, rule=beet_price2_rule)
+
+    # objective
+    def min_cost_rule(model):
+        grow_cost = (150 * model.area['wheat'] + 230 * model.area['corn'] +
+                     260 * model.area['beet'])
+
+        wheat_cost, corn_cost, beet_cost = 0, 0, 0
+        for sdx in instance.scenarios:
+            wheat_cost += (238 * model.wheat_act['buy', sdx] -
+                           170 * model.wheat_act['sell', sdx])
+            corn_cost += (210 * model.corn_act['buy', sdx] -
+                          150 * model.corn_act['sell', sdx])
+            beet_cost += -(36 * model.beet_price['high', sdx] +
+                           10 * model.beet_price['low', sdx])
+
+        s1_cost =  grow_cost + wheat_cost / 3 + corn_cost / 3 + beet_cost / 3
+
+        grow_cost2 = (150 * model.area2['wheat'] +
+                      230 * model.area2['corn'] +
+                      260 * model.area2['beet'])
+
+        wheat_cost2, corn_cost2, beet_cost2 = 0, 0, 0
+        probs = [0.4, 0.6]
+        # probs = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
+
+        for sdx in instance.scenarios2:
+            wheat_cost2 += probs[sdx]*(
+                          238 * model.wheat_act2['buy', sdx] -
+                          170 * model.wheat_act2['sell', sdx])
+            corn_cost2 += probs[sdx]*(210 * model.corn_act2['buy', sdx] -
+                          150 * model.corn_act2['sell', sdx])
+            beet_cost2 += -probs[sdx]*(36 * model.beet_price2['high', sdx] +
+                           10 * model.beet_price2['low', sdx])
+
+        s2_cost = grow_cost2 + wheat_cost2 / 3 + corn_cost2 / 3 + beet_cost2 / 3
+
+        return s1_cost + s2_cost
+
+    instance.min_cost_objective = Objective(rule=min_cost_rule,
+                                            sense=minimize)
+    # solve
+    opt = SolverFactory("cplex")
+    results = opt.solve(instance)
+    instance.solutions.load_from(results)
+    display(instance)
+    print ("3stage_SP: {}".format(-instance.min_cost_objective()))
+    return -instance.min_cost_objective()
+if __name__ == '__main__':
+    # farmer_sp()
+    farmer_3stage_independent_sp()
+    # farmer_sp2()
+    # farmer_3stage_dependent_sp()
+    # farmer_3stage_dependent_stage_sp()
+    # for _ in xrange(1000):
+    #     yields = np.random.rand(3,3)*5
+    #     yields[:, 2] += 20
+    #     print yields
+    #     sp = farmer_sp(yields)
+    #     ws = farmer_wait_and_see(yields)
+    #     ev, eev = farmer_eev(yields)
+    #
+    #     assert ws>=sp>=eev
