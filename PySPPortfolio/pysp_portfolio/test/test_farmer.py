@@ -532,7 +532,7 @@ def farmer_3stage_independent_sp():
     results = opt.solve(instance)
     instance.solutions.load_from(results)
     display(instance)
-    print ("3stage_SP: {}".format(-instance.min_cost_objective()))
+    print ("3stage_independent_SP: {}".format(-instance.min_cost_objective()))
     return -instance.min_cost_objective()
 
 
@@ -734,8 +734,7 @@ def farmer_3stage_dependent_sp():
         return (yields2[sdx, 0] * model.area2['wheat', adx] +
                 model.wheat_act2["buy", sdx] -
                 model.wheat_act2["sell", sdx] +
-                model.reminder2['wheat', adx]
-                >= 200)
+                model.reminder2['wheat', adx] - 200 >= 0)
 
     instance.min_wheat2_constraint = Constraint(
         instance.scenarios2, rule=min_wheat2_rule)
@@ -746,7 +745,7 @@ def farmer_3stage_dependent_sp():
         return (yields2[sdx, 1] * model.area2['corn', adx] +
                 model.corn_act2['buy', sdx] -
                 model.corn_act2['sell', sdx] +
-                model.reminder2['corn', adx] >= 240)
+                model.reminder2['corn', adx] - 240 >= 0)
 
     instance.min_corn2_constraint = Constraint(
         instance.scenarios2, rule=min_corn2_rule)
@@ -754,10 +753,10 @@ def farmer_3stage_dependent_sp():
     # 2nd constraint
     def beet_price2_rule(model, sdx):
         adx = int(sdx / 2)
-        return (model.beet_price2['high', sdx] + model.beet_price2['low', sdx]
-                <= yields2[sdx, 2] * model.area2['beet', adx] +
-                   model.reminder2['beet', adx]
-                )
+        return (yields2[sdx, 2] * model.area2['beet', adx] +
+                model.reminder2['beet', adx] -
+                model.beet_price2['high', sdx] -
+                model.beet_price2['low', sdx] >= 0)
 
     instance.beat_price2_constraint = Constraint(
         instance.scenarios2, rule=beet_price2_rule)
@@ -767,36 +766,41 @@ def farmer_3stage_dependent_sp():
         grow_cost = (150 * model.area['wheat'] + 230 * model.area['corn'] +
                      260 * model.area['beet'])
 
-        wheat_cost, corn_cost, beet_cost = 0, 0, 0
+        probs = np.ones(3) / 3.
+        scenario_cost = 0
         for sdx in instance.scenarios:
-            wheat_cost += (238 * model.wheat_act['buy', sdx] -
-                           170 * model.wheat_act['sell', sdx])
-            corn_cost += (210 * model.corn_act['buy', sdx] -
-                          150 * model.corn_act['sell', sdx])
-            beet_cost += -(36 * model.beet_price['high', sdx] +
+            wheat_cost = (238 * model.wheat_act['buy', sdx] -
+                          170 * model.wheat_act['sell', sdx])
+            corn_cost = (210 * model.corn_act['buy', sdx] -
+                         150 * model.corn_act['sell', sdx])
+            beet_cost = - (36 * model.beet_price['high', sdx] +
                            10 * model.beet_price['low', sdx])
+            scenario_cost += probs[sdx] * (wheat_cost + corn_cost + beet_cost)
 
-        s1_cost =  grow_cost + wheat_cost / 3 + corn_cost / 3 + beet_cost / 3
+        s1_cost = grow_cost + scenario_cost
 
         grow_cost2 = 0
         for sdx in instance.scenarios:
-            grow_cost2 += 1./3*(150 * model.area2['wheat', sdx] +
-                                230 * model.area2['corn', sdx] +
-                                260 * model.area2['beet', sdx])
+            grow_cost2 += probs[sdx] * (
+                150 * model.area2['wheat', sdx] +
+                230 * model.area2['corn', sdx] +
+                260 * model.area2['beet', sdx])
 
-        wheat_cost2, corn_cost2, beet_cost2 = 0, 0, 0
-        probs = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
+        scenario_cost2 = 0
+        probs2 = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
 
         for sdx in instance.scenarios2:
-            wheat_cost2 += probs[sdx]*(
-                          238 * model.wheat_act2['buy', sdx] -
-                          170 * model.wheat_act2['sell', sdx])
-            corn_cost2 += probs[sdx]*(210 * model.corn_act2['buy', sdx] -
+            adx = int(sdx / 2)
+            wheat_cost2 = (238 * model.wheat_act2['buy', sdx] -
+                           170 * model.wheat_act2['sell', sdx])
+            corn_cost2 = (210 * model.corn_act2['buy', sdx] -
                           150 * model.corn_act2['sell', sdx])
-            beet_cost2 += -probs[sdx]*(36 * model.beet_price2['high', sdx] +
+            beet_cost2 = -(36 * model.beet_price2['high', sdx] +
                            10 * model.beet_price2['low', sdx])
+            scenario_cost2 += probs[adx] * probs2[sdx] * (
+                wheat_cost2 + corn_cost2 + beet_cost2)
 
-        s2_cost = grow_cost2 + wheat_cost2 / 3 + corn_cost2 / 3 + beet_cost2 / 3
+        s2_cost = grow_cost2 + scenario_cost2
 
         return s1_cost + s2_cost
 
@@ -840,7 +844,7 @@ def farmer_3stage_dependent_stage_sp():
 
     #parameters
     instance.reminder = Param(instance.plants, default=0)
-    instance.adx = 1
+
 
     # stage 1 decision variables
     instance.area = Var(instance.plants, within=NonNegativeReals)
@@ -948,35 +952,41 @@ def farmer_3stage_dependent_stage_sp():
         grow_cost = (150 * model.area['wheat'] + 230 * model.area['corn'] +
                      260 * model.area['beet'])
 
-        wheat_cost, corn_cost, beet_cost = 0, 0, 0
+        probs = np.ones(3) / 3.
+        scenario_cost = 0
         for sdx in instance.scenarios:
-            wheat_cost += (238 * model.wheat_act['buy', sdx] -
-                           170 * model.wheat_act['sell', sdx])
-            corn_cost += (210 * model.corn_act['buy', sdx] -
-                          150 * model.corn_act['sell', sdx])
-            beet_cost += -(36 * model.beet_price['high', sdx] +
+            wheat_cost = (238 * model.wheat_act['buy', sdx] -
+                          170 * model.wheat_act['sell', sdx])
+            corn_cost = (210 * model.corn_act['buy', sdx] -
+                         150 * model.corn_act['sell', sdx])
+            beet_cost = - (36 * model.beet_price['high', sdx] +
                            10 * model.beet_price['low', sdx])
+            scenario_cost += probs[sdx] * (wheat_cost + corn_cost + beet_cost)
 
-        s1_cost =  grow_cost + wheat_cost / 3 + corn_cost / 3 + beet_cost / 3
+        s1_cost = grow_cost + scenario_cost
 
-        grow_cost2 = (150 * model.area2['wheat'] +
-                      230 * model.area2['corn'] +
-                      260 * model.area2['beet'])
+        grow_cost2 = 0
+        for sdx in instance.scenarios:
+            grow_cost2 += probs[sdx] * (
+                150 * model.area2['wheat', sdx] +
+                230 * model.area2['corn', sdx] +
+                260 * model.area2['beet', sdx])
 
-        wheat_cost2, corn_cost2, beet_cost2 = 0, 0, 0
-        probs = [0.4, 0.6]
-        # probs = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
+        scenario_cost2 = 0
+        probs2 = [0.4, 0.6, 0.7, 0.3, 0.5, 0.5]
 
         for sdx in instance.scenarios2:
-            wheat_cost2 += probs[sdx]*(
-                          238 * model.wheat_act2['buy', sdx] -
-                          170 * model.wheat_act2['sell', sdx])
-            corn_cost2 += probs[sdx]*(210 * model.corn_act2['buy', sdx] -
+            adx = int(sdx / 2)
+            wheat_cost2 = (238 * model.wheat_act2['buy', sdx] -
+                           170 * model.wheat_act2['sell', sdx])
+            corn_cost2 = (210 * model.corn_act2['buy', sdx] -
                           150 * model.corn_act2['sell', sdx])
-            beet_cost2 += -probs[sdx]*(36 * model.beet_price2['high', sdx] +
+            beet_cost2 = -(36 * model.beet_price2['high', sdx] +
                            10 * model.beet_price2['low', sdx])
+            scenario_cost2 += probs[adx] * probs2[sdx] * (
+                wheat_cost2 + corn_cost2 + beet_cost2)
 
-        s2_cost = grow_cost2 + wheat_cost2 / 3 + corn_cost2 / 3 + beet_cost2 / 3
+        s2_cost = grow_cost2 + scenario_cost2
 
         return s1_cost + s2_cost
 
@@ -989,11 +999,12 @@ def farmer_3stage_dependent_stage_sp():
     display(instance)
     print ("3stage_SP: {}".format(-instance.min_cost_objective()))
     return -instance.min_cost_objective()
+
 if __name__ == '__main__':
     # farmer_sp()
-    farmer_3stage_independent_sp()
+    # farmer_3stage_independent_sp()
     # farmer_sp2()
-    # farmer_3stage_dependent_sp()
+    farmer_3stage_dependent_sp()
     # farmer_3stage_dependent_stage_sp()
     # for _ in xrange(1000):
     #     yields = np.random.rand(3,3)*5

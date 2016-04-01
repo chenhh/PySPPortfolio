@@ -1,0 +1,154 @@
+C:\Anaconda2\python.exe C:/Users/chen1/Documents/workspace_pycharm/PySPPortfolio/PySPPortfolio/pysp_portfolio/test/test_farmer.py
+Model Farmer_3stage_dependent_SP
+
+  Variables:
+    area : Size=3, Index=area_index, Domain=NonNegativeReals
+        Key   : Lower : Value : Upper : Fixed : Stale
+         beet :     0 : 320.0 :  None : False : False
+         corn :     0 : 100.0 :  None : False : False
+        wheat :     0 :  80.0 :  None : False : False
+    wheat_act : Size=6, Index=wheat_act_index, Domain=NonNegativeReals
+        Key         : Lower : Value : Upper : Fixed : Stale
+         ('buy', 0) :     0 :   0.0 :  None : False : False
+         ('buy', 1) :     0 :   0.0 :  None : False : False
+         ('buy', 2) :     0 :  40.0 :  None : False : False
+        ('sell', 0) :     0 :  40.0 :  None : False : False
+        ('sell', 1) :     0 :   0.0 :  None : False : False
+        ('sell', 2) :     0 :   0.0 :  None : False : False
+    corn_act : Size=6, Index=corn_act_index, Domain=NonNegativeReals
+        Key         : Lower : Value : Upper : Fixed : Stale
+         ('buy', 0) :     0 :   0.0 :  None : False : False
+         ('buy', 1) :     0 :   0.0 :  None : False : False
+         ('buy', 2) :     0 :   0.0 :  None : False : False
+        ('sell', 0) :     0 :   0.0 :  None : False : False
+        ('sell', 1) :     0 :   0.0 :  None : False : False
+        ('sell', 2) :     0 :   0.0 :  None : False : False
+    beet_price : Size=6, Index=beet_price_index, Domain=Reals
+        Key         : Lower : Value  : Upper : Fixed : Stale
+        ('high', 0) :     0 : 6000.0 :  6000 : False : False
+        ('high', 1) :     0 : 6000.0 :  6000 : False : False
+        ('high', 2) :     0 : 5120.0 :  6000 : False : False
+         ('low', 0) :     0 :    0.0 :  6000 : False : False
+         ('low', 1) :     0 :    0.0 :  6000 : False : False
+         ('low', 2) :     0 :    0.0 :  6000 : False : False
+    reminder2 : Size=9, Index=reminder2_index, Domain=NonNegativeReals
+        Key          : Lower : Value  : Upper : Fixed : Stale
+         ('beet', 0) :     0 : 1680.0 :  None : False : False
+         ('beet', 1) :     0 :  400.0 :  None : False : False
+         ('beet', 2) :     0 :    0.0 :  None : False : False
+         ('corn', 0) :     0 :  120.0 :  None : False : False
+         ('corn', 1) :     0 :   60.0 :  None : False : False
+         ('corn', 2) :     0 :    0.0 :  None : False : False
+        ('wheat', 0) :     0 :    0.0 :  None : False : False
+        ('wheat', 1) :     0 :    0.0 :  None : False : False
+        ('wheat', 2) :     0 :    0.0 :  None : False : False
+    area2 : Size=9, Index=area2_index, Domain=NonNegativeReals
+        Key          : Lower : Value         : Upper : Fixed : Stale
+         ('beet', 0) :     0 :         180.0 :  None : False : False
+         ('beet', 1) :     0 : 294.736842105 :  None : False : False
+         ('beet', 2) :     0 :         300.0 :  None : False : False
+         ('corn', 0) :     0 : 38.7096774194 :  None : False : False
+         ('corn', 1) :     0 :  58.064516129 :  None : False : False
+         ('corn', 2) :     0 : 82.3529411765 :  None : False : False
+        ('wheat', 0) :     0 : 281.290322581 :  None : False : False
+        ('wheat', 1) :     0 : 147.198641766 :  None : False : False
+        ('wheat', 2) :     0 : 117.647058824 :  None : False : False
+    wheat_act2 : Size=12, Index=wheat_act2_index, Domain=NonNegativeReals
+        Key         : Lower : Value         : Upper : Fixed : Stale
+         ('buy', 0) :     0 :           0.0 :  None : False : False
+         ('buy', 1) :     0 :           0.0 :  None : False : False
+         ('buy', 2) :     0 :           0.0 :  None : False : False
+         ('buy', 3) :     0 :           0.0 :  None : False : False
+         ('buy', 4) :     0 :           0.0 :  None : False : False
+         ('buy', 5) :     0 :           0.0 :  None : False : False
+        ('sell', 0) :     0 : 587.612903226 :  None : False : False
+        ('sell', 1) :     0 : 700.129032258 :  None : False : False
+        ('sell', 2) :     0 : 197.436332767 :  None : False : False
+        ('sell', 3) :     0 : 153.276740238 :  None : False : False
+        ('sell', 4) :     0 : 35.2941176471 :  None : False : False
+        ('sell', 5) :     0 :           0.0 :  None : False : False
+    corn_act2 : Size=12, Index=corn_act2_index, Domain=NonNegativeReals
+        Key         : Lower : Value         : Upper : Fixed : Stale
+         ('buy', 0) :     0 :           0.0 :  None : False : False
+         ('buy', 1) :     0 : 7.74193548387 :  None : False : False
+         ('buy', 2) :     0 :           0.0 :  None : False : False
+         ('buy', 3) :     0 :           0.0 :  None : False : False
+         ('buy', 4) :     0 : 75.2941176471 :  None : False : False
+         ('buy', 5) :     0 :           0.0 :  None : False : False
+        ('sell', 0) :     0 :           0.0 :  None : False : False
+        ('sell', 1) :     0 :           0.0 :  None : False : False
+        ('sell', 2) :     0 :  5.8064516129 :  None : False : False
+        ('sell', 3) :     0 :           0.0 :  None : False : False
+        ('sell', 4) :     0 :           0.0 :  None : False : False
+        ('sell', 5) :     0 : 7.05882352941 :  None : False : False
+    beet_price2 : Size=12, Index=beet_price2_index, Domain=Reals
+        Key         : Lower : Value         : Upper : Fixed : Stale
+        ('high', 0) :     0 :        6000.0 :  6000 : False : False
+        ('high', 1) :     0 :        5640.0 :  6000 : False : False
+        ('high', 2) :     0 :        6000.0 :  6000 : False : False
+        ('high', 3) :     0 :        6000.0 :  6000 : False : False
+        ('high', 4) :     0 :        6000.0 :  6000 : False : False
+        ('high', 5) :     0 :        6000.0 :  6000 : False : False
+         ('low', 0) :     0 :           0.0 :  6000 : False : False
+         ('low', 1) :     0 :           0.0 :  6000 : False : False
+         ('low', 2) :     0 :           0.0 :  6000 : False : False
+         ('low', 3) :     0 : 2063.15789474 :  6000 : False : False
+         ('low', 4) :     0 :           0.0 :  6000 : False : False
+         ('low', 5) :     0 :        1200.0 :  6000 : False : False
+
+  Objectives:
+    min_cost_objective : Size=1, Index=None, Active=True
+        Key  : Active : Value
+        None :   True : -241600.949765
+
+  Constraints:
+    area_constraint : Size=1
+        Key  : Lower : Body  : Upper
+        None :  None : 500.0 : 500.0
+    min_wheat_constraint : Size=3
+        Key : Lower : Body : Upper
+          0 :   0.0 :  0.0 :   0.0
+          1 :   0.0 :  0.0 :   0.0
+          2 :   0.0 :  0.0 :   0.0
+    min_corn_constraint : Size=3
+        Key : Lower : Body : Upper
+          0 :   0.0 :  0.0 :   0.0
+          1 :   0.0 :  0.0 :   0.0
+          2 :   0.0 :  0.0 :   0.0
+    beat_price_constraint : Size=3
+        Key : Lower : Body : Upper
+          0 :   0.0 :  0.0 :   0.0
+          1 :   0.0 :  0.0 :   0.0
+          2 :   0.0 :  0.0 :   0.0
+    area2_constraint : Size=3
+        Key : Lower : Body  : Upper
+          0 :  None : 500.0 : 500.0
+          1 :  None : 500.0 : 500.0
+          2 :  None : 500.0 : 500.0
+    min_wheat2_constraint : Size=6
+        Key : Lower : Body : Upper
+          0 :   0.0 :  0.0 :  None
+          1 :   0.0 :  0.0 :  None
+          2 :   0.0 :  0.0 :  None
+          3 :   0.0 :  0.0 :  None
+          4 :   0.0 :  0.0 :  None
+          5 :   0.0 :  0.0 :  None
+    min_corn2_constraint : Size=6
+        Key : Lower : Body : Upper
+          0 :   0.0 :  0.0 :  None
+          1 :   0.0 :  0.0 :  None
+          2 :   0.0 :  0.0 :  None
+          3 :   0.0 :  0.0 :  None
+          4 :   0.0 :  0.0 :  None
+          5 :   0.0 :  0.0 :  None
+    beat_price2_constraint : Size=6
+        Key : Lower : Body : Upper
+          0 :   0.0 :  0.0 :  None
+          1 :   0.0 :  0.0 :  None
+          2 :   0.0 :  0.0 :  None
+          3 :   0.0 :  0.0 :  None
+          4 :   0.0 :  0.0 :  None
+          5 :   0.0 :  0.0 :  None
+3stage_SP: 241600.949765
+
+Process finished with exit code 0
