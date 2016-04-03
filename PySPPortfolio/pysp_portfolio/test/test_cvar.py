@@ -302,10 +302,184 @@ def test_min_cvar_sp():
     print sorted(scenario_wealth)
 
 
+def min_cvar_3stage_dependent_sp():
+    n_scenario2 = 10
+    n_scenario3 = 100
+    n_stock = 1
+    n_period = 2
+
+    # Model
+    instance = ConcreteModel("min_cvar_3stage_dependent_sp")
+
+    # parameters
+    instance.probs2 = np.ones(n_scenario2, dtype=np.float) / n_scenario2
+    instance.probs3 = (np.ones((n_scenario2, n_scenario2), dtype=np.float) /
+                       n_scenario2 / n_scenario2)
+
+    instance.buy_trans_fee = 0
+    instance.sell_trans_fee = 0
+    instance.alpha = 0.90
+    instance.predict_risk_rois2 = (np.arange(n_scenario2, dtype=np.float) /
+                                   n_scenario2)[np.newaxis]
+    instance.predict_risk_rois3 = np.tile(np.arange(10) / 10., (10,)
+                                          ).reshape(10,10)
+
+    instance.predict_risk_free_roi = 0
+
+    # initial conditions
+    instance.risk_wealth0 = np.zeros(n_stock)
+    instance.risk_free_wealth0 = 10
+    instance.risk_rois = np.zeros(n_stock)
+    instance.risk_free_roi = 0
+
+    # Set
+    instance.periods = np.arange(n_period)
+    instance.symbols = np.arange(n_stock)
+    instance.scenarios2 = np.arange(n_scenario2)
+    instance.scenarios3 = np.arange(n_scenario3)
+
+    # 2nd decision variables
+    instance.buy_amounts1 = Var(instance.symbols,
+                                within=NonNegativeReals)
+    instance.sell_amounts1 = Var(instance.symbols,
+                                 within=NonNegativeReals)
+
+    instance.risk_wealth1 = Var(instance.symbols,
+                                within=NonNegativeReals)
+    instance.risk_free_wealth1 = Var(within=NonNegativeReals)
+
+    # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
+    instance.Z2 = Var(within=Reals)
+
+    # aux variable, portfolio wealth less than than VaR (Z)
+    instance.Ys2 = Var(instance.scenarios2, within=NonNegativeReals)
 
 
+    # 3rd decision variable
+    instance.buy_amounts2 = Var(instance.symbols, within=NonNegativeReals)
 
+    instance.sell_amounts2 = Var(instance.symbols, within=NonNegativeReals)
+
+    instance.risk_wealth2 = Var(instance.symbols, instance.scenario2,
+                                within=NonNegativeReals)
+    instance.risk_free_wealth2 = Var(instance.scenarios2,
+                                     within=NonNegativeReals)
+
+    # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
+    instance.Z3 = Var(instance.scenario2, within=Reals)
+
+    # aux variable, portfolio wealth less than than VaR (Z)
+    # shape: 10 x 10
+    instance.Ys3 = Var(instance.scenarios2, instance.scenario2,
+                       within=NonNegativeReals)
+
+    # 2nd constraint
+    def risk_wealth_constraint_rule(model, mdx):
+        return (model.risk_wealth1[mdx] == (1. + model.risk_rois[mdx]) *
+                model.risk_wealth0[mdx] + model.buy_amounts1[mdx] -
+                model.sell_amounts1[mdx])
+
+    instance.risk_wealth_constraint = Constraint(
+        instance.symbols, rule=risk_wealth_constraint_rule)
+
+    # 2nd constraint
+    def risk_free_wealth_constraint_rule(model):
+        total_sell = sum((1. - model.sell_trans_fee) * model.sell_amounts1[mdx]
+                         for mdx in model.symbols)
+        total_buy = sum((1. + model.buy_trans_fee) * model.buy_amounts1[mdx]
+                        for mdx in model.symbols)
+
+        return (model.risk_free_wealth1 ==
+                (1. + model.risk_free_roi) * model.risk_free_wealth0 +
+                total_sell - total_buy)
+
+    instance.risk_free_wealth_constraint = Constraint(
+        rule=risk_free_wealth_constraint_rule)
+
+    # 2nd constraint
+    def cvar_constraint_rule(model, sdx):
+        """ auxiliary variable Y depends on scenario. CVaR <= VaR """
+        wealth = sum((1. + model.predict_risk_rois2[mdx, sdx]) *
+                     model.risk_wealth1[mdx]
+                     for mdx in model.symbols) + model.risk_free_wealth1
+        return model.Ys2[sdx] >= (model.Z2 - wealth)
+
+    instance.cvar_constraint = Constraint(instance.scenarios2,
+                                          rule=cvar_constraint_rule)
+
+
+    # 3rd constraint
+    def risk_wealth_constraint_rule2(model, mdx, sdx):
+        return (model.risk_wealth2[mdx, sdx] ==
+                (1. + model.predict_risk_rois2[mdx, sdx]) *
+                model.risk_wealth1[mdx] + model.buy_amounts2[mdx, sdx] -
+                model.sell_amounts2[mdx, sdx])
+
+    instance.risk_wealth_constraint2 = Constraint(
+        instance.symbols, instance.scenarios2,
+        rule=risk_wealth_constraint_rule2)
+
+    # 3rd constraint
+    def risk_free_wealth_constraint_rule2(model, sdx):
+        total_sell = sum((1. - model.sell_trans_fee) *
+                         model.sell_amounts2[mdx, sdx]
+                         for mdx in model.symbols)
+        total_buy = sum((1. + model.buy_trans_fee) *
+                        model.buy_amounts2[mdx, sdx]
+                        for mdx in model.symbols)
+
+        return (model.risk_free_wealth2[sdx] ==
+                (1. + model.risk_free_roi) * model.risk_free_wealth1 +
+                total_sell - total_buy)
+
+    instance.risk_free_wealth_constraint = Constraint(
+        instance.scenarios2,
+        rule=risk_free_wealth_constraint_rule2)
+
+    # 3rd constraint
+    def cvar_constraint_rule2(model, sdx):
+        """ auxiliary variable Y depends on scenario. CVaR <= VaR """
+        adx = int(sdx/10)
+        wealth = sum((1. + model.predict_risk_rois3[mdx, sdx]) *
+                     model.risk_wealth2[mdx, adx]
+                     for mdx in model.symbols) + model.risk_free_wealth2[adx]
+        return model.Ys3[sdx] >= (model.Z3[adx] - wealth)
+
+    instance.cvar_constraint = Constraint(instance.scenarios3,
+                                          rule=cvar_constraint_rule)
+
+    # objective
+    def cvar_objective_rule(model):
+        # stage 2
+        s2_exp = sum(model.Ys2[sdx] * model.probs2[sdx]
+                                   for sdx in xrange(n_scenario2))
+        s2_sum =  (model.Z2 - 1. / (1. - model.alpha) * s2_exp -
+                model.risk_free_wealth1)
+
+        # stage 3
+        s3_sum = 0
+        for sdx in model.scenarios3:
+            adx = int(sdx/10)
+            s3_exp = sum(model.Ys3[sdx] * model.probs3[sdx]
+                          for sdx in xrange(10*adx, 10*(adx+1)))
+            s3_sum += model.probs[adx] * (model.Z3[adx] -
+                                          1. / (1. - model.alpha) * s3_exp -
+                                          model.risk_free_wealth2[adx]
+                                          )
+        return s2_sum + s3_sum
+
+
+    instance.cvar_objective = Objective(rule=cvar_objective_rule,
+                                        sense=maximize)
+
+    # solve
+    solver = "cplex"
+    opt = SolverFactory(solver)
+    results = opt.solve(instance)
+    instance.solutions.load_from(results)
+    display(instance)
 
 
 if __name__ == '__main__':
-    test_min_cvar_sp()
+    # test_min_cvar_sp()
+    min_cvar_3stage_dependent_sp()
