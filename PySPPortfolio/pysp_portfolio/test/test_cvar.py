@@ -303,10 +303,15 @@ def test_min_cvar_sp():
 
 
 def min_cvar_3stage_dependent_sp():
+    """
+    stage 2: 10 scenarios,
+    stage 3: 10 x 10 scenarios
+    """
     n_scenario2 = 10
     n_scenario3 = 100
     n_stock = 1
-    n_period = 2
+    n_stage = 3
+    scenario_arch = (1, 10, (10, 10))
 
     # Model
     instance = ConcreteModel("min_cvar_3stage_dependent_sp")
@@ -319,57 +324,47 @@ def min_cvar_3stage_dependent_sp():
     instance.buy_trans_fee = 0
     instance.sell_trans_fee = 0
     instance.alpha = 0.90
-    instance.predict_risk_rois2 = (np.arange(n_scenario2, dtype=np.float) /
-                                   n_scenario2)[np.newaxis]
-    instance.predict_risk_rois3 = np.tile(np.arange(10) / 10., (10,)
-                                          ).reshape(10,10)
+
+    instance.risk_rois1 = np.zeros(n_stock)
+    instance.risk_rois2 = (np.arange(n_scenario2, dtype=np.float) /
+                           n_scenario2)[np.newaxis]
+    instance.risk_rois3 = np.tile(np.arange(10) / 10., (10,)
+                                  ).reshape(10,10)
 
     instance.predict_risk_free_roi = 0
 
     # initial conditions
     instance.risk_wealth0 = np.zeros(n_stock)
     instance.risk_free_wealth0 = 10
-    instance.risk_rois = np.zeros(n_stock)
     instance.risk_free_roi = 0
 
     # Set
-    instance.periods = np.arange(n_period)
+    instance.stages = np.arange(n_stage)
     instance.symbols = np.arange(n_stock)
     instance.scenarios2 = np.arange(n_scenario2)
     instance.scenarios3 = np.arange(n_scenario3)
 
-    # 2nd decision variables
-    instance.buy_amounts1 = Var(instance.symbols,
+    # decision variables
+    instance.buy_amounts1 = Var(instance.symbols, within=NonNegativeReals)
+    instance.buy_amounts2 = Var(instance.symbols, instance.scenarios2,
                                 within=NonNegativeReals)
-    instance.sell_amounts1 = Var(instance.symbols,
+    instance.sell_amounts1 = Var(instance.symbols, within=NonNegativeReals)
+    instance.sell_amounts2 = Var(instance.symbols, instance.scenarios2,
                                  within=NonNegativeReals)
 
-    instance.risk_wealth1 = Var(instance.symbols,
-                                within=NonNegativeReals)
-    instance.risk_free_wealth1 = Var(within=NonNegativeReals)
-
-    # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
-    instance.Z2 = Var(within=Reals)
-
-    # aux variable, portfolio wealth less than than VaR (Z)
-    instance.Ys2 = Var(instance.scenarios2, within=NonNegativeReals)
-
-
-    # 3rd decision variable
-    instance.buy_amounts2 = Var(instance.symbols, within=NonNegativeReals)
-
-    instance.sell_amounts2 = Var(instance.symbols, within=NonNegativeReals)
-
+    instance.risk_wealth1 = Var(instance.symbols, within=NonNegativeReals)
     instance.risk_wealth2 = Var(instance.symbols, instance.scenario2,
                                 within=NonNegativeReals)
+    instance.risk_free_wealth1 = Var(within=NonNegativeReals)
     instance.risk_free_wealth2 = Var(instance.scenarios2,
                                      within=NonNegativeReals)
 
     # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
+    instance.Z2 = Var(within=Reals)
     instance.Z3 = Var(instance.scenario2, within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
-    # shape: 10 x 10
+    instance.Ys2 = Var(instance.scenarios2, within=NonNegativeReals)
     instance.Ys3 = Var(instance.scenarios2, instance.scenario2,
                        within=NonNegativeReals)
 
