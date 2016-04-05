@@ -316,21 +316,24 @@ def min_cvar_3stage_dependent_sp():
     # Model
     instance = ConcreteModel("min_cvar_3stage_dependent_sp")
 
-    # parameters
+    # conditional probability
     instance.probs2 = np.ones(n_scenario2, dtype=np.float) / n_scenario2
     instance.probs3 = (np.ones((n_scenario2, n_scenario2), dtype=np.float) /
-                       n_scenario2 / n_scenario2)
-
+                       n_scenario2)
+    # transaction tax
     instance.buy_trans_fee = 0
     instance.sell_trans_fee = 0
-    instance.alpha = 0.80
+
+    # risk preference, 1 is the most risk-averse
+    instance.alpha = 0.70
 
     instance.risk_rois1 = np.zeros(n_stock)
     # shape: (n_stock, n_scenario2)
     instance.risk_rois2 = (np.arange(n_scenario2, dtype=np.float) /
                            n_scenario2)[np.newaxis]
-    instance.risk_rois3 = np.tile(np.arange(10) / 10., (10,)
-                                  ).reshape(10,10)
+    # instance.risk_rois3 = np.tile(np.arange(10) / 10., (10,)
+    #                               ).reshape(10,10)
+    instance.risk_rois3 = np.random.randn(10, 10)
 
     instance.risk_free_roi = 0
 
@@ -460,7 +463,7 @@ def min_cvar_3stage_dependent_sp():
                                           1. / (1. - model.alpha) * s3_exp -
                                           model.risk_free_wealth2[adx]
                                           )
-        print s2_sum + s3_sum
+        # print s2_sum + s3_sum
         return s2_sum + s3_sum
 
     instance.cvar_objective = Objective(rule=cvar_objective_rule,
@@ -471,7 +474,17 @@ def min_cvar_3stage_dependent_sp():
     opt = SolverFactory(solver)
     results = opt.solve(instance)
     instance.solutions.load_from(results)
+    CVaR1 = instance.Z2.value - 1./(1-instance.alpha)*sum(
+        instance.probs2[sdx] * instance.Ys2[sdx].value
+        for sdx in instance.scenarios2
+    )
+    print "CVaR1: {}".format(CVaR1)
+    print ("solver status: {}".format(results.solver.status))
+    print ("solver termination cond: {}".format(
+        results.solver.termination_condition))
+    print (results.solver)
     display(instance)
+
 
 
 if __name__ == '__main__':
