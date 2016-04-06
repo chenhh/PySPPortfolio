@@ -96,6 +96,7 @@ def test_min_ms_cvar_sp2():
                         solver="cplex", verbose=False)
 
     print res
+    pd.to_pickle(res, os.path.join(TMP_DIR, 'min_ms_cvar_sp.pkl'))
     print "all_scenarios_min_cvar_sp_portfolio: "
     print "(n_period, n_stock, n_scenarios):({}, {}, {}): {:.4f} secs".format(
         n_period, n_stock, 200, time() - t0
