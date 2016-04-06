@@ -17,7 +17,7 @@ from PySPPortfolio.pysp_portfolio.min_ms_cvar_sp import (
 )
 
 def test_min_ms_cvar_sp():
-    n_period, n_stock, n_scenario = 25, 10, 200
+    n_period, n_stock, n_scenario = 25, 5, 200
     initial_money = 1e6
 
     symbols = EXP_SYMBOLS[:n_stock]
@@ -29,7 +29,7 @@ def test_min_ms_cvar_sp():
     allocated_risk_free_wealth = initial_money
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
-    alphas = [0.1, ]
+    alphas = [0.9, ]
     predict_risk_rois = np.random.randn(n_period, n_stock, n_scenario)
     predict_risk_free_rois = np.zeros(n_period)
 
@@ -70,12 +70,12 @@ def test_min_ms_cvar_sp2():
     allocated_risk_free_wealth = 1e6
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
-    alphas = [0.5, ]
+    alphas = [0.9, ]
 
     # read scenario
     scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-            len(symbols), 220, 200, "unbiased", 1)
+            len(symbols), 200, 200, "unbiased", 1)
     scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                      scenario_name)
     scenario_panel = pd.read_pickle(scenario_path)

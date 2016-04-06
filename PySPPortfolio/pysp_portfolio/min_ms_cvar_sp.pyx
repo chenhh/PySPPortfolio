@@ -190,22 +190,33 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         # objective
         def cvar_objective_rule(model):
             Tdx = n_exp_period - 1
-            scenario_expectation = sum(model.Ys[Tdx, sdx]
-                for sdx in xrange(n_scenario)) / float(n_scenario)
-            return (model.Z[Tdx] - 1. / (1. - model.alphas[adx]) *
-                    scenario_expectation)
+
+            cvar_sum = 0
+            for tdx in xrange(n_exp_period):
+               scenario_expectation = sum(model.Ys[tdx, sdx]
+                    for sdx in xrange(n_scenario)) / float(n_scenario)
+
+               cvar = (model.Z[tdx] -  scenario_expectation /
+                        (1. - model.alphas[adx]))
+               cvar_sum += cvar
+            return cvar_sum
+            # scenario_expectation = sum(model.Ys[Tdx, sdx]
+            #     for sdx in xrange(n_scenario)) / float(n_scenario)
+            # return (model.Z[Tdx] - 1. / (1. - model.alphas[adx]) *
+            #         scenario_expectation)
+
 
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)
         # solve
         opt = SolverFactory(solver)
-        if solver == "cplex":
-            opt.options["workmem"] = 4096
+        # if solver == "cplex":
+        #     opt.options["workmem"] = 4096
             # turnoff presolve
             # opt.options['preprocessing_presolve'] = 'n'
             # Barrier algorithm and its upper bound
-            opt.options['lpmethod'] = 4
-            opt.options['barrier_limits_objrange'] =1e75
+            # opt.options['lpmethod'] = 4
+            # opt.options['barrier_limits_objrange'] =1e75
         results = opt.solve(instance, tee=True)
         instance.solutions.load_from(results)
         if verbose:
