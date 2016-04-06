@@ -67,7 +67,7 @@ def test_min_ms_cvar_sp2():
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1e6
+    allocated_risk_free_wealth = 1
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
     alphas = [0.9, ]
@@ -95,7 +95,7 @@ def test_min_ms_cvar_sp2():
                           predict_risk_free_rois, 200,
                         solver="cplex", verbose=False)
 
-    # print res
+    print res
     print "all_scenarios_min_cvar_sp_portfolio: "
     print "(n_period, n_stock, n_scenarios):({}, {}, {}): {:.4f} secs".format(
         n_period, n_stock, 200, time() - t0

@@ -665,7 +665,7 @@ def min_cvar_3stage_stage_sp():
     # solve
     solver = "cplex"
     opt = SolverFactory(solver)
-    results = opt.solve(instance)
+    results = opt.solve(instance, tee=True)
     instance.solutions.load_from(results)
     CVaR1 = instance.Z2.value - 1. / (1 - instance.alpha) * sum(
         instance.probs2[sdx] * instance.Ys2[sdx].value

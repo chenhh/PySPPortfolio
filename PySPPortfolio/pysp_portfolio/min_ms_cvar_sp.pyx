@@ -191,7 +191,6 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         def cvar_objective_rule(model):
             cvar_expr_sum = 0
             for tdx in xrange(n_exp_period):
-                print "tdx:{} start".format(tdx)
                 scenario_expectation = sum(model.Ys[tdx, sdx]
                     for sdx in xrange(n_scenario)) / float(n_scenario)
 
@@ -201,7 +200,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
                 cvar_expr_sum = cvar_expr_sum + cvar_expr
                 # print "CVaR expr {}: {}".format(tdx, cvar_expr_sum)
                 print "CVaR tdx:{} OK".format(tdx)
-
+            print cvar_expr_sum
             return cvar_expr_sum
             # scenario_expectation = sum(model.Ys[Tdx, sdx]
             #     for sdx in xrange(n_scenario)) / float(n_scenario)
@@ -220,7 +219,8 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
             # Barrier algorithm and its upper bound
             # opt.options['lpmethod'] = 4
             # opt.options['barrier_limits_objrange'] =1e75
-        results = opt.solve(instance, tee=True)
+        # results = opt.solve(instance, tee=True)
+        results = opt.solve(instance)
         instance.solutions.load_from(results)
         if verbose:
             display(instance)
