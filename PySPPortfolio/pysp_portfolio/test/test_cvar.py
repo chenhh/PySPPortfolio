@@ -506,7 +506,7 @@ def min_cvar_3stage_dependent_sp():
 
 
 def min_cvar_3stage_stage_sp():
-    n_scenario = 10
+    n_scenario = 400000
     n_stock = 1
     n_stage = 3
     # scenario_arch = (1, 10, (10, 10))
@@ -656,8 +656,8 @@ def min_cvar_3stage_stage_sp():
         # print s2_sum + s3_sum
         cvar_sum += s2_sum
         cvar_sum += s3_sum
-        return s2_sum + s3_sum
-        # return cvar_sum
+        # return s2_sum + s3_sum
+        return cvar_sum
 
     instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                         sense=maximize)
