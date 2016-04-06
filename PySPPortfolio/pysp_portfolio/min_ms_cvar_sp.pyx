@@ -104,7 +104,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
                       within=NonNegativeReals)
 
     # constraint
-    def risk_wealth_constraint_rule(model, int tdx, int mdx):
+    def risk_wealth_constraint_rule(model, tdx, mdx):
         """
         Parameters
         ------------
@@ -126,7 +126,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         rule=risk_wealth_constraint_rule)
 
     # constraint
-    def risk_free_wealth_constraint_rule(model, int tdx):
+    def risk_free_wealth_constraint_rule(model, tdx):
         """
         Parameters:
         ------------
@@ -149,7 +149,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         instance.exp_periods, rule=risk_free_wealth_constraint_rule)
 
     # constraint
-    def cvar_constraint_rule(model, int tdx, int sdx):
+    def cvar_constraint_rule(model, tdx, sdx):
         """
         auxiliary variable Y depends on scenario. CVaR <= VaR
         Parameters:
@@ -198,7 +198,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
                 cvar_expr = (model.Z[tdx] -  scenario_expectation /
                         (1. - model.alphas[adx]))
                 print "tdx:{} cvar_expr OK: {}".format(tdx, cvar_expr)
-                cvar_expr_sum += cvar_expr
+                cvar_expr_sum = cvar_expr
                 print "CVaR expr {}: {}".format(tdx, cvar_expr_sum)
 
             return cvar_expr_sum

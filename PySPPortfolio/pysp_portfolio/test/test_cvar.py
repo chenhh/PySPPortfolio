@@ -506,7 +506,7 @@ def min_cvar_3stage_dependent_sp():
 
 
 def min_cvar_3stage_stage_sp():
-    n_scenario = 400000
+    n_scenario = 100
     n_stock = 1
     n_stage = 3
     # scenario_arch = (1, 10, (10, 10))
