@@ -200,7 +200,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
                 cvar_expr_sum = cvar_expr_sum + cvar_expr
                 # print "CVaR expr {}: {}".format(tdx, cvar_expr_sum)
                 print "CVaR tdx:{} OK".format(tdx)
-            print cvar_expr_sum
+            # print cvar_expr_sum
             return cvar_expr_sum
             # scenario_expectation = sum(model.Ys[Tdx, sdx]
             #     for sdx in xrange(n_scenario)) / float(n_scenario)
@@ -211,6 +211,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)
         # solve
+        print "start solving:"
         opt = SolverFactory(solver)
         # if solver == "cplex":
         #     opt.options["workmem"] = 4096
