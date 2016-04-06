@@ -107,7 +107,7 @@ def test_min_ms_cvar_sp2():
 def test_min_ms_cvar_sp3():
     n_stock = 5
     win_length = 70
-    t_start_date, t_end_date = date(2005, 1, 3), date(2005, 1, 31)
+    t_start_date, t_end_date = date(2005, 12, 1), date(2005, 12, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
     # read rois panel
@@ -163,7 +163,7 @@ def test_min_ms_cvar_sp3():
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
     # test_min_ms_cvar_sp2()
-    test_min_ms_cvar_sp3()
+    # test_min_ms_cvar_sp3()
 
     import argparse
 

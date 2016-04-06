@@ -759,7 +759,7 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
 
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
     print ("min cvar sp2 {} OK, {:.3f} secs".format(param, time() - t0))
-
+    print reports
     return reports
 
 if __name__ == '__main__':
@@ -769,5 +769,5 @@ if __name__ == '__main__':
     run_min_cvar_sp2_test(5, 70,
                           bias=False, scenario_cnt=1, alpha=0.9,
                           verbose=False,
-                          start_date=date(2005, 1, 3),
-                          end_date=date(2005, 1, 31))
+                          start_date=date(2005, 12, 1),
+                          end_date=date(2005, 12, 31))

@@ -127,7 +127,7 @@ class ValidPortfolioParameterMixin(object):
         --------------
         start_date, end_date: datetime.date
         """
-        if start_date >= end_date:
+        if start_date > end_date:
             raise ValueError("wrong transaction interval, start:{}, "
                              "end:{})".format(start_date, end_date))
 
