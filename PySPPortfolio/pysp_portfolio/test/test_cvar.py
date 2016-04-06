@@ -641,6 +641,8 @@ def min_cvar_3stage_stage_sp():
 
     # objective
     def cvar_objective_rule(model):
+
+        cvar_sum = 0
         # stage 2
         s2_exp = sum(model.Ys2[sdx] * model.probs2[sdx]
                      for sdx in xrange(n_scenario))
@@ -652,7 +654,10 @@ def min_cvar_3stage_stage_sp():
         s3_sum = (model.Z3 - s3_exp / (1. - model.alpha) -
             model.risk_free_wealth2)
         # print s2_sum + s3_sum
+        cvar_sum += s2_sum
+        cvar_sum += s3_sum
         return s2_sum + s3_sum
+        # return cvar_sum
 
     instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                         sense=maximize)
