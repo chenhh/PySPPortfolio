@@ -51,6 +51,7 @@ def test_min_ms_cvar_sp():
 
 def test_min_ms_cvar_sp2():
     n_stock = 10
+    win_length = 70
     t_start_date, t_end_date = date(2005, 1, 3), date(2014, 12, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
@@ -75,7 +76,7 @@ def test_min_ms_cvar_sp2():
     # read scenario
     scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-            len(symbols), 200, 200, "unbiased", 1)
+            len(symbols), win_length, 200, "unbiased", 1)
     scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                      scenario_name)
     scenario_panel = pd.read_pickle(scenario_path)
@@ -104,7 +105,8 @@ def test_min_ms_cvar_sp2():
 
 
 def test_min_ms_cvar_sp3():
-    n_stock = 10
+    n_stock = 5
+    win_length = 70
     t_start_date, t_end_date = date(2005, 1, 3), date(2005, 1, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
@@ -129,7 +131,8 @@ def test_min_ms_cvar_sp3():
     # read scenario
     scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-            len(symbols), 200, 200, "unbiased", 1)
+            len(symbols), win_length, 200, "unbiased", 1)
+    print "scenario:", scenario_name
     scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                      scenario_name)
     scenario_panel = pd.read_pickle(scenario_path)
@@ -160,6 +163,7 @@ def test_min_ms_cvar_sp3():
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
     # test_min_ms_cvar_sp2()
+    test_min_ms_cvar_sp3()
 
     import argparse
 

@@ -694,7 +694,7 @@ def min_cvar_3stage_stage_sp():
 def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
                             bias=False, scenario_cnt=1, alpha=0.95,
                             verbose=False,
-                            start_date=date(2005, 1, 1),
+                            start_date=date(2005, 1, 3),
                             end_date=date(2005, 1, 31)):
     """
     2nd stage SP simulation
@@ -766,8 +766,8 @@ if __name__ == '__main__':
     # test_min_cvar_sp()
     # min_cvar_3stage_dependent_sp()
     # min_cvar_3stage_stage_sp()
-    run_min_cvar_sp2_test(10, 200,
-                          bias=False, scenario_cnt=1, alpha=0.95,
+    run_min_cvar_sp2_test(5, 70,
+                          bias=False, scenario_cnt=1, alpha=0.9,
                           verbose=False,
-                          start_date=date(2005, 1, 1),
+                          start_date=date(2005, 1, 3),
                           end_date=date(2005, 1, 31))
