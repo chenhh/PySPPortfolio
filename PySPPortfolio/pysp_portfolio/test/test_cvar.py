@@ -5,12 +5,15 @@ License: GPL v2
 """
 
 from __future__ import division
+from datetime import date
 from time import time
 import os
 import numpy as np
 import pandas as pd
 import scipy.stats as spstats
 from pyomo.environ import *
+from PySPPortfolio.pysp_portfolio import *
+from PySPPortfolio.pysp_portfolio.min_cvar_sp import MinCVaRSPPortfolio2
 
 def min_cvar_sp_portfolio(symbols, risk_rois, risk_free_roi,
                           allocated_risk_wealth, allocated_risk_free_wealth,
@@ -688,8 +691,83 @@ def min_cvar_3stage_stage_sp():
     print (results.solver)
     display(instance)
 
+def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
+                            bias=False, scenario_cnt=1, alpha=0.95,
+                            verbose=False,
+                            start_date=date(2005, 1, 1),
+                            end_date=date(2005, 1, 31)):
+    """
+    2nd stage SP simulation
+
+    Parameters:
+    -------------------
+    n_stock: integer, number of stocks of the EXP_SYMBOLS to the portfolios
+    window_length: integer, number of periods for estimating scenarios
+    n_scenario, int, number of scenarios
+    bias: bool, biased moment estimators or not
+    scenario_cnt: count of generated scenarios, default = 1
+    alpha: float, for conditional risk
+
+    Returns:
+    --------------------
+    reports
+    """
+    t0 = time()
+    n_stock, win_length, = int(n_stock), int(win_length)
+    n_scenario, alpha = int(n_scenario), float(alpha)
+
+    # getting experiment symbols
+    symbols = EXP_SYMBOLS[:n_stock]
+    param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
+        scenario_cnt, alpha)
+
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # shape: (n_period, n_stock)
+    risk_rois = roi_panel.loc[:, symbols, 'simple_roi'].T
+    exp_risk_rois = roi_panel.loc[start_date:end_date, symbols,
+                    'simple_roi'].T
+    n_period = exp_risk_rois.shape[0]
+    risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
+    initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
+    initial_risk_free_wealth = 1e6
+    print "instance start"
+    instance = MinCVaRSPPortfolio2(
+                    symbols, risk_rois, risk_free_rois,
+                    initial_risk_wealth, initial_risk_free_wealth,
+                    window_length=win_length, n_scenario=n_scenario,
+                    bias=bias, alpha=alpha, scenario_cnt=scenario_cnt,
+                    start_date=start_date, end_date=end_date,
+                    verbose=verbose)
+    print "instance OK"
+    reports = instance.run()
+
+    file_name = 'min_cvar_sp2_{}.pkl'.format(param)
+
+    file_dir = os.path.join(TMP_DIR, 'min_cvar_sp2')
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+
+    pd.to_pickle(reports, os.path.join(file_dir, file_name))
+    print ("min cvar sp2 {} OK, {:.3f} secs".format(param, time() - t0))
+
+    return reports
 
 if __name__ == '__main__':
     # test_min_cvar_sp()
     # min_cvar_3stage_dependent_sp()
-    min_cvar_3stage_stage_sp()
+    # min_cvar_3stage_stage_sp()
+    run_min_cvar_sp2_test(10, 200,
+                          bias=False, scenario_cnt=1, alpha=0.95,
+                          verbose=False,
+                          start_date=date(2005, 1, 1),
+                          end_date=date(2005, 1, 31))

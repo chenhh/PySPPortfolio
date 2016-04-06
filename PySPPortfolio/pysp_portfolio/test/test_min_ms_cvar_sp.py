@@ -121,7 +121,7 @@ def test_min_ms_cvar_sp3():
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1
+    allocated_risk_free_wealth = 1e6
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
     alphas = [0.9, ]
