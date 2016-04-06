@@ -159,7 +159,7 @@ def test_min_ms_cvar_sp3():
 
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
-    test_min_ms_cvar_sp2()
+    # test_min_ms_cvar_sp2()
 
     import argparse
 
