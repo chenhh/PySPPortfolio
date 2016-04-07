@@ -739,7 +739,7 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
     n_period = exp_risk_rois.shape[0]
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
-    initial_risk_free_wealth = 1e6
+    initial_risk_free_wealth = 1e10
     print "instance start"
     instance = MinCVaRSPPortfolio2(
                     symbols, risk_rois, risk_free_rois,
@@ -760,6 +760,10 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
     pd.to_pickle(reports, os.path.join(file_dir, file_name))
     print ("min cvar sp2 {} OK, {:.3f} secs".format(param, time() - t0))
     print reports
+    print
+    print reports['final_wealth']
+    print reports['buy_amounts_df']
+    print reports['sell_amounts_df']
     return reports
 
 if __name__ == '__main__':
@@ -769,5 +773,5 @@ if __name__ == '__main__':
     run_min_cvar_sp2_test(5, 70,
                           bias=False, scenario_cnt=1, alpha=0.9,
                           verbose=False,
-                          start_date=date(2005, 12, 1),
-                          end_date=date(2005, 12, 31))
+                          start_date=date(2006, 1, 2),
+                          end_date=date(2006, 1, 5))
