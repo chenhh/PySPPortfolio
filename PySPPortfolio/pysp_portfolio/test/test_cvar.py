@@ -773,5 +773,5 @@ if __name__ == '__main__':
     run_min_cvar_sp2_test(5, 70,
                           bias=False, scenario_cnt=1, alpha=0.9,
                           verbose=False,
-                          start_date=date(2006, 1, 2),
-                          end_date=date(2006, 1, 5))
+                          start_date=date(2009, 1, 2),
+                          end_date=date(2009, 1, 6))
