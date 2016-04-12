@@ -815,6 +815,24 @@ def farmer_3stage_dependent_sp():
     results = opt.solve(instance)
     instance.solutions.load_from(results)
     display(instance)
+
+    # 2nd cost
+    grow_cost = (150 * instance.area['wheat'].value +
+                 230 * instance.area['corn'].value +
+                 260 * instance.area['beet'].value)
+
+    probs = np.ones(3) / 3.
+    scenario_cost = 0
+    for sdx in instance.scenarios:
+        wheat_cost = (238 * instance.wheat_act['buy', sdx].value -
+                      170 * instance.wheat_act['sell', sdx].value)
+        corn_cost = (210 * instance.corn_act['buy', sdx].value -
+                     150 * instance.corn_act['sell', sdx].value)
+        beet_cost = - (36 * instance.beet_price['high', sdx].value +
+                       10 * instance.beet_price['low', sdx].value)
+        scenario_cost += probs[sdx] * (wheat_cost + corn_cost + beet_cost)
+
+    print ("2stage_SP: {}".format(-scenario_cost))
     print ("3stage_SP: {}".format(-instance.min_cost_objective()))
     return -instance.min_cost_objective()
 
@@ -1001,6 +1019,8 @@ def farmer_3stage_dependent_stage_sp():
     results = opt.solve(instance)
     instance.solutions.load_from(results)
     display(instance)
+
+
     print ("3stage_SP: {}".format(-instance.min_cost_objective()))
     return -instance.min_cost_objective()
 

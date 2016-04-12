@@ -695,7 +695,7 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
                             bias=False, scenario_cnt=1, alpha=0.95,
                             verbose=False,
                             start_date=date(2005, 1, 3),
-                            end_date=date(2005, 1, 31)):
+                            end_date=date(2014, 12, 31)):
     """
     2nd stage SP simulation
 
@@ -773,5 +773,5 @@ if __name__ == '__main__':
     run_min_cvar_sp2_test(5, 70,
                           bias=False, scenario_cnt=1, alpha=0.9,
                           verbose=False,
-                          start_date=date(2009, 1, 2),
-                          end_date=date(2009, 1, 6))
+                          start_date=date(2005, 1, 1),
+                          end_date=date(2005, 1, 31))
