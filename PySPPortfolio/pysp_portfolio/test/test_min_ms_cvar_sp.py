@@ -125,7 +125,7 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1e6
+    allocated_risk_free_wealth = 1
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
     alphas = [0.9, ]
@@ -167,8 +167,8 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
-    test_min_ms_cvar_sp2(10, 70, [0.9,])
-    # test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 1, 31))
+    # test_min_ms_cvar_sp2(10, 70, [0.9,])
+    test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 3, 31))
 
     # import argparse
     #

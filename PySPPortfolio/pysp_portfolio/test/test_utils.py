@@ -16,5 +16,22 @@ def fun1(v1=1, *args, **kwargs):
 def fun2(*args, **kwargs):
     print "fun2:", kwargs['alpha']
 
+def product():
+
+    res = np.zeros(100)
+    for v1 in range(10):
+        for v2 in range(10):
+            ret1 = (1+v1/10.)
+            ret2 = (1+v2/10.)
+            val = 10 * ret1 * ret2
+            res[v1*10+v2] = val
+            # print val
+    res.sort()
+    print res
+    print res[9]
+    print res[19]
+
+
 if __name__ == '__main__':
-    fun1(2, alpha=0.5)
+    # fun1(2, alpha=0.5)
+    product()
