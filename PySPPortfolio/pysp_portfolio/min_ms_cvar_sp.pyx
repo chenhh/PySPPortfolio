@@ -190,23 +190,18 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
 
         # objective
         def cvar_objective_rule(model):
-            # cvar_expr_sum = 0
-            # for tdx in xrange(n_exp_period):
-            #     scenario_expectation = sum(model.Ys[tdx, sdx]
-            #         for sdx in xrange(n_scenario)) / float(n_scenario)
-            #
-            #     cvar_expr = (model.Z[tdx] -  scenario_expectation /
-            #             (1. - model.alphas[adx]))
-            #     # print "tdx:{} cvar_expr OK: {}".format(tdx, cvar_expr)
-            #     cvar_expr_sum = cvar_expr_sum + cvar_expr
-            #     # print "CVaR expr {}: {}".format(tdx, cvar_expr_sum)
-            #     print "CVaR tdx:{} OK".format(tdx)
-            Tdx = model.n_exp_period - 1
-            scenario_expectation = sum(model.Ys[Tdx, sdx]
-                                       for sdx in xrange(n_scenario)) / float(n_scenario)
-            #         for sdx in xrange(n_scenario)) / float(n_scenario)
-            cvar_expr_sum = (model.Z[Tdx] -  scenario_expectation /
+            cvar_expr_sum = 0
+            for tdx in xrange(n_exp_period):
+                scenario_expectation = sum(model.Ys[tdx, sdx]
+                    for sdx in xrange(n_scenario)) / float(n_scenario)
+
+                cvar_expr = (model.Z[tdx] -  scenario_expectation /
                         (1. - model.alphas[adx]))
+                # print "tdx:{} cvar_expr OK: {}".format(tdx, cvar_expr)
+                cvar_expr_sum = cvar_expr_sum + cvar_expr
+                # print "CVaR expr {}: {}".format(tdx, cvar_expr_sum)
+                print "CVaR tdx:{} OK".format(tdx)
+
             return cvar_expr_sum
             # scenario_expectation = sum(model.Ys[Tdx, sdx]
             #     for sdx in xrange(n_scenario)) / float(n_scenario)

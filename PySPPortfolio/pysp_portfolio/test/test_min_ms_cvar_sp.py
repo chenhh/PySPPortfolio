@@ -49,9 +49,13 @@ def test_min_ms_cvar_sp():
     )
 
 
-def test_min_ms_cvar_sp2():
-    n_stock = 10
-    win_length = 70
+def test_min_ms_cvar_sp2(n_stock, win_length, alphas, scenario_cnt=1):
+    """
+    :param n_stock: range(5, 55)
+    :param win_length:  range(50, 250)
+    :param alphas: list
+    :return:
+    """
     t_start_date, t_end_date = date(2005, 1, 3), date(2014, 12, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
@@ -68,15 +72,14 @@ def test_min_ms_cvar_sp2():
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1
+    allocated_risk_free_wealth = 1e6
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
-    alphas = [0.9, ]
 
     # read scenario
     scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
             START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
-            len(symbols), win_length, 200, "unbiased", 1)
+            len(symbols), win_length, 200, "unbiased", scenario_cnt)
     scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                      scenario_name)
     scenario_panel = pd.read_pickle(scenario_path)
@@ -122,7 +125,7 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1e10
+    allocated_risk_free_wealth = 1e6
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
     alphas = [0.9, ]
@@ -164,8 +167,8 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
-    # test_min_ms_cvar_sp2()
-    test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 1, 31))
+    test_min_ms_cvar_sp2(10, 70, [0.9,])
+    # test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 1, 31))
 
     # import argparse
     #
