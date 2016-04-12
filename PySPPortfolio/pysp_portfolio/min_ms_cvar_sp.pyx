@@ -80,6 +80,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
     instance.exp_periods = np.arange(n_exp_period)
     instance.symbols = np.arange(n_stock)
     instance.scenarios = np.arange(n_scenario)
+    instance.n_scenario = n_scenario
 
     # decision variables
     # in each period, we buy or sell stock, shape: (n_exp_period, n_stock)
@@ -114,11 +115,18 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
         """
         if tdx == 0:
             prev_risk_wealth = model.allocated_risk_wealth[mdx]
+            risk_roi = model.risk_rois[tdx, mdx]
         else:
             prev_risk_wealth = model.risk_wealth[tdx - 1, mdx]
+            risk_roi = sum(model.predict_risk_rois[tdx-1, mdx, sdx]
+                       for sdx in instance.scenarios)/instance.n_scenario
 
+        # return ( model.risk_wealth[tdx, mdx] ==
+        #         (1. + model.risk_rois[tdx, mdx]) * prev_risk_wealth +
+        #         model.buy_amounts[tdx, mdx] - model.sell_amounts[tdx, mdx]
+        #     )
         return ( model.risk_wealth[tdx, mdx] ==
-                (1. + model.risk_rois[tdx, mdx]) * prev_risk_wealth +
+                (1. + risk_roi) * prev_risk_wealth +
                 model.buy_amounts[tdx, mdx] - model.sell_amounts[tdx, mdx]
             )
 
