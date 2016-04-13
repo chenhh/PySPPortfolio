@@ -264,7 +264,6 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
             all_alphas = ['0.50', '0.55', '0.60', '0.65',
                                       '0.70', '0.75', '0.80', '0.85',
                                       '0.90', '0.95']
-            all_alphas.remove(param[-1])
             for alpha in all_alphas:
                 param_key = "{}|{}".format(
                     "|".join(str(v) for v in param[:-1]),
