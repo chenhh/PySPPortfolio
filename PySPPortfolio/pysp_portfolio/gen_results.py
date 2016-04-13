@@ -259,8 +259,20 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
         else:
             working_dict = retry_read_pickle(log_path)
 
-        param_key = "|".join(str(v) for v in param)
-        working_dict[param_key] = platform.node()
+        if prob_type == "min_ms_cvar_sp":
+            # param:  n_stock, win_length, _scenario, biased, cnt, alpha
+            all_alphas = ['0.50', '0.55', '0.60', '0.65',
+                                      '0.70', '0.75', '0.80', '0.85',
+                                      '0.90', '0.95']
+            all_alphas.remove(param[-1])
+            for alpha in all_alphas:
+                param_key = "{}|{}".format(
+                    "|".join(str(v) for v in param[:-1]),
+                    alpha)
+                working_dict[param_key] = platform.node()
+        else:
+            param_key = "|".join(str(v) for v in param)
+            working_dict[param_key] = platform.node()
         retry_write_pickle(working_dict, log_path)
 
         # run experiment
