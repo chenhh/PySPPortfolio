@@ -329,7 +329,7 @@ def min_cvar_3stage_dependent_sp():
     instance.sell_trans_fee = 0
 
     # risk preference, 1 is the most risk-averse
-    instance.alpha = 0.80
+    instance.alpha = 0.7
 
     instance.risk_rois1 = np.zeros(n_stock)
     # shape: (n_stock, n_scenario2)
@@ -490,21 +490,23 @@ def min_cvar_3stage_dependent_sp():
             for sdx in instance.scenarios2
         ) - instance.risk_free_wealth2[adx].value
 
+    print "alpha: {}".format(instance.alpha)
     print "CVaR1: {}, VaR: {}".format(CVaR1, instance.Z2.value)
     for adx in instance.scenarios2:
         print "CVaR2[{}]: {}, VaR:{}".format(adx, CVaR2[adx],
                                              instance.Z3[adx].value)
 
-    print "CVaR1 + E(CVaR2)= {}".format(CVaR1+
-                                sum(instance.probs2[sdx] * CVaR2[sdx]
-                                    for sdx in instance.scenarios2))
+    exp_cvar2 = sum(instance.probs2[sdx] * CVaR2[sdx]
+                                    for sdx in instance.scenarios2)
+    print "E(CVaR2)= {}".format(exp_cvar2)
+    print "CVaR1 + E(CVaR2)= {}".format(CVaR1+exp_cvar2)
     print "Objective: {}".format(instance.cvar_objective())
 
     # print ("solver status: {}".format(results.solver.status))
     # print ("solver termination cond: {}".format(
     #     results.solver.termination_condition))
     # print (results.solver)
-    display(instance)
+    # display(instance)
 
 
 
@@ -769,10 +771,10 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
 
 if __name__ == '__main__':
     # test_min_cvar_sp()
-    # min_cvar_3stage_dependent_sp()
+    min_cvar_3stage_dependent_sp()
     # min_cvar_3stage_stage_sp()
-    run_min_cvar_sp2_test(5, 70,
-                          bias=False, scenario_cnt=1, alpha=0.9,
-                          verbose=False,
-                          start_date=date(2005, 1, 1),
-                          end_date=date(2005, 3, 31))
+    # run_min_cvar_sp2_test(5, 70,
+    #                       bias=False, scenario_cnt=1, alpha=0.9,
+    #                       verbose=False,
+    #                       start_date=date(2005, 1, 1),
+    #                       end_date=date(2005, 3, 31))

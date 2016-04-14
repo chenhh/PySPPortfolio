@@ -28,8 +28,12 @@ def product():
             # print val
     res.sort()
     print res
-    print res[9]
-    print res[19]
+    print "90 VaR",res[9]
+    print "90 CVaR", res[:10].mean()
+
+
+    print "80 VaR",res[19]
+    print "80 CVaR", res[:20].mean()
 
 
 if __name__ == '__main__':
