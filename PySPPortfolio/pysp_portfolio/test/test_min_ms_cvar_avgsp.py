@@ -71,5 +71,8 @@ def test_min_ms_cvar_avgsp(n_stock, win_length, alpha, scenario_cnt=1):
         n_period, n_stock, 200, time() - t0
     )
 
+
+
+
 if __name__ == '__main__':
     test_min_ms_cvar_avgsp(10, 70, 0.5)

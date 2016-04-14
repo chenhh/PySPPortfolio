@@ -230,3 +230,166 @@ def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
         "estimated_cvar": instance.cvar_objective(),
     }
     return results
+
+class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
+    def __init__(self, symbols, risk_rois, risk_free_rois,
+                 initial_risk_wealth, initial_risk_free_wealth,
+                 buy_trans_fee=BUY_TRANS_FEE,
+                 sell_trans_fee=SELL_TRANS_FEE,
+                 start_date=START_DATE, end_date=END_DATE,
+                 window_length=WINDOW_LENGTH,
+                 n_scenario=N_SCENARIO,
+                 bias=BIAS_ESTIMATOR,
+                 alpha=0.9,
+                 scenario_cnt=1,
+                 verbose=False):
+        """
+        Multistage min cvar average scenario
+        """
+        super(MinMSCVaRAvgSPPortfolio, self).__init__(
+            symbols, risk_rois, risk_free_rois, initial_risk_wealth,
+            initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
+            start_date, end_date, window_length, n_scenario, bias,
+            verbose)
+
+        self.alpha = float(alpha)
+
+        # try to load generated scenario panel
+        scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
+            start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+            len(symbols), window_length, n_scenario,
+            "biased" if bias else "unbiased", scenario_cnt)
+
+        scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
+                                     scenario_name)
+        # check if scenario cache file exists
+        if not os.path.exists(scenario_path):
+            raise ValueError("{} not exists.".format(scenario_name))
+            self.scenario_panel = None
+            self.scenario_cnt = 0
+        else:
+            self.scenario_panel = pd.read_pickle(scenario_path)
+            self.scenario_cnt = scenario_cnt
+
+
+    def get_trading_func_name(self, *args, **kwargs):
+        return "MS_MinCVaRAvgSP_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+            self.n_stock, self.window_length, self.n_scenario,
+            "biased" if self.bias_estimator else "unbiased",
+            self.scenario_cnt, self.alpha)
+
+
+    def get_estimated_risk_free_rois(self, *arg, **kwargs):
+        """ the risk free roi is set all zeros """
+        return np.zeros((self.n_exp_period, self.n_scenario))
+
+    def get_estimated_risk_rois(self, *args, **kwargs):
+        """
+        Returns:
+        -----------
+        estimated_risk_rois, pandas.Panel,
+            shape: (n_exp_period, n_stock, n_scenario)
+        """
+        if self.scenario_panel is None:
+            raise ValueError('no pre-generated scenario panel.')
+
+        return self.scenario_panel
+
+    def get_current_buy_sell_amounts(self, *args, **kwargs):
+        """
+        min_cvar function
+
+        Return
+        -------------
+        results_dict:
+          - key: alpha, str
+          - value: results, dict
+        """
+        results = min_ms_cvar_avgsp_portfolio(
+            self.symbols,
+            self.exp_risk_rois.index,
+            self.exp_risk_rois.as_matrix(),
+            self.risk_free_rois.as_matrix(),
+            kwargs['allocated_risk_wealth'].as_matrix(),
+            kwargs['allocated_risk_free_wealth'],
+            self.buy_trans_fee,
+            self.sell_trans_fee,
+            self.alpha,    # all alphas
+            kwargs['estimated_risk_rois'].as_matrix(),
+            kwargs['estimated_risk_free_roi'],
+            self.n_scenario,
+        )
+        return results
+
+    def run(self, *args, **kwargs):
+        """  # solve all scenarios at once """
+        t0 = time()
+
+        # estimated_risk_rois: shape: (n_exp_period, n_stock, n_scenario)
+        try:
+            estimated_risk_rois = self.get_estimated_risk_rois()
+        except ValueError as e:
+            raise ValueError("generating scenario error: {}".format(e))
+
+        # estimated_risk_free_rois: shape: (n_exp_period,)
+        estimated_risk_free_rois = self.get_estimated_risk_free_rois()
+
+        # determining the buy and sell amounts
+        results = self.get_current_buy_sell_amounts(
+            estimated_risk_rois=estimated_risk_rois,
+            estimated_risk_free_roi=estimated_risk_free_rois,
+            allocated_risk_wealth=self.initial_risk_wealth,
+            allocated_risk_free_wealth=self.initial_risk_free_wealth,
+            *args, **kwargs)
+
+        func_name = self.get_trading_func_name()
+        # shape: (n_exp_period, n_stock)
+        risk_wealth_df = results['risk_wealth_df']
+        buy_amounts_df = results['buy_amounts_df']
+        sell_amounts_df = results['sell_amounts_df']
+
+        # shape: (n_exp_period, )
+        risk_free_wealth = results['risk_free_wealth_arr']
+        estimated_var_arr = results["estimated_var_arr"]
+        estimated_cvar = results["estimated_cvar"]
+
+        # end of iterations, computing statistics
+        Tdx = self.n_exp_period - 1
+        final_wealth = (risk_wealth_df.iloc[Tdx].sum() +
+                        risk_free_wealth[Tdx])
+        # compute transaction fee
+        trans_fee_loss = (buy_amounts_df.sum() * self.buy_trans_fee +
+                          sell_amounts_df.sum() * self.sell_trans_fee)
+
+        # get reports
+        reports = self.get_performance_report(
+            func_name,
+            self.symbols,
+            self.exp_risk_rois.index[0],
+            self.exp_risk_rois.index[Tdx],
+            self.buy_trans_fee,
+            self.sell_trans_fee,
+            (self.initial_risk_wealth.sum() +
+             self.initial_risk_free_wealth),
+            final_wealth,
+            self.n_exp_period,
+            trans_fee_loss,
+            risk_wealth_df,
+            risk_free_wealth)
+
+        # model additional elements to reports
+        reports['window_length'] = self.window_length
+        reports['n_scenario'] = self.n_scenario
+        reports['alpha'] = self.alpha
+        reports['scenario_cnt'] = self.scenario_cnt
+        reports['buy_amounts_df'] = buy_amounts_df
+        reports['sell_amounts_df'] =sell_amounts_df
+
+        # add simulation time
+        reports['simulation_time'] = time() - 0
+
+        print ("{} {} OK [{}-{}], {:.4f}.secs".format(
+            func_name, self.alpha, self.exp_risk_rois.index[0],
+            self.exp_risk_rois.index[Tdx], time() - t0))
+
+        return reports

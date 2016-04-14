@@ -12,6 +12,7 @@ from PySPPortfolio.pysp_portfolio import *
 from min_cvar_sp import (MinCVaRSPPortfolio, MinCVaRSPPortfolio2 )
 from min_cvar_sip import (MinCVaRSIPPortfolio,MinCVaRSIPPortfolio2)
 from min_ms_cvar_sp import (MinMSCVaRSPPortfolio,)
+from min_ms_cvar_avgsp import (MinMSCVaRAvgSPPortfolio,)
 from min_cvar_eev import (MinCVaREEVPortfolio,)
 from min_cvar_eevip import (MinCVaREEVIPPortfolio,)
 from buy_and_hold import (BAHPortfolio,)
@@ -377,6 +378,74 @@ def run_min_ms_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
     return reports_dict
 
 
+def run_min_ms_cvar_avgsp_simulation(n_stock, win_length, n_scenario=200,
+                               bias=False, scenario_cnt=1, alpha = 0.95,
+                               verbose=False):
+    """
+    multi-stage average scenario SP simulation
+    the results are independent to the alphas
+
+    Parameters:
+    -------------------
+    n_stock: integer, number of stocks of the EXP_SYMBOLS to the portfolios
+    window_length: integer, number of periods for estimating scenarios
+    n_scenario, int, number of scenarios
+    bias: bool, biased moment estimators or not
+    scenario_cnt: count of generated scenarios, default = 1
+    alpha: float, for conditional risk
+    Returns:
+    --------------------
+    reports
+    """
+    t0 = time()
+    n_stock, win_length, = int(n_stock), int(win_length)
+    n_scenario = int(n_scenario)
+
+    # getting experiment symbols
+    symbols = EXP_SYMBOLS[:n_stock]
+    param = "{}_{}_m{}_w{}_s{}_{}_{}".format(
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
+        scenario_cnt)
+
+    # read rois panel
+    roi_path = os.path.join(SYMBOLS_PKL_DIR,
+                            'TAIEX_2005_largest50cap_panel.pkl')
+    if not os.path.exists(roi_path):
+        raise ValueError("{} roi panel does not exist.".format(roi_path))
+
+    # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    roi_panel = pd.read_pickle(roi_path)
+
+    # shape: (n_period, n_stock)
+    risk_rois = roi_panel.loc[:, symbols, 'simple_roi'].T
+    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols,
+                    'simple_roi'].T
+    n_period = exp_risk_rois.shape[0]
+    risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
+    initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
+    initial_risk_free_wealth = 1
+    instance = MinMSCVaRAvgSPPortfolio(symbols, risk_rois, risk_free_rois,
+                                   initial_risk_wealth,
+                                   initial_risk_free_wealth,
+                                   window_length=win_length,
+                                   n_scenario=n_scenario,
+                                   bias=bias, alpha=alpha,
+                                   scenario_cnt=scenario_cnt,
+                                   verbose=verbose)
+    reports = instance.run()
+
+    prob_name = "min_ms_cvar_avgsp"
+    file_name = '{}_{}.pkl'.format(prob_name, param)
+    file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, prob_name)
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+
+    pd.to_pickle(reports, os.path.join(file_dir, file_name))
+    print ("{} {} OK, {:.3f} secs".format(prob_name, param, time() - t0))
+
+    return reports
+
 def run_min_cvar_eev_simulation(n_stock, win_length, n_scenario=200,
                                bias=False, scenario_cnt=1, alpha=0.95,
                                verbose=False):
@@ -685,8 +754,9 @@ if __name__ == '__main__':
     # run_min_cvar_eev_simulation(10, 220, scenario_cnt=1, alpha=0.95)
     # for m in xrange(5, 55, 5):
     #     run_bah_simulation(m)
-    run_min_cvar_sip2_simulation(10, 190, scenario_cnt=1, alpha=0.95,
-                               verbose=True)
+    # run_min_cvar_sip2_simulation(10, 190, scenario_cnt=1, alpha=0.95,
+    #                            verbose=True)
+    run_min_ms_cvar_avgsp_simulation(10, 190, scenario_cnt=1, alpha=0.9)
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
