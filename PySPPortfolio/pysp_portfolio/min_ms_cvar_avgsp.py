@@ -22,6 +22,7 @@ def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
                                 solver = DEFAULT_SOLVER, verbose=False):
     """
     in each period, using average scenarios
+    the results of avgsp are independent to the alpha,
 
     symbols: list of string
     risk_rois: numpy.array, shape: (n_exp_period, n_stock)

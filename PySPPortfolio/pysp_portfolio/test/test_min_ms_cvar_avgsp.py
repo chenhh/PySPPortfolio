@@ -72,4 +72,4 @@ def test_min_ms_cvar_avgsp(n_stock, win_length, alpha, scenario_cnt=1):
     )
 
 if __name__ == '__main__':
-    test_min_ms_cvar_avgsp(10, 70, 0.9)
+    test_min_ms_cvar_avgsp(10, 70, 0.5)
