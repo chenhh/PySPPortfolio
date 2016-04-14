@@ -434,6 +434,9 @@ def run_min_ms_cvar_avgsp_simulation(n_stock, win_length, n_scenario=200,
                                    scenario_cnt=scenario_cnt,
                                    verbose=verbose)
     reports = instance.run()
+    # the reports is the scenario simulation results, it still need to compute
+    # truly wealth process by using the wealth process
+    print reports.keys()
 
     prob_name = "min_ms_cvar_avgsp"
     file_name = '{}_{}.pkl'.format(prob_name, param)

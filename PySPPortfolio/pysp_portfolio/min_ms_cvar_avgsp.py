@@ -13,7 +13,6 @@ from pyomo.opt import SolverStatus, TerminationCondition
 from PySPPortfolio.pysp_portfolio import *
 from base_model import (SPTradingPortfolio, )
 
-
 def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
                                 risk_free_rois, allocated_risk_wealth,
                                 allocated_risk_free_wealth, buy_trans_fee,
@@ -27,7 +26,7 @@ def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
     symbols: list of string
     risk_rois: numpy.array, shape: (n_exp_period, n_stock)
     risk_free_rois: numpy.array,, shape: (n_exp_period,)
-    allocated_risk_wealth: numpy.array,, shape: (n_stock,)
+    allocated_risk_wealth: numpy.array, shape: (n_stock,)
     allocated_risk_free_wealth: float
     buy_trans_fee: float
     sell_trans_fee: float
@@ -157,12 +156,6 @@ def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
     print ("min_ms_cvar_avgsp {} constraints OK, "
            "{:.3f} secs".format(param, time() - t0))
 
-    buy_df = np.zeros((n_exp_period, n_stock))
-    sell_df = np.zeros((n_exp_period, n_stock))
-    risk_df = np.zeros((n_exp_period, n_stock))
-    risk_free_arr = np.zeros(n_exp_period)
-    var_arr = np.zeros(n_exp_period)
-
     # objective
     def cvar_objective_rule(model):
         cvar_expr_sum = 0
@@ -192,6 +185,12 @@ def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
     print (results.solver)
 
     # extract results
+    buy_df = np.zeros((n_exp_period, n_stock))
+    sell_df = np.zeros((n_exp_period, n_stock))
+    risk_df = np.zeros((n_exp_period, n_stock))
+    risk_free_arr = np.zeros(n_exp_period)
+    var_arr = np.zeros(n_exp_period)
+
     for tdx in xrange(n_exp_period):
         # shape: (n_exp_period,)
         risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
@@ -362,7 +361,7 @@ class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
                           sell_amounts_df.sum() * self.sell_trans_fee)
 
         # get reports
-        reports = self.get_performance_report(
+        simulation_reports = self.get_performance_report(
             func_name,
             self.symbols,
             self.exp_risk_rois.index[0],
@@ -378,18 +377,27 @@ class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
             risk_free_wealth)
 
         # model additional elements to reports
-        reports['window_length'] = self.window_length
-        reports['n_scenario'] = self.n_scenario
-        reports['alpha'] = self.alpha
-        reports['scenario_cnt'] = self.scenario_cnt
-        reports['buy_amounts_df'] = buy_amounts_df
-        reports['sell_amounts_df'] =sell_amounts_df
+        simulation_reports['window_length'] = self.window_length
+        simulation_reports['n_scenario'] = self.n_scenario
+        simulation_reports['alpha'] = self.alpha
+        simulation_reports['scenario_cnt'] = self.scenario_cnt
+        simulation_reports['buy_amounts_df'] = buy_amounts_df
+        simulation_reports['sell_amounts_df'] =sell_amounts_df
 
         # add simulation time
-        reports['simulation_time'] = time() - 0
+        simulation_reports['simulation_time'] = time() - 0
+
+        # true reports
+        real_risk_wealth_df = pd.DataFrame(
+            np.zeros((self.n_exp_period, self.n_stock)),
+            index=risk_wealth_df.index)
+        real_risk_free_wealth = pd.Series(
+            np.zeros(self.n_exp_period), index=risk_wealth_df.index)
+
+
 
         print ("{} {} OK [{}-{}], {:.4f}.secs".format(
             func_name, self.alpha, self.exp_risk_rois.index[0],
             self.exp_risk_rois.index[Tdx], time() - t0))
 
-        return reports
+        return simulation_reports
