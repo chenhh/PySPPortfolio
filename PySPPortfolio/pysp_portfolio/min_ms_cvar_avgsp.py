@@ -394,7 +394,30 @@ class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
         real_risk_free_wealth = pd.Series(
             np.zeros(self.n_exp_period), index=risk_wealth_df.index)
 
+        for tdx in xrange(self.n_exp_period):
+            if tdx == 0:
+                # shape: (n_stock,) and float
+                prev_risk_wealth = self.initial_risk_wealth
+                prev_risk_free_wealth = self.initial_risk_free_wealth
+            else:
+                prev_risk_wealth = real_risk_wealth_df.iloc[tdx-1]
+                prev_risk_free_wealth = real_risk_free_wealth.iloc[tdx-1]
 
+            real_risk_wealth_df.iloc[tdx] = (
+                (1+self.exp_risk_rois.iloc[tdx]) * prev_risk_wealth  +
+                buy_amounts_df.iloc[tdx] -
+                sell_amounts_df.iloc[tdx]
+            )
+
+            real_risk_free_wealth.iloc[tdx] = (
+                (1 + self.exp_risk_free_rois.iloc[tdx]) *
+                prev_risk_free_wealth -
+                (1+self.buy_trans_fee) * buy_amounts_df.iloc[tdx].sum() +
+                (1-self.sell_trans_fee) * sell_amounts_df.iloc[tdx].sum()
+            )
+
+        simulation_reports['real_risk_wealth_df'] = real_risk_wealth_df
+        simulation_reports['real_risk_free_wealth_df'] = real_risk_free_wealth
 
         print ("{} {} OK [{}-{}], {:.4f}.secs".format(
             func_name, self.alpha, self.exp_risk_rois.index[0],
