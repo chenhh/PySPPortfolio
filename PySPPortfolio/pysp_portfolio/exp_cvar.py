@@ -403,10 +403,10 @@ def run_min_ms_cvar_avgsp_simulation(n_stock, win_length, n_scenario=200,
 
     # getting experiment symbols
     symbols = EXP_SYMBOLS[:n_stock]
-    param = "{}_{}_m{}_w{}_s{}_{}_{}".format(
+    param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
         START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
         n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
-        scenario_cnt)
+        scenario_cnt, alpha)
 
     # read rois panel
     roi_path = os.path.join(SYMBOLS_PKL_DIR,
