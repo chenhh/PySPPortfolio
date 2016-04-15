@@ -40,7 +40,7 @@ def min_ms_cvar_avgsp_portfolio(symbols, trans_dates, risk_rois,
     t0 = time()
     n_exp_period = risk_rois.shape[0]
     n_stock = len(symbols)
-
+    print "transaction dates: {}-{}".format(trans_dates[0], trans_dates[-1])
     # concrete model
     instance = ConcreteModel(name="ms_min_cvar_avgsp_portfolio")
     param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
@@ -390,9 +390,11 @@ class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
         # true reports
         real_risk_wealth_df = pd.DataFrame(
             np.zeros((self.n_exp_period, self.n_stock)),
-            index=risk_wealth_df.index)
+            index=risk_wealth_df.index,
+            columns=self.symbols)
         real_risk_free_wealth = pd.Series(
             np.zeros(self.n_exp_period), index=risk_wealth_df.index)
+
 
         for tdx in xrange(self.n_exp_period):
             if tdx == 0:
@@ -408,7 +410,6 @@ class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
                 buy_amounts_df.iloc[tdx] -
                 sell_amounts_df.iloc[tdx]
             )
-
             real_risk_free_wealth.iloc[tdx] = (
                 (1 + self.exp_risk_free_rois.iloc[tdx]) *
                 prev_risk_free_wealth -
@@ -418,6 +419,17 @@ class MinMSCVaRAvgSPPortfolio(SPTradingPortfolio):
 
         simulation_reports['real_risk_wealth_df'] = real_risk_wealth_df
         simulation_reports['real_risk_free_wealth_df'] = real_risk_free_wealth
+        # print real_risk_wealth_df
+        # print real_risk_free_wealth
+        Tdx = self.n_exp_period - 1
+        real_estimated_final_wealth = (real_risk_wealth_df.iloc[Tdx].sum() +
+                        real_risk_free_wealth[Tdx])
+
+        real_feasible = np.all(real_risk_wealth_df>0)
+        print "real estimated risk_wealth: {}, feasible: {}".format(
+                real_estimated_final_wealth, real_feasible)
+        simulation_reports['real_estimated_final_wealth'] = real_estimated_final_wealth
+        simulation_reports['real_feasible'] = real_feasible
 
         print ("{} {} OK [{}-{}], {:.4f}.secs".format(
             func_name, self.alpha, self.exp_risk_rois.index[0],

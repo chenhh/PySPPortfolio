@@ -424,7 +424,7 @@ def run_min_ms_cvar_avgsp_simulation(n_stock, win_length, n_scenario=200,
     n_period = exp_risk_rois.shape[0]
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
-    initial_risk_free_wealth = 1
+    initial_risk_free_wealth = 1e6
     instance = MinMSCVaRAvgSPPortfolio(symbols, risk_rois, risk_free_rois,
                                    initial_risk_wealth,
                                    initial_risk_free_wealth,
@@ -436,7 +436,7 @@ def run_min_ms_cvar_avgsp_simulation(n_stock, win_length, n_scenario=200,
     reports = instance.run()
     # the reports is the scenario simulation results, it still need to compute
     # truly wealth process by using the wealth process
-    print reports.keys()
+    # print reports.keys()
 
     prob_name = "min_ms_cvar_avgsp"
     file_name = '{}_{}.pkl'.format(prob_name, param)
@@ -759,7 +759,7 @@ if __name__ == '__main__':
     #     run_bah_simulation(m)
     # run_min_cvar_sip2_simulation(10, 190, scenario_cnt=1, alpha=0.95,
     #                            verbose=True)
-    run_min_ms_cvar_avgsp_simulation(10, 190, scenario_cnt=1, alpha=0.9)
+    run_min_ms_cvar_avgsp_simulation(10, 200, scenario_cnt=1, alpha=0.9)
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)

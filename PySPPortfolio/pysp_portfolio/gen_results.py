@@ -15,7 +15,8 @@ from PySPPortfolio.pysp_portfolio import *
 from exp_cvar import (run_min_cvar_sip_simulation, run_min_cvar_sp_simulation,
                   run_min_cvar_sp2_simulation, run_min_cvar_sip2_simulation,
                   run_min_cvar_eev_simulation, run_min_ms_cvar_sp_simulation,
-                  run_min_cvar_eevip_simulation)
+                  run_min_cvar_eevip_simulation,
+                  run_min_ms_cvar_avgsp_simulation,)
 
 def get_results_dir(prob_type):
     """
@@ -30,7 +31,8 @@ def get_results_dir(prob_type):
     if prob_type in ("min_cvar_sp", "min_cvar_sp2",
                      "min_cvar_sip", "min_cvar_sip2",
                      "min_cvar_eev", "min_cvar_eevip",
-                     "min_ms_cvar_sp", "min_ms_cvar_sip"):
+                     "min_ms_cvar_sp", "min_ms_cvar_sip",
+                     "min_ms_cvar_avgsp"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -53,7 +55,7 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
             if prob_type in ( "min_cvar_sp", "min_cvar_sp2", 'min_cvar_eev',
-                              "min_ms_cvar_sp"):
+                              "min_ms_cvar_sp", "min_ms_cvar_avgsp"):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
@@ -67,12 +69,18 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
             for n_scenario in (200,):
                 for bias in ("unbiased",):
                     for cnt in xrange(1, max_scenario_cnts+1):
-                        for alpha in ('0.50', '0.55', '0.60', '0.65',
-                                      '0.70', '0.75', '0.80', '0.85',
-                                      '0.90', '0.95'):
+                        if prob_type in ("min_ms_cvar_avgsp",):
+                            # avgsp is independent to alpha
                             all_params.append(
-                               (n_stock, win_length,
-                                n_scenario,bias, cnt, alpha))
+                                (n_stock, win_length,
+                                n_scenario, bias, cnt, "0.50"))
+                        else:
+                            for alpha in ('0.50', '0.55', '0.60', '0.65',
+                                          '0.70', '0.75', '0.80', '0.85',
+                                          '0.90', '0.95'):
+                                all_params.append(
+                                   (n_stock, win_length,
+                                    n_scenario,bias, cnt, alpha))
 
     return set(all_params)
 
@@ -117,7 +125,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
     # linear programming
     if prob_type in ("min_cvar_sp", "min_cvar_sp2",
-                     "min_cvar_eev", "min_ms_cvar_sp"):
+                     "min_cvar_eev", "min_ms_cvar_sp", "min_ms_cvar_avgsp"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_*.pkl".format(prob_type)))
     # mixed integer programming
@@ -133,7 +141,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
             params = exp_params[5:]
         elif prob_type in ("min_cvar_sip", "min_cvar_sip2",
                            "min_cvar_eevip", "min_ms_cvar_sp",
-                           "min_ms_cvar_sip"):
+                           "min_ms_cvar_sip", "min_ms_cvar_avgsp"):
             params = exp_params[6:]
         n_stock = int(params[0][params[0].rfind('m')+1:])
         win_length = int(params[1][params[1].rfind('w')+1:])
@@ -302,6 +310,10 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                 run_min_ms_cvar_sp_simulation(n_stock, win_length, n_scenario,
                                bias, cnt, alphas=[0.5, 0.55, 0.6, 0.65, 0.7,
                                                   0.75, 0.8, 0.85, 0.9, 0.95])
+
+            elif prob_type == "min_ms_cvar_avgsp":
+                run_min_ms_cvar_avgsp_simulation(n_stock, win_length,
+                                n_scenario, bias, cnt, alpha)
         except Exception as e:
             print ("dispatch: run experiment:", param, e)
         finally:
