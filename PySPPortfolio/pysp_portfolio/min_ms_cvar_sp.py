@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-#!python
-#cython: boundscheck=False
-#cython: wraparound=False
-#cython: infer_types=True
-#cython: nonecheck=False
-
 """
 Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
@@ -22,23 +16,12 @@ from pyomo.opt import SolverStatus, TerminationCondition
 from PySPPortfolio.pysp_portfolio import *
 from base_model import (SPTradingPortfolio, )
 
-cimport numpy as cnp
-ctypedef cnp.float64_t FLOAT_t
-ctypedef cnp.intp_t INTP_t
-
-def min_ms_cvar_sp_portfolio(symbols, trans_dates,
-                         cnp.ndarray[FLOAT_t, ndim=2] risk_rois,
-                         cnp.ndarray[FLOAT_t, ndim=1] risk_free_rois,
-                         cnp.ndarray[FLOAT_t, ndim=1] allocated_risk_wealth,
-                         double allocated_risk_free_wealth,
-                         double buy_trans_fee,
-                         double sell_trans_fee,
-                         alphas,
-                         cnp.ndarray[FLOAT_t, ndim=3] predict_risk_rois,
-                         cnp.ndarray[FLOAT_t, ndim=1] predict_risk_free_roi,
-                         int n_scenario,
-                         str solver=DEFAULT_SOLVER,
-                         int verbose=False):
+def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
+                             allocated_risk_wealth, allocated_risk_free_wealth,
+                             buy_trans_fee, sell_trans_fee, alphas,
+                             predict_risk_rois, predict_risk_free_roi,
+                             n_scenario, solver=DEFAULT_SOLVER,
+                             verbose=False):
     """
     after generating all scenarios, solving the SP at once
 
@@ -58,8 +41,8 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
     """
     t0 = time()
 
-    cdef INTP_t n_exp_period = risk_rois.shape[0]
-    cdef int n_stock = len(symbols)
+    n_exp_period = risk_rois.shape[0]
+    n_stock = len(symbols)
 
     # concrete model
     instance = ConcreteModel(name="ms_min_cvar_sp_portfolio")
@@ -178,16 +161,13 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
     print ("min_ms_cvar_sp constraints and objective rules OK, "
                "{:.3f} secs".format(time() - t0))
 
-    cdef:
-        int Tdx = n_exp_period - 1
-        cnp.ndarray[FLOAT_t, ndim=2] buy_df = np.zeros((n_exp_period,
-                                                        n_stock))
-        cnp.ndarray[FLOAT_t, ndim=2] sell_df = np.zeros((n_exp_period,
-                                                         n_stock))
-        cnp.ndarray[FLOAT_t, ndim=2] risk_df = np.zeros((n_exp_period,
-                                                         n_stock))
-        cnp.ndarray[FLOAT_t, ndim=1] risk_free_arr = np.zeros(n_exp_period)
-        cnp.ndarray[FLOAT_t, ndim=1] var_arr = np.zeros(n_exp_period)
+
+    Tdx = n_exp_period - 1
+    buy_df = np.zeros((n_exp_period, n_stock))
+    sell_df = np.zeros((n_exp_period, n_stock))
+    risk_df = np.zeros((n_exp_period, n_stock))
+    risk_free_arr = np.zeros(n_exp_period)
+    var_arr = np.zeros(n_exp_period)
 
     results_dict = {}
     for adx, alpha in enumerate(alphas):
@@ -213,10 +193,6 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
             #     for sdx in xrange(n_scenario)) / float(n_scenario)
             # return (model.Z[Tdx] - 1. / (1. - model.alphas[adx]) *
             #         scenario_expectation)
-
-
-
-
 
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)
@@ -298,18 +274,13 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates,
 
 class MinMSCVaRSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
-                 initial_risk_wealth,
-                 double initial_risk_free_wealth,
-                 double buy_trans_fee=BUY_TRANS_FEE,
-                 double sell_trans_fee=SELL_TRANS_FEE,
+                 initial_risk_wealth, initial_risk_free_wealth,
+                 buy_trans_fee=BUY_TRANS_FEE, sell_trans_fee=SELL_TRANS_FEE,
                  start_date=START_DATE, end_date=END_DATE,
-                 int window_length=WINDOW_LENGTH,
-                 int n_scenario=N_SCENARIO,
+                 window_length=WINDOW_LENGTH, n_scenario=N_SCENARIO,
                  bias=BIAS_ESTIMATOR,
-                 alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-                         0.85, 0.9, 0.95],
-                 int scenario_cnt=1,
-                 verbose=False):
+                 alphas=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+                 scenario_cnt=1, verbose=False):
         """
         because the multi-stage model will cost many time in constructing
         scenarios constraints, we solve all alphas of the same
@@ -475,6 +446,3 @@ class MinMSCVaRSPPortfolio(SPTradingPortfolio):
                 func_name, self.alphas, self.exp_risk_rois.index[0],
                 self.exp_risk_rois.index[Tdx], time() - t0))
         return reports_dict
-
-
-

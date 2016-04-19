@@ -329,7 +329,7 @@ def min_cvar_3stage_dependent_sp():
     instance.sell_trans_fee = 0
 
     # risk preference, 1 is the most risk-averse
-    instance.alpha = 0.7
+    instance.alpha = 0.70
 
     instance.risk_rois1 = np.zeros(n_stock)
     # shape: (n_stock, n_scenario2)
@@ -350,6 +350,8 @@ def min_cvar_3stage_dependent_sp():
     instance.stages = np.arange(n_stage)
     instance.symbols = np.arange(n_stock)
     instance.scenarios2 = np.arange(n_scenario2)
+    # instance.realized_scenarios2 = np.arange(n_scenario2)
+    instance.realized_scenarios2 = [3,]
     # instance.scenarios3 = np.arange(n_scenario3)
 
     # decision variables
@@ -361,19 +363,19 @@ def min_cvar_3stage_dependent_sp():
                                  within=NonNegativeReals)
 
     instance.risk_wealth1 = Var(instance.symbols, within=NonNegativeReals)
-    instance.risk_wealth2 = Var(instance.symbols, instance.scenarios2,
+    instance.risk_wealth2 = Var(instance.symbols, instance.realized_scenarios2,
                                 within=NonNegativeReals)
     instance.risk_free_wealth1 = Var(within=NonNegativeReals)
-    instance.risk_free_wealth2 = Var(instance.scenarios2,
+    instance.risk_free_wealth2 = Var(instance.realized_scenarios2,
                                      within=NonNegativeReals)
 
     # aux variable, variable in definition of CVaR, equals to VaR at opt. sol.
     instance.Z2 = Var(within=Reals)
-    instance.Z3 = Var(instance.scenarios2, within=Reals)
+    instance.Z3 = Var(instance.realized_scenarios2, within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
     instance.Ys2 = Var(instance.scenarios2, within=NonNegativeReals)
-    instance.Ys3 = Var(instance.scenarios2, instance.scenarios2,
+    instance.Ys3 = Var(instance.realized_scenarios2, instance.scenarios2,
                        within=NonNegativeReals)
 
     # 2nd constraint
@@ -418,7 +420,8 @@ def min_cvar_3stage_dependent_sp():
                 model.sell_amounts2[mdx, sdx])
 
     instance.risk_wealth_constraint2 = Constraint(
-        instance.symbols, instance.scenarios2,
+        instance.symbols,
+        instance.realized_scenarios2,
         rule=risk_wealth_constraint_rule2)
 
     # 3rd constraint
@@ -435,7 +438,7 @@ def min_cvar_3stage_dependent_sp():
                 total_sell - total_buy)
 
     instance.risk_free_wealth_constraint2 = Constraint(
-        instance.scenarios2,
+        instance.realized_scenarios2,
         rule=risk_free_wealth_constraint_rule2)
 
     # 3rd constraint
@@ -447,7 +450,8 @@ def min_cvar_3stage_dependent_sp():
         return model.Ys3[adx, sdx] >= (model.Z3[adx] - wealth)
 
     instance.cvar_constraint2 = Constraint(
-        instance.scenarios2, instance.scenarios2,
+        instance.realized_scenarios2,
+        instance.scenarios2,
         rule=cvar_constraint_rule2)
 
     # objective
@@ -460,13 +464,14 @@ def min_cvar_3stage_dependent_sp():
 
         # stage 3
         s3_sum = 0
-        for adx in model.scenarios2:
+        for adx in model.realized_scenarios2:
             s3_exp = sum(model.Ys3[adx, sdx] * model.probs3[adx, sdx]
                              for sdx in model.scenarios2)
             s3_sum += model.probs2[adx] * (model.Z3[adx] -
                                           1. / (1. - model.alpha) * s3_exp -
                                           model.risk_free_wealth2[adx]
                                           )
+
         # print s2_sum + s3_sum
         return s2_sum + s3_sum
 
@@ -484,7 +489,7 @@ def min_cvar_3stage_dependent_sp():
         for sdx in instance.scenarios2
     ) - instance.risk_free_wealth1.value
     CVaR2 = np.zeros(10)
-    for adx in instance.scenarios2:
+    for adx in instance.realized_scenarios2:
         CVaR2[adx] = instance.Z3[adx].value - 1. / (1 - instance.alpha) * sum(
             instance.probs3[adx, sdx] * instance.Ys3[adx, sdx].value
             for sdx in instance.scenarios2
@@ -492,7 +497,7 @@ def min_cvar_3stage_dependent_sp():
 
     print "alpha: {}".format(instance.alpha)
     print "CVaR1: {}, VaR: {}".format(CVaR1, instance.Z2.value)
-    for adx in instance.scenarios2:
+    for adx in instance.realized_scenarios2:
         print "CVaR2[{}]: {}, VaR:{}".format(adx, CVaR2[adx],
                                              instance.Z3[adx].value)
 
@@ -506,7 +511,7 @@ def min_cvar_3stage_dependent_sp():
     # print ("solver termination cond: {}".format(
     #     results.solver.termination_condition))
     # print (results.solver)
-    # display(instance)
+    display(instance)
 
 
 
@@ -695,10 +700,10 @@ def min_cvar_3stage_stage_sp():
     display(instance)
 
 def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
-                            bias=False, scenario_cnt=1, alpha=0.95,
+                            bias=False, scenario_cnt=1, alpha=0.8,
                             verbose=False,
                             start_date=date(2005, 1, 3),
-                            end_date=date(2014, 12, 31)):
+                            end_date=date(2005, 1, 10)):
     """
     2nd stage SP simulation
 
@@ -771,10 +776,10 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
 
 if __name__ == '__main__':
     # test_min_cvar_sp()
-    min_cvar_3stage_dependent_sp()
+    # min_cvar_3stage_dependent_sp()
     # min_cvar_3stage_stage_sp()
-    # run_min_cvar_sp2_test(5, 70,
-    #                       bias=False, scenario_cnt=1, alpha=0.9,
-    #                       verbose=False,
-    #                       start_date=date(2005, 1, 1),
-    #                       end_date=date(2005, 3, 31))
+    run_min_cvar_sp2_test(5, 70,
+                          bias=False, scenario_cnt=1, alpha=0.9,
+                          verbose=False,
+                          start_date=date(2005, 1, 1),
+                          end_date=date(2005, 3, 31))
