@@ -201,7 +201,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                                         float( n_scenario))
                 cvar_expr = (model.Z[tdx] - scenario_expectation /
                              (1. - model.alphas[adx]))
-                
+
                 cvar_expr_sum = cvar_expr_sum + cvar_expr
             return cvar_expr_sum
 

@@ -1,0 +1,388 @@
+ test_min_ms_cvar_eventsp(5, 70, 0.95 , 1, date(2005, 1, 3),
+                              date(2005, 1, 31))
+
+/usr/bin/python2.7 /home/chenhh/workspace_pycharm/PySPPortfolio/PySPPortfolio/pysp_portfolio/test/test_min_ms_eventsp.py
+transaction dates: 2005-01-03 00:00:00-2005-01-31 00:00:00
+combinations (exp_period, stock, scenarios)=(21, 5, 200)
+constructing risk wealth constraints
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 risk wealth decisions constraints OK, 3.283 secs
+constructing risk free wealth constraints
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 risk free wealth decisions constraints OK, 0.587 secs
+constructing cvar constraints
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 cvar constraints OK, 116.827 secs
+constructing objective rule
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 objective OK 0.026 secs, start solving:
+solve min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 OK 411.62 secs
+solver status: ok
+solver termination cond: optimal
+
+- Status: ok
+  User time: 335.36
+  Termination condition: optimal
+  Termination message: Primal simplex - Optimal\x3a Objective = 2.0999232587e+01
+  Error rc: 0
+  Time: 344.243207932
+
+Objective: 20.9992325871
+VaR[0]: 0.98555979147
+VaR[1]: 0.986914047668
+VaR[2]: 0.988033185423
+VaR[3]: 0.989537175383
+VaR[4]: 0.995057663271
+VaR[5]: 0.992254086198
+VaR[6]: 0.99843440981
+VaR[7]: 0.999479283197
+VaR[8]: 0.998497776018
+VaR[9]: 1.00231524555
+VaR[10]: 1.0032316368
+VaR[11]: 1.00508404151
+VaR[12]: 1.00627647707
+VaR[13]: 1.01039615891
+VaR[14]: 1.01078102337
+VaR[15]: 1.01377774481
+VaR[16]: 1.01486359008
+VaR[17]: 1.0165885802
+VaR[18]: 1.01865687554
+VaR[19]: 1.02115535407
+VaR[20]: 1.02134090102
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.747363042772
+sell amounts:0.0
+risk_wealth:0.747363042772
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.251213984964
+sell amounts:0.0
+risk_wealth:0.251213984964
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.748682800493
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.251992026974
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.750186807979
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.252632680704
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.751596408992
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.253273952673
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.753008658644
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.253965517201
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.75431511791
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.254569585068
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.75569817623
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.255181555804
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.757251146778
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.000390696446265
+sell amounts:0.0
+risk_wealth:0.000390696446265
+buy amounts:0.0
+sell amounts:0.000392992179094
+risk_wealth:0.25530971727
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.758737046614
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.00437450097623
+sell amounts:0.0
+risk_wealth:0.00476522642333
+buy amounts:0.0
+sell amounts:0.00440020554968
+risk_wealth:0.251404688565
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.760057812708
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.00476616197343
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.251768108408
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.761380877917
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.00476593381045
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.252129474771
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.762524341473
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.00476512863997
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.252542862656
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0522079929605
+risk_wealth:0.711452433529
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0519030108012
+sell amounts:0.0
+risk_wealth:0.0566673442093
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.252933881985
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.71242404379
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0447224007575
+sell amounts:0.0
+risk_wealth:0.101393780491
+buy amounts:0.0
+sell amounts:0.0449851896428
+risk_wealth:0.208492290615
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.152268216112
+risk_wealth:0.561384372409
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.151380219157
+sell amounts:0.0
+risk_wealth:0.252793496224
+buy amounts:0.0
+sell amounts:1.51341033355e-06
+risk_wealth:0.208888914083
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.56229749617
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0393553067729
+sell amounts:0.0
+risk_wealth:0.29235200202
+buy amounts:0.0
+sell amounts:0.0395865586069
+risk_wealth:0.169727465305
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.563346952151
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.292549373033
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.170075423582
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.564461735291
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.292707968228
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.170445981485
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.107990277182
+risk_wealth:0.457777445162
+buy amounts:0.0523305878845
+sell amounts:0.0
+risk_wealth:0.0523305878845
+buy amounts:0.0605498173363
+sell amounts:0.0
+risk_wealth:0.353379786245
+buy amounts:0.0
+sell amounts:0.00555341344698
+risk_wealth:0.165245091722
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.0148404217415
+risk_wealth:0.443946252656
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.052316081098
+buy amounts:0.068592570622
+sell amounts:0.0
+risk_wealth:0.422251340112
+buy amounts:0.0
+sell amounts:0.0541551989151
+risk_wealth:0.111423076485
+**************************************************
+buy amounts:0.0
+sell amounts:0.0
+risk_wealth:0.0
+buy amounts:0.0
+sell amounts:0.135673679058
+risk_wealth:0.309130214337
+buy amounts:0.000267675463201
+sell amounts:0.0
+risk_wealth:0.0525692537961
+buy amounts:0.141412530158
+sell amounts:0.0
+risk_wealth:0.563943364464
+buy amounts:0.0
+sell amounts:0.00683903963638
+risk_wealth:0.104802066341
+**************************************************
+None
+all_scenarios_min_cvar_eventsp_portfolio:
+(n_period, n_stock, n_scenarios):(21, 5, 200): 532.3443 secs
+
+Process finished with exit code 0

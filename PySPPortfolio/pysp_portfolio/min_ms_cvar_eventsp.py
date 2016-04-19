@@ -290,7 +290,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         return model.Z[tdx] == exp_Z
 
     instance.z_decision_constraint = Constraint(
-        instance.exp_periods, within=z_decision_rule
+        instance.exp_periods, rule=z_decision_rule
     )
 
     def y_decision_rule(model, tdx, sdx):
@@ -305,7 +305,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         return model.Ys[tdx, sdx] == exp_y
 
     instance.y_decision_constraint = Constraint(
-        instance.exp_periods, instance.scenarios, within=y_decision_rule
+        instance.exp_periods, instance.scenarios, rule=y_decision_rule
     )
     print ("min_ms_cvar_eventsp {} cvar constraints OK, "
            "{:.3f} secs".format(param, time() - t2))
@@ -347,10 +347,13 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     for tdx in xrange(n_exp_period):
         print ("VaR[{}]: {}".format(tdx, instance.Z[tdx].value))
 
-    for mdx in xrange(n_stock):
-        print ("buy amounts:{}".format(instance.buy_amounts[0,mdx].value))
-        print ("sell amounts:{}".format(instance.sell_amounts[0,mdx].value))
-        print ("risk_wealth:{}".format(instance.risk_wealth[0,mdx].value))
+    for tdx in xrange(n_exp_period):
+        for mdx in xrange(n_stock):
+            print ("buy amounts:{}".format(instance.buy_amounts[tdx,mdx].value))
+            print ("sell amounts:{}".format(instance.sell_amounts[tdx,
+                                                                  mdx].value))
+            print ("risk_wealth:{}".format(instance.risk_wealth[tdx,mdx].value))
+        print '*'*50
 
 class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
