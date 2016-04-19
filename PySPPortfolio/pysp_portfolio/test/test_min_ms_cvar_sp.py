@@ -165,7 +165,7 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
-    test_min_ms_cvar_sp2(5, 70, [0.99,], 1, date(2008,1,1), date(2008,1,31))
+    test_min_ms_cvar_sp2(5, 70, [0.95,], 1, date(2005,1,3), date(2005,1,5))
     # test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 3, 31))
 
     # import argparse
