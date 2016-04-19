@@ -49,14 +49,15 @@ def test_min_ms_cvar_sp():
     )
 
 
-def test_min_ms_cvar_sp2(n_stock, win_length, alphas, scenario_cnt=1):
+def test_min_ms_cvar_sp2(n_stock, win_length, alphas, scenario_cnt=1,
+                         t_start_date=date(2005,1,3),
+                         t_end_date=date(2014,12,31)):
     """
     :param n_stock: range(5, 55)
     :param win_length:  range(50, 250)
     :param alphas: list
     :return:
     """
-    t_start_date, t_end_date = date(2005, 1, 3), date(2014, 12, 31)
 
     symbols = EXP_SYMBOLS[:n_stock]
     # read rois panel
@@ -72,7 +73,7 @@ def test_min_ms_cvar_sp2(n_stock, win_length, alphas, scenario_cnt=1):
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1e6
+    allocated_risk_free_wealth = 1
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
 
@@ -99,7 +100,7 @@ def test_min_ms_cvar_sp2(n_stock, win_length, alphas, scenario_cnt=1):
                           predict_risk_free_rois, 200,
                         solver="cplex", verbose=False)
 
-    print res
+    # print res
     pd.to_pickle(res, os.path.join(TMP_DIR, 'min_ms_cvar_sp.pkl'))
     print "all_scenarios_min_cvar_sp_portfolio: "
     print "(n_period, n_stock, n_scenarios):({}, {}, {}): {:.4f} secs".format(
@@ -125,7 +126,7 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
     risk_free_roi = np.zeros(n_period, dtype=np.float)
     allocated_risk_wealth = np.zeros(n_stock, dtype=np.float)
-    allocated_risk_free_wealth = 1
+    allocated_risk_free_wealth = 10000
     buy_trans_fee =  0.001425
     sell_trans_fee = 0.004425
     alphas = [0.9, ]
@@ -154,10 +155,7 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
                           predict_risk_free_rois, 200,
                         solver="cplex", verbose=False)
 
-    print res
-    print
-    print res['0.90']['buy_amounts_df']
-    print res['0.90']['sell_amounts_df']
+    # print res
     pd.to_pickle(res, os.path.join(TMP_DIR, 'min_ms_cvar_sp.pkl'))
     print "all_scenarios_min_cvar_sp_portfolio: "
     print "(n_period, n_stock, n_scenarios):({}, {}, {}): {:.4f} secs".format(
@@ -167,7 +165,7 @@ def test_min_ms_cvar_sp3(t_start_date, t_end_date):
 
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
-    test_min_ms_cvar_sp2(10, 70, [0.9,])
+    test_min_ms_cvar_sp2(5, 70, [0.5,], 1, date(2005,1,3), date(2005,2,20))
     # test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 3, 31))
 
     # import argparse

@@ -85,6 +85,10 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
 
     # aux variable, portfolio wealth less than than VaR (Z)
     # shape: (n_exp_period, n_scenario)
+    instance.predict_portfolio_wealth = Var(instance.exp_periods,
+                                        instance.scenarios,
+                                       within=NonNegativeReals)
+
     instance.Ys = Var(instance.exp_periods, instance.scenarios,
                       within=NonNegativeReals)
 
@@ -101,6 +105,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
             risk_roi = model.risk_rois[tdx, mdx]
         else:
             prev_risk_wealth = model.risk_wealth[tdx - 1, mdx]
+            # risk_roi = model.predict_risk_rois[tdx-1, mdx, 157]
             risk_roi = model.risk_rois[tdx, mdx]
             # risk_roi = sum(model.predict_risk_rois[tdx - 1, mdx, sdx]
             #                for sdx in instance.scenarios) / instance.n_scenario
@@ -137,6 +142,17 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
     instance.risk_free_wealth_constraint = Constraint(
         instance.exp_periods, rule=risk_free_wealth_constraint_rule)
 
+    def predict_portfolio_wealth_rule(model, tdx, sdx):
+        portfolio_wealth = sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
+                          model.risk_wealth[tdx, mdx]
+                          for mdx in model.symbols)
+        return (model.predict_portfolio_wealth[tdx, sdx] == portfolio_wealth)
+
+    instance.predict_portfolio_wealth_constraint = Constraint(
+        instance.exp_periods, instance.scenarios,
+        rule=predict_portfolio_wealth_rule
+    )
+
     # constraint
     def cvar_constraint_rule(model, tdx, sdx):
         """
@@ -146,10 +162,12 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
         tdx: integer, time index of period
         sdx: integer, scenario index
         """
-        risk_wealth = sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
-                          model.risk_wealth[tdx, mdx]
-                          for mdx in model.symbols)
-        return model.Ys[tdx, sdx] >= (model.Z[tdx] - risk_wealth)
+        # risk_wealth = sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
+        #                   model.risk_wealth[tdx, mdx]
+        #                   for mdx in model.symbols)
+        # return model.Ys[tdx, sdx] >= (model.Z[tdx] - risk_wealth)
+        return model.Ys[tdx, sdx] >= (model.Z[tdx] -
+                                      model.predict_portfolio_wealth[tdx, sdx])
 
     instance.cvar_constraint = Constraint(
         instance.exp_periods, instance.scenarios,
@@ -164,6 +182,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
     risk_df = np.zeros((n_exp_period, n_stock))
     risk_free_arr = np.zeros(n_exp_period)
     var_arr = np.zeros(n_exp_period)
+    predict_portfolio_df = np.zeros((n_exp_period, n_scenario))
 
     results_dict = {}
     for adx, alpha in enumerate(alphas):
@@ -181,7 +200,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                                            for sdx in xrange(n_scenario)) /
                                         float( n_scenario))
                 cvar_expr = (model.Z[tdx] - scenario_expectation /
-                             (1. - model.alphas[adx])) / float(n_scenario)
+                             (1. - model.alphas[adx]))
                 cvar_expr_sum = cvar_expr_sum + cvar_expr
             return cvar_expr_sum
 
@@ -200,8 +219,8 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
         # results = opt.solve(instance, tee=True)
         results = opt.solve(instance)
         instance.solutions.load_from(results)
-        if verbose:
-            display(instance)
+        # if verbose:
+        # display(instance)
 
         print ("solve min_ms_cvar_sp {} OK {:.2f} secs".format(
             param, time() - t1))
@@ -222,6 +241,10 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                 sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
                 risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
 
+            for sdx in xrange(n_scenario):
+                predict_portfolio_df[tdx, sdx] = \
+                    instance.predict_portfolio_wealth[tdx, sdx].value
+
         # shape: (n_exp_period, n_stock)
         buy_amounts_df = pd.DataFrame(buy_df, index=trans_dates,
                                       columns=symbols)
@@ -229,6 +252,15 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                                        columns=symbols)
         risk_wealth_df = pd.DataFrame(risk_df, index=trans_dates,
                                       columns=symbols)
+        predict_portfolio_wealth_df = pd.DataFrame(predict_portfolio_df,
+                                               index=trans_dates)
+        print '-'*50
+        for tdx in xrange(n_exp_period):
+            print "VaR[{}]={}".format(tdx, instance.Z[tdx].value)
+            # pseries = predict_portfolio_wealth_df.iloc[tdx]
+            # pseries.sort_values(inplace=True)
+            # print pseries.iloc[:20]
+        print '-'*50
 
         # shape: (n_exp_period, )
         risk_free_wealth_arr = pd.Series(risk_free_arr, index=trans_dates)
@@ -246,6 +278,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
             # shape: (n_exp_period, )
             "risk_free_wealth_arr": risk_free_wealth_arr,
             "estimated_var_arr": estimated_var_arr,
+            # "predict_portfolio_wealth_df": predict_portfolio_wealth_df,
             # float
             "estimated_cvar": instance.cvar_objective(),
         }
@@ -256,6 +289,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
         risk_df = np.zeros((n_exp_period, n_stock))
         risk_free_arr = np.zeros(n_exp_period)
         var_arr = np.zeros(n_exp_period)
+        predict_portfolio_df = np.zeros((n_exp_period, n_scenario))
 
         # delete objective
         instance.del_component("cvar_objective")
