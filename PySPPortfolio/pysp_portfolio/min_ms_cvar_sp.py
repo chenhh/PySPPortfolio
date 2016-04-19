@@ -201,6 +201,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                                         float( n_scenario))
                 cvar_expr = (model.Z[tdx] - scenario_expectation /
                              (1. - model.alphas[adx]))
+                
                 cvar_expr_sum = cvar_expr_sum + cvar_expr
             return cvar_expr_sum
 
@@ -257,6 +258,11 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
         print '-'*50
         for tdx in xrange(n_exp_period):
             print "VaR[{}]={}".format(tdx, instance.Z[tdx].value)
+
+            exp = predict_risk_rois[tdx].mean(axis=1)
+            print "expected predicted ROI:{}, {}".format(
+                exp, max(exp)
+            )
             # pseries = predict_portfolio_wealth_df.iloc[tdx]
             # pseries.sort_values(inplace=True)
             # print pseries.iloc[:20]
