@@ -21,7 +21,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                                 predict_risk_free_roi, n_scenario=200,
                                 solver = DEFAULT_SOLVER, verbose=False):
     """
-    in each period, when the decision branchs, using the expected decisions
+    in each period, when the decision variables have branch, using the
+    expected decisions
 
     symbols: list of string
     risk_rois: numpy.array, shape: (n_exp_period, n_stock)
@@ -101,7 +102,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                            instance.scenarios, within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
-    # in each stage, there is only one scneario,
+    # in each stage, there is only one scenario,
     # shape: (n_exp_period, ),
     # decision from period 2 to T+1
     instance.Ys = Var(instance.exp_periods, instance.scenarios,
@@ -127,7 +128,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
             risk_roi = model.risk_rois[tdx, mdx]
         else:
             prev_risk_wealth = model.risk_wealth[tdx - 1, mdx]
-            risk_roi = model.predict_risk_rois[tdx, mdx, sdx]
+            risk_roi = model.predict_risk_rois[tdx -1 , mdx, sdx]
 
         return (model.proxy_risk_wealth[tdx, mdx, sdx] ==
                 (1. + risk_roi) * prev_risk_wealth +
@@ -153,8 +154,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
 
     instance.risk_wealth_root_constraint = Constraint(
         instance.symbols, range(1, n_scenario),
-        rule=risk_wealth_constraint_rule)
-
+        rule=risk_wealth_root_rule)
 
     # risk wealth constraint
     def risk_wealth_expected_decision_rule(model, tdx, mdx):
@@ -170,7 +170,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                          for sdx in model.scenarios) / model.n_scenario
         return model.risk_wealth[tdx, mdx] == exp_wealth
 
-    instnace.risk_wealth_decision_constraint = Constraint(
+    instance.risk_wealth_decision_constraint = Constraint(
         instance.exp_periods, instance.symbols,
         rule=risk_wealth_expected_decision_rule
     )
@@ -187,7 +187,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                          for sdx in model.scenarios) / model.n_scenario
         return model.buy_amounts[tdx, mdx] == exp_buy
 
-    instnace.buy_decision_constraint = Constraint(
+    instance.buy_decision_constraint = Constraint(
         instance.exp_periods, instance.symbols,
         rule=buy_expected_decision_rule
     )
@@ -204,7 +204,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                       for sdx in model.scenarios) / model.n_scenario
         return model.sell_amounts[tdx, mdx] == exp_sell
 
-    instnace.sell_decision_constraint = Constraint(
+    instance.sell_decision_constraint = Constraint(
         instance.exp_periods, instance.symbols,
         rule=sell_expected_decision_rule
     )
@@ -251,7 +251,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                          for sdx in model.scenarios) / model.n_scenario
         return model.risk_free_wealth[tdx] == exp_wealth
 
-    instnace.risk_free_wealth_decision_constraint = Constraint(
+    instance.risk_free_wealth_decision_constraint = Constraint(
         instance.exp_periods, rule=risk_free_wealth_decision_rule
     )
     print ("min_ms_cvar_eventsp {} risk free wealth decisions constraints OK, "
@@ -342,6 +342,15 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     print ("solver termination cond: {}".format(
         results.solver.termination_condition))
     print (results.solver)
+
+    print ("Objective: {}".format(instance.cvar_objective()))
+    for tdx in xrange(n_exp_period):
+        print ("VaR[{}]: {}".format(tdx, instance.Z[tdx].value))
+
+    for mdx in xrange(n_stock):
+        print ("buy amounts:{}".format(instance.buy_amounts[0,mdx].value))
+        print ("sell amounts:{}".format(instance.sell_amounts[0,mdx].value))
+        print ("risk_wealth:{}".format(instance.risk_wealth[0,mdx].value))
 
 class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
