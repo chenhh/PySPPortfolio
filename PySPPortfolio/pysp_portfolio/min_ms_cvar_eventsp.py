@@ -430,7 +430,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
 
         # try to load generated scenario panel
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
-            start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+            START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
             len(symbols), window_length, n_scenario,
             "biased" if bias else "unbiased", scenario_cnt)
 
@@ -443,6 +443,9 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             self.scenario_cnt = 0
         else:
             self.scenario_panel = pd.read_pickle(scenario_path)
+            if start_date != START_DATE or end_date != END_DATE:
+                self.scenario_panel = self.scenario_panel.loc[
+                                      start_date:end_date]
             self.scenario_cnt = scenario_cnt
 
     def get_trading_func_name(self, *args, **kwargs):
