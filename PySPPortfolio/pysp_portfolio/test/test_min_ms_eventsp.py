@@ -59,7 +59,7 @@ def test_min_ms_cvar_eventsp(n_stock, win_length, alphas, scenario_cnt=1,
                                    solver="cplex", verbose=False)
 
     print res
-    pd.to_pickle(res, os.path.join(TMP_DIR, 'min_ms_cvar_sp.pkl'))
+    pd.to_pickle(res, os.path.join(TMP_DIR, 'min_ms_cvar_eventsp.pkl'))
     print "all_scenarios_min_cvar_eventsp_portfolio: "
     print "(n_period, n_stock, n_scenarios):({}, {}, {}): {:.4f} secs".format(
         n_period, n_stock, 200, time() - t0
@@ -67,4 +67,4 @@ def test_min_ms_cvar_eventsp(n_stock, win_length, alphas, scenario_cnt=1,
 
 if __name__ == '__main__':
     test_min_ms_cvar_eventsp(5, 70, 0.95 , 1, date(2005, 1, 3),
-                              date(2005, 1, 31))
+                              date(2005, 1, 4))

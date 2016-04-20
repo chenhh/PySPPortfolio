@@ -127,8 +127,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
             prev_risk_wealth = model.allocated_risk_wealth[mdx]
             risk_roi = model.risk_rois[tdx, mdx]
         else:
-            prev_risk_wealth = model.risk_wealth[tdx - 1, mdx]
-            risk_roi = model.predict_risk_rois[tdx -1 , mdx, sdx]
+            prev_risk_wealth = model.risk_wealth[tdx-1, mdx]
+            risk_roi = model.predict_risk_rois[tdx-1 , mdx, sdx]
 
         return (model.proxy_risk_wealth[tdx, mdx, sdx] ==
                 (1. + risk_roi) * prev_risk_wealth +
@@ -146,7 +146,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         because the risk_roi has the same value in all scenarios in the root
         node, it should have the same decision value on the period.
         The risk wealth is the final value of buy and sell amount,
-        then we can give the costraint on risk_wealth which will imply to
+        then we can give the constraint on risk_wealth which will imply to
         buy and sell amounts.
         """
         return (model.proxy_risk_wealth[0, mdx, sdx-1] ==
@@ -184,7 +184,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         mdx: integer, index of symbol
         """
         exp_buy = sum(model.proxy_buy_amounts[tdx, mdx, sdx]
-                         for sdx in model.scenarios) / model.n_scenario
+                     for sdx in model.scenarios) / model.n_scenario
         return model.buy_amounts[tdx, mdx] == exp_buy
 
     instance.buy_decision_constraint = Constraint(
@@ -293,16 +293,17 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         instance.exp_periods, rule=z_decision_rule
     )
 
-    def y_decision_rule(model, tdx, sdx):
+    def y_decision_rule(model, tdx, sdx2):
         """
+        average value of the same branch idx withs different ancestor.
         Parameters
         ------------
         tdx: integer, time index of period
         sdx: integer, index of scenario
         """
         exp_y = (sum(model.proxy_Ys[tdx, sdx, sdx2]
-                     for sdx2 in model.scenarios) / model.n_scenario)
-        return model.Ys[tdx, sdx] == exp_y
+                     for sdx in model.scenarios) / model.n_scenario)
+        return model.Ys[tdx, sdx2] == exp_y
 
     instance.y_decision_constraint = Constraint(
         instance.exp_periods, instance.scenarios, rule=y_decision_rule
@@ -321,7 +322,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
             cvar_expr = (model.Z[tdx] - scenario_expectation /
                          (1. - model.alpha))
             cvar_expr_sum = cvar_expr_sum + cvar_expr
-        return cvar_expr_sum
+        return cvar_expr_sum/model.n_exp_period
 
     instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                         sense=maximize)
@@ -343,17 +344,66 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         results.solver.termination_condition))
     print (results.solver)
 
-    print ("Objective: {}".format(instance.cvar_objective()))
-    for tdx in xrange(n_exp_period):
-        print ("VaR[{}]: {}".format(tdx, instance.Z[tdx].value))
+    # print ("Objective: {}".format(instance.cvar_objective()))
+    # for tdx in xrange(n_exp_period):
+    #     print ("VaR[{}]: {}".format(tdx, instance.Z[tdx].value))
+    #
+    # for tdx in xrange(n_exp_period):
+    #     print '*' * 50
+    #     for mdx in xrange(n_stock):
+    #         print ("buy amounts[{},{}]:{}".format(
+    #             tdx, mdx, instance.buy_amounts[tdx,mdx].value))
+    #         print ("sell amounts[{},{}]:{}".format(
+    #             tdx, mdx, instance.sell_amounts[tdx, mdx].value))
+    #         print ("risk_wealth[{},{}]:{}".format(
+    #             tdx, mdx, instance.risk_wealth[tdx,mdx].value))
+    #     print '*'*50
+
+    # extract results
+    buy_df = np.zeros((n_exp_period, n_stock))
+    sell_df = np.zeros((n_exp_period, n_stock))
+    risk_df = np.zeros((n_exp_period, n_stock))
+    risk_free_arr = np.zeros(n_exp_period)
+    var_arr = np.zeros(n_exp_period)
 
     for tdx in xrange(n_exp_period):
+        # shape: (n_exp_period,)
+        risk_free_arr[tdx] = instance.risk_free_wealth[tdx].value
+        var_arr[tdx] = instance.Z[tdx].value
+
         for mdx in xrange(n_stock):
-            print ("buy amounts:{}".format(instance.buy_amounts[tdx,mdx].value))
-            print ("sell amounts:{}".format(instance.sell_amounts[tdx,
-                                                                  mdx].value))
-            print ("risk_wealth:{}".format(instance.risk_wealth[tdx,mdx].value))
-        print '*'*50
+            # shape: (n_exp_period, n_stock)
+            buy_df[tdx, mdx] = instance.buy_amounts[tdx, mdx].value
+            sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
+            risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
+
+    # shape: (n_exp_period, n_stock)
+    buy_amounts_df = pd.DataFrame(buy_df, index=trans_dates,
+                                  columns=symbols)
+    sell_amounts_df = pd.DataFrame(sell_df, index=trans_dates,
+                                   columns=symbols)
+    risk_wealth_df = pd.DataFrame(risk_df, index=trans_dates,
+                                  columns=symbols)
+    # shape: (n_exp_period, )
+    risk_free_wealth_arr = pd.Series(risk_free_arr, index=trans_dates)
+    estimated_var_arr = pd.Series(var_arr, index=trans_dates)
+
+    Tdx = instance.n_exp_period - 1
+    print ("{} estimated_final_total_wealth: {:.2f}".format(
+        param, risk_df[Tdx].sum() + risk_free_arr[Tdx]))
+
+    results = {
+        # shape: (n_exp_period, n_stock)
+        "buy_amounts_df": buy_amounts_df,
+        "sell_amounts_df": sell_amounts_df,
+        "risk_wealth_df": risk_wealth_df,
+        # shape: (n_exp_period, )
+        "risk_free_wealth_arr": risk_free_wealth_arr,
+        "estimated_var_arr": estimated_var_arr,
+        # float
+        "estimated_cvar": instance.cvar_objective(),
+    }
+    return results
 
 class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
     def __init__(self, symbols, risk_rois, risk_free_rois,
@@ -368,7 +418,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
                  scenario_cnt=1,
                  verbose=False):
         """
-        Multistage min cvar average scenario
+        Multistage min cvar event scenario
         """
         super(MinMSCVaREventSPPortfolio, self).__init__(
             symbols, risk_rois, risk_free_rois, initial_risk_wealth,
@@ -395,13 +445,11 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             self.scenario_panel = pd.read_pickle(scenario_path)
             self.scenario_cnt = scenario_cnt
 
-
     def get_trading_func_name(self, *args, **kwargs):
         return "MS_MinCVaREventSP_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             self.n_stock, self.window_length, self.n_scenario,
             "biased" if self.bias_estimator else "unbiased",
             self.scenario_cnt, self.alpha)
-
 
     def get_estimated_risk_free_rois(self, *arg, **kwargs):
         """ the risk free roi is set all zeros """
@@ -429,7 +477,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
           - key: alpha, str
           - value: results, dict
         """
-        results = min_ms_cvar_eventgsp_portfolio(
+        results = min_ms_cvar_eventsp_portfolio(
             self.symbols,
             self.exp_risk_rois.index,
             self.exp_risk_rois.as_matrix(),
@@ -467,6 +515,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             *args, **kwargs)
 
         func_name = self.get_trading_func_name()
+
         # shape: (n_exp_period, n_stock)
         risk_wealth_df = results['risk_wealth_df']
         buy_amounts_df = results['buy_amounts_df']
@@ -475,12 +524,14 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
         # shape: (n_exp_period, )
         risk_free_wealth = results['risk_free_wealth_arr']
         estimated_var_arr = results["estimated_var_arr"]
+
+        # float
         estimated_cvar = results["estimated_cvar"]
 
         # end of iterations, computing statistics
         Tdx = self.n_exp_period - 1
-        final_wealth = (risk_wealth_df.iloc[Tdx].sum() +
-                        risk_free_wealth[Tdx])
+        final_wealth = (risk_wealth_df.iloc[Tdx].sum() + risk_free_wealth[Tdx])
+
         # compute transaction fee
         trans_fee_loss = (buy_amounts_df.sum() * self.buy_trans_fee +
                           sell_amounts_df.sum() * self.sell_trans_fee)

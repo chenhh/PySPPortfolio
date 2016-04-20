@@ -1002,4 +1002,4 @@ if __name__ == '__main__':
                           bias=False, scenario_cnt=1, alpha=0.9,
                           verbose=False,
                           start_date=date(2005, 1, 3),
-                          end_date=date(2005, 1, 5))
+                          end_date=date(2005, 1, 31))

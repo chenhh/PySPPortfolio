@@ -1,27 +1,27 @@
  test_min_ms_cvar_eventsp(5, 70, 0.95 , 1, date(2005, 1, 3),
                               date(2005, 1, 31))
 
-/usr/bin/python2.7 /home/chenhh/workspace_pycharm/PySPPortfolio/PySPPortfolio/pysp_portfolio/test/test_min_ms_eventsp.py
+C:\Anaconda2\python.exe C:/Users/chen1/Documents/workspace_pycharm/PySPPortfolio/PySPPortfolio/pysp_portfolio/test/test_min_ms_eventsp.py
 transaction dates: 2005-01-03 00:00:00-2005-01-31 00:00:00
 combinations (exp_period, stock, scenarios)=(21, 5, 200)
 constructing risk wealth constraints
-min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 risk wealth decisions constraints OK, 3.283 secs
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 risk wealth decisions constraints OK, 4.849 secs
 constructing risk free wealth constraints
-min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 risk free wealth decisions constraints OK, 0.587 secs
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 risk free wealth decisions constraints OK, 0.895 secs
 constructing cvar constraints
-min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 cvar constraints OK, 116.827 secs
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 cvar constraints OK, 173.002 secs
 constructing objective rule
-min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 objective OK 0.026 secs, start solving:
-solve min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 OK 411.62 secs
+min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 objective OK 0.040 secs, start solving:
+solve min_ms_cvar_eventsp 20050103_20141231_m5_p21_s200_a0.95 OK 811.53 secs
 solver status: ok
 solver termination cond: optimal
 
 - Status: ok
-  User time: 335.36
+  User time: 672.56
   Termination condition: optimal
-  Termination message: Primal simplex - Optimal\x3a Objective = 2.0999232587e+01
+  Termination message: Primal simplex - Optimal\x3a Objective = 2.0999232587e+001
   Error rc: 0
-  Time: 344.243207932
+  Time: 688.256999969
 
 Objective: 20.9992325871
 VaR[0]: 0.98555979147
@@ -33,15 +33,15 @@ VaR[5]: 0.992254086198
 VaR[6]: 0.99843440981
 VaR[7]: 0.999479283197
 VaR[8]: 0.998497776018
-VaR[9]: 1.00231524555
-VaR[10]: 1.0032316368
-VaR[11]: 1.00508404151
+VaR[9]: 1.00231523281
+VaR[10]: 1.00323163424
+VaR[11]: 1.00508403595
 VaR[12]: 1.00627647707
 VaR[13]: 1.01039615891
 VaR[14]: 1.01078102337
 VaR[15]: 1.01377774481
 VaR[16]: 1.01486359008
-VaR[17]: 1.0165885802
+VaR[17]: 1.01658854737
 VaR[18]: 1.01865687554
 VaR[19]: 1.02115535407
 VaR[20]: 1.02134090102
@@ -383,6 +383,6 @@ risk_wealth:0.104802066341
 **************************************************
 None
 all_scenarios_min_cvar_eventsp_portfolio:
-(n_period, n_stock, n_scenarios):(21, 5, 200): 532.3443 secs
+(n_period, n_stock, n_scenarios):(21, 5, 200): 990.3330 secs
 
 Process finished with exit code 0
