@@ -53,9 +53,25 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     # combinations: 10 * 20 * 3 * 10 = 6000
     all_params = []
     if prob_type == "min_ms_cvar_eventsp":
-        for cnt in xrange(1, max_scenario_cnts):
-            all_params=(5, 120, 200, "unbiased", cnt, "0.50")
+        date_pairs = []
+        for year in xrange(2005, 2014+1):
+            for month in xrange(1, 12+1):
+                if month in (1, 3, 5, 7, 8, 10, 12):
+                    date_pairs.append((date(year, month, 1),
+                                       date(year, month, 31)))
+                elif month in (4, 6, 9, 11):
+                    date_pairs.append((date(year, month, 30),
+                                       date(year, month, 30)))
+                else:
+                    date_pairs.append((date(year, 2, 1),
+                                       date(year, 2, 28)))
 
+        for pair in date_pairs:
+            for cnt in xrange(1, max_scenario_cnts):
+                all_params=(5, 120, 200, "unbiased", cnt, "0.50",
+                            pair[0], pair[1])
+
+        return set(all_params)
 
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):

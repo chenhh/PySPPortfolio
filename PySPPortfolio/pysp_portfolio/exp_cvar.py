@@ -847,8 +847,8 @@ if __name__ == '__main__':
                                        alpha=0.95,
                                        start_date=date(2005, 1, 1),
                                        end_date=date(2005, 1, 31),
-                                       solver_io="python",
-                                       keepfiles=True)
+                                       solver_io="lp",
+                                       keepfiles=False)
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
