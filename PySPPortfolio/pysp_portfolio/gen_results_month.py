@@ -41,7 +41,7 @@ def get_month_pairs():
                 month_pairs.append((date(year, month, 1),
                                     date(year, month, 31)))
             elif month in (4, 6, 9, 11):
-                month_pairs.append((date(year, month, 30),
+                month_pairs.append((date(year, month, 1),
                                     date(year, month, 30)))
             else:
                 month_pairs.append((date(year, 2, 1),
