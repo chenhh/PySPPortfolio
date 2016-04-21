@@ -138,8 +138,9 @@ def checking_working_parameters(prob_type, max_scenario_cnts, retry_cnt=5):
         keys = param_key.split('|')
 
         param = (int(keys[0]), int(keys[1]), int(keys[2]), keys[3],
-                 int(keys[4]), keys[5], keys[6].strftime("%Y%m%d"),
-                 keys[7].strftime("%Y%m%d"))
+                 int(keys[4]), keys[5],
+                 date(*map(lambda x:int(x), keys[6].split('-'))),
+                 date(*map(lambda x: int(x), keys[7].split('-'))))
 
         if param in all_params:
             all_params.remove(param)
@@ -190,6 +191,10 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
             working_dict = {}
         else:
             working_dict = retry_read_pickle(log_path)
+
+        param_key = "|".join(str(v) for v in param)
+        working_dict[param_key] = platform.node()
+        retry_write_pickle(working_dict, log_path)
 
         # run experiment
         try:
