@@ -15,7 +15,6 @@ from pyomo.opt import SolverStatus, TerminationCondition
 from PySPPortfolio.pysp_portfolio import *
 from base_model import (SPTradingPortfolio, )
 
-
 def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                              allocated_risk_wealth, allocated_risk_free_wealth,
                              buy_trans_fee, sell_trans_fee, alphas,
@@ -34,7 +33,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
     sell_trans_fee: float
     alphas: list of float
     predict_risk_ret: numpy.array, shape: (n_exp_period, n_stock, n_scenario)
-    predict_risk_free_rois: fnumpy.array, shape:(n_exp_period,)
+    predict_risk_free_rois: numpy.array, shape:(n_exp_period,)
     n_scenario: integer
     solver: str, supported by Pyomo
 
@@ -105,7 +104,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
             risk_roi = model.risk_rois[tdx, mdx]
         else:
             prev_risk_wealth = model.risk_wealth[tdx - 1, mdx]
-            # risk_roi = model.predict_risk_rois[tdx-1, mdx, 157]
+            # realized risk_roi
             risk_roi = model.risk_rois[tdx, mdx]
             # risk_roi = sum(model.predict_risk_rois[tdx - 1, mdx, sdx]
             #                for sdx in instance.scenarios) / instance.n_scenario
@@ -203,7 +202,7 @@ def min_ms_cvar_sp_portfolio(symbols, trans_dates, risk_rois, risk_free_rois,
                              (1. - model.alphas[adx]))
 
                 cvar_expr_sum = cvar_expr_sum + cvar_expr
-            return cvar_expr_sum
+            return cvar_expr_sum/model.n_exp_period
 
         instance.cvar_objective = Objective(rule=cvar_objective_rule,
                                             sense=maximize)

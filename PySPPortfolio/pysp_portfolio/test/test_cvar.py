@@ -965,6 +965,7 @@ def run_min_cvar_sp2_test(n_stock, win_length, n_scenario=200,
     risk_rois = roi_panel.loc[:, symbols, 'simple_roi'].T
     exp_risk_rois = roi_panel.loc[start_date:end_date, symbols,
                     'simple_roi'].T
+    print "risk_rois:", exp_risk_rois
     n_period = exp_risk_rois.shape[0]
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
@@ -999,7 +1000,7 @@ if __name__ == '__main__':
     # min_cvar_3stage_dependent_sp()
     # min_cvar_3stage_stage_sp()
     run_min_cvar_sp2_test(5, 70,
-                          bias=False, scenario_cnt=1, alpha=0.9,
+                          bias=False, scenario_cnt=1, alpha=0.95,
                           verbose=False,
                           start_date=date(2005, 1, 3),
-                          end_date=date(2005, 1, 31))
+                          end_date=date(2005, 1, 10))

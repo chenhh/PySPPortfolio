@@ -156,6 +156,15 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         instance.symbols, range(1, n_scenario),
         rule=risk_wealth_root_rule)
 
+    # explicit constraint
+    def risk_free_wealth_root_rule(model, sdx):
+        return (model.proxy_risk_free_wealth[0, sdx - 1] ==
+                model.proxy_risk_free_wealth[0, sdx])
+
+    instance.risk_free_wealth_root_constraint = Constraint(
+        range(1, n_scenario),
+        rule=risk_free_wealth_root_rule)
+
     # risk wealth constraint
     def risk_wealth_expected_decision_rule(model, tdx, mdx):
         """
@@ -446,6 +455,9 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             if start_date != START_DATE or end_date != END_DATE:
                 self.scenario_panel = self.scenario_panel.loc[
                                       start_date:end_date]
+                print ("scenario panel dates:{}-{}".format(
+                    self.scenario_panel.items[0],
+                    self.scenario_panel.items[-1]))
             self.scenario_cnt = scenario_cnt
 
     def get_trading_func_name(self, *args, **kwargs):
@@ -489,7 +501,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             kwargs['allocated_risk_free_wealth'],
             self.buy_trans_fee,
             self.sell_trans_fee,
-            self.alpha,    # all alphas
+            self.alpha,
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,

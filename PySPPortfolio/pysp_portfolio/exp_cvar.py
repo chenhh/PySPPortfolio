@@ -440,8 +440,7 @@ def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
     reports = instance.run()
     # the reports is the scenario simulation results, it still need to compute
     # truly wealth process by using the wealth process
-    # print reports.keys()
-
+    print reports
     prob_name = "min_ms_cvar_eventsp"
     file_name = '{}_{}.pkl'.format(prob_name, param)
     file_dir = os.path.join(EXP_SP_PORTFOLIO_DIR, prob_name)
@@ -839,7 +838,7 @@ if __name__ == '__main__':
     run_min_ms_cvar_eventsp_simulation(5, 70, n_scenario=200,
                                        alpha=0.95,
                                        start_date=date(2005, 1, 3),
-                                       end_date=date(2005, 1, 4))
+                                       end_date=date(2005, 1, 10))
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)
