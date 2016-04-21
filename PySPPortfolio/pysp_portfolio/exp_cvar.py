@@ -846,7 +846,7 @@ if __name__ == '__main__':
     run_min_ms_cvar_eventsp_simulation(5, 70, n_scenario=200,
                                        alpha=0.95,
                                        start_date=date(2005, 1, 1),
-                                       end_date=date(2005, 3, 31),
+                                       end_date=date(2005, 1, 31),
                                        solver_io="python",
                                        keepfiles=True)
 
