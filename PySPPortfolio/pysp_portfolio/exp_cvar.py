@@ -836,7 +836,7 @@ if __name__ == '__main__':
     #                            verbose=True)
     # run_min_ms_cvar_avgsp_simulation(10, 200, scenario_cnt=1, alpha=0.9)
     run_min_ms_cvar_eventsp_simulation(5, 70, n_scenario=200,
-                                       alpha=0.95,
+                                       alpha=0,
                                        start_date=date(2005, 1, 3),
                                        end_date=date(2005, 1, 10))
 

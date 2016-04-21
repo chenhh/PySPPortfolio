@@ -110,7 +110,7 @@ def test_min_ms_cvar_sp2(n_stock, win_length, alphas, scenario_cnt=1,
 
 if __name__ == '__main__':
     # test_min_ms_cvar_sp()
-    test_min_ms_cvar_sp2(5, 70, [0.95,], 1, date(2005,1,3), date(2005,1,10))
+    test_min_ms_cvar_sp2(5, 70, [0,], 1, date(2005,1,3), date(2005,1,10))
     # test_min_ms_cvar_sp3(date(2005, 1, 1), date(2005, 3, 31))
 
     # import argparse
