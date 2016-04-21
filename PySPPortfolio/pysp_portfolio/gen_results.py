@@ -52,26 +52,6 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     """
     # combinations: 10 * 20 * 3 * 10 = 6000
     all_params = []
-    if prob_type == "min_ms_cvar_eventsp":
-        date_pairs = []
-        for year in xrange(2005, 2014+1):
-            for month in xrange(1, 12+1):
-                if month in (1, 3, 5, 7, 8, 10, 12):
-                    date_pairs.append((date(year, month, 1),
-                                       date(year, month, 31)))
-                elif month in (4, 6, 9, 11):
-                    date_pairs.append((date(year, month, 30),
-                                       date(year, month, 30)))
-                else:
-                    date_pairs.append((date(year, 2, 1),
-                                       date(year, 2, 28)))
-
-        for pair in date_pairs:
-            for cnt in xrange(1, max_scenario_cnts):
-                all_params=(5, 120, 200, "unbiased", cnt, "0.50",
-                            pair[0], pair[1])
-
-        return set(all_params)
 
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
@@ -154,6 +134,10 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
                        "min_ms_cvar_sip"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_all50_*.pkl".format(prob_type)))
+    elif prob_type in ("min_ms_cvar_eventsp"):
+        # min_ms_cvar_eventsp_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
+        pkls = glob.glob(os.path.join(dir_path,
+                                      "{}_*.pkl".format(prob_type)))
 
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep)+1: pkl.rfind('.')]
@@ -164,6 +148,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
                            "min_cvar_eevip", "min_ms_cvar_sp",
                            "min_ms_cvar_sip", "min_ms_cvar_avgsp"):
             params = exp_params[6:]
+
+
         n_stock = int(params[0][params[0].rfind('m')+1:])
         win_length = int(params[1][params[1].rfind('w')+1:])
         n_scenario = int(params[2][params[2].rfind('s')+1:])
@@ -171,8 +157,9 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
         scenario_cnt = int(params[4])
         alpha = params[5][params[5].rfind('a')+1:]
 
-        data_param = (n_stock, win_length, n_scenario, bias, scenario_cnt,
-                      alpha)
+        data_param = [n_stock, win_length, n_scenario, bias, scenario_cnt,
+                      alpha]
+
 
         if data_param in all_params:
             all_params.remove(data_param)
