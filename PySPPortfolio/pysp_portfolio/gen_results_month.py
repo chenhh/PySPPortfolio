@@ -26,8 +26,7 @@ def get_results_dir(prob_type):
     return the results directory of given problem type
     """
     if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2",):
-        return os.path.join(EXP_SP_PORTFOLIO_DIR,
-                            "{}_monthly".format(prob_type))
+        return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
 
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -208,7 +207,6 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
             else:
                 print ("dispatch: can't find {} in working dict.".format(
                     param_key))
-            retry_write_pickle(working_dict, log_path)
             retry_write_pickle(working_dict, log_path)
 
 
