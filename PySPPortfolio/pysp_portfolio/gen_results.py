@@ -52,6 +52,11 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     """
     # combinations: 10 * 20 * 3 * 10 = 6000
     all_params = []
+    if prob_type == "min_ms_cvar_eventsp":
+        for cnt in xrange(1, max_scenario_cnts):
+            all_params=(5, 120, 200, "unbiased", cnt, "0.50")
+
+
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
             if prob_type in ( "min_cvar_sp", "min_cvar_sp2", 'min_cvar_eev',
@@ -80,7 +85,7 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
                                           '0.90', '0.95'):
                                 all_params.append(
                                    (n_stock, win_length,
-                                    n_scenario,bias, cnt, alpha))
+                                    n_scenario, bias, cnt, alpha))
 
     return set(all_params)
 

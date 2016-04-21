@@ -382,7 +382,8 @@ def run_min_ms_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
                                bias=False, scenario_cnt=1, alpha = 0.95,
                                verbose=False, start_date=date(2005,1,3),
-                               end_date=date(2014,12,31)):
+                               end_date=date(2014,12,31), solver_io="python",
+                                       keepfiles=False):
     """
     multi-stage event scenario SP simulation
     the results are independent to the alphas
@@ -405,10 +406,7 @@ def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
 
     # getting experiment symbols
     symbols = EXP_SYMBOLS[:n_stock]
-    param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
-        start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
-        n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
-        scenario_cnt, alpha)
+
 
     # read rois panel
     roi_path = os.path.join(SYMBOLS_PKL_DIR,
@@ -427,16 +425,26 @@ def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
     initial_risk_free_wealth = 1
+
+    param = "{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+        exp_risk_rois.index[0].strftime("%Y%m%d"),
+        exp_risk_rois.index[-1].strftime("%Y%m%d"),
+        n_stock, win_length, n_scenario, "biased" if bias else "unbiased",
+        scenario_cnt, alpha)
+
     instance = MinMSCVaREventSPPortfolio(symbols, risk_rois, risk_free_rois,
-                                   initial_risk_wealth,
-                                   initial_risk_free_wealth,
-                                   window_length=win_length,
-                                   n_scenario=n_scenario,
-                                   bias=bias, alpha=alpha,
-                                   scenario_cnt=scenario_cnt,
-                                   start_date=start_date,
-                                   end_date=end_date,
-                                   verbose=verbose)
+                                         initial_risk_wealth,
+                                         initial_risk_free_wealth,
+                                         window_length=win_length,
+                                         n_scenario=n_scenario,
+                                         bias=bias, alpha=alpha,
+                                         scenario_cnt=scenario_cnt,
+                                         start_date=start_date,
+                                         end_date=end_date,
+                                         verbose=verbose,
+                                         solver_io=solver_io,
+                                         keepfiles=keepfiles
+                                         )
     reports = instance.run()
     # the reports is the scenario simulation results, it still need to compute
     # truly wealth process by using the wealth process
@@ -836,9 +844,11 @@ if __name__ == '__main__':
     #                            verbose=True)
     # run_min_ms_cvar_avgsp_simulation(10, 200, scenario_cnt=1, alpha=0.9)
     run_min_ms_cvar_eventsp_simulation(5, 70, n_scenario=200,
-                                       alpha=0,
-                                       start_date=date(2005, 1, 3),
-                                       end_date=date(2005, 1, 10))
+                                       alpha=0.95,
+                                       start_date=date(2005, 1, 1),
+                                       end_date=date(2005, 3, 31),
+                                       solver_io="python",
+                                       keepfiles=True)
 
     # analysis_results("min_cvar_sp", 5, 50, n_scenario=200,
     #                  bias=False, scenario_cnt=1, alpha=0.95)

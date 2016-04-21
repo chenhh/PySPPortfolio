@@ -19,7 +19,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                                 allocated_risk_free_wealth, buy_trans_fee,
                                 sell_trans_fee, alpha, predict_risk_rois,
                                 predict_risk_free_roi, n_scenario=200,
-                                solver = DEFAULT_SOLVER, verbose=False):
+                                solver = DEFAULT_SOLVER, verbose=False,
+                                solver_io="python", keepfiles=False):
     """
     in each period, when the decision variables have branch, using the
     expected decisions
@@ -37,6 +38,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     predict_risk_free_rois: numpy.array, shape: (n_exp_period,)
     n_scenario: integer
     solver: str, supported by Pyomo
+    solve_io: {"lp", "nl", "os", "python"}
     """
 
     t0 = time()
@@ -46,7 +48,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     # concrete model
     instance = ConcreteModel(name="ms_min_cvar_eventsp_portfolio")
     param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
-        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
+        trans_dates[0].strftime("%Y%m%d"), trans_dates[-1].strftime("%Y%m%d"),
         n_stock, n_exp_period, n_scenario, alpha)
 
     # data
@@ -128,6 +130,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
             risk_roi = model.risk_rois[tdx, mdx]
         else:
             prev_risk_wealth = model.risk_wealth[tdx-1, mdx]
+            # t-th day realization
             risk_roi = model.predict_risk_rois[tdx-1 , mdx, sdx]
 
         return (model.proxy_risk_wealth[tdx, mdx, sdx] ==
@@ -156,14 +159,6 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         instance.symbols, range(1, n_scenario),
         rule=risk_wealth_root_rule)
 
-    # explicit constraint
-    def risk_free_wealth_root_rule(model, sdx):
-        return (model.proxy_risk_free_wealth[0, sdx - 1] ==
-                model.proxy_risk_free_wealth[0, sdx])
-
-    instance.risk_free_wealth_root_constraint = Constraint(
-        range(1, n_scenario),
-        rule=risk_free_wealth_root_rule)
 
     # risk wealth constraint
     def risk_wealth_expected_decision_rule(model, tdx, mdx):
@@ -340,8 +335,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
            "start solving:".format(param, time()-t3))
 
     t4 = time()
-    opt = SolverFactory(solver)
-    results = opt.solve(instance)
+    opt = SolverFactory(solver, solver_io=solver_io)
+    results = opt.solve(instance, keepfiles=keepfiles)
     instance.solutions.load_from(results)
     if verbose:
         display(instance)
@@ -353,22 +348,12 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         results.solver.termination_condition))
     print (results.solver)
 
-    # print ("Objective: {}".format(instance.cvar_objective()))
-    # for tdx in xrange(n_exp_period):
-    #     print ("VaR[{}]: {}".format(tdx, instance.Z[tdx].value))
-    #
-    # for tdx in xrange(n_exp_period):
-    #     print '*' * 50
-    #     for mdx in xrange(n_stock):
-    #         print ("buy amounts[{},{}]:{}".format(
-    #             tdx, mdx, instance.buy_amounts[tdx,mdx].value))
-    #         print ("sell amounts[{},{}]:{}".format(
-    #             tdx, mdx, instance.sell_amounts[tdx, mdx].value))
-    #         print ("risk_wealth[{},{}]:{}".format(
-    #             tdx, mdx, instance.risk_wealth[tdx,mdx].value))
-    #     print '*'*50
-
-    # extract results
+     # extract results
+    proxy_buy_pnl = np.zeros((n_exp_period, n_stock, n_scenario))
+    proxy_sell_pnl = np.zeros((n_exp_period, n_stock, n_scenario))
+    proxy_risk_pnl= np.zeros((n_exp_period, n_stock, n_scenario))
+    proxy_risk_free_df = np.zeros((n_exp_period, n_scenario))
+    proxy_var_df = np.zeros((n_exp_period, n_scenario))
     buy_df = np.zeros((n_exp_period, n_stock))
     sell_df = np.zeros((n_exp_period, n_stock))
     risk_df = np.zeros((n_exp_period, n_stock))
@@ -386,6 +371,33 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
             sell_df[tdx, mdx] = instance.sell_amounts[tdx, mdx].value
             risk_df[tdx, mdx] = instance.risk_wealth[tdx, mdx].value
 
+            for sdx in xrange(n_scenario):
+                proxy_buy_pnl[tdx, mdx, sdx] = instance.proxy_buy_amounts[
+                    tdx, mdx, sdx].value
+                proxy_sell_pnl[tdx, mdx, sdx] = instance.proxy_sell_amounts[
+                    tdx, mdx, sdx].value
+                proxy_risk_pnl[tdx, mdx, sdx] = instance.proxy_risk_wealth[
+                    tdx, mdx, sdx].value
+
+        for sdx in xrange(n_scenario):
+            proxy_risk_free_df[tdx, sdx] = \
+                instance.proxy_risk_free_wealth[tdx, sdx].value
+            proxy_var_df[tdx, sdx] = instance.proxy_Z[tdx, sdx].value
+
+    # shape: (n_exp_period, n_stock, n_scenario)
+    proxy_buy_amounts_pnl = pd.Panel(proxy_buy_pnl, items=trans_dates,
+                                     major_axis=symbols)
+    proxy_sell_amounts_pnl = pd.Panel(proxy_sell_pnl, items=trans_dates,
+                                     major_axis=symbols)
+    proxy_risk_wealth_pnl = pd.Panel(proxy_risk_pnl, items=trans_dates,
+                                     major_axis=symbols)
+
+    # shape: (n_exp_period, n_scenario)
+    proxy_risk_free_wealth_df = pd.DataFrame(proxy_risk_free_df,
+                                           index=trans_dates)
+    proxy_estimated_var_df =   pd.DataFrame(proxy_var_df,
+                                           index=trans_dates)
+
     # shape: (n_exp_period, n_stock)
     buy_amounts_df = pd.DataFrame(buy_df, index=trans_dates,
                                   columns=symbols)
@@ -398,10 +410,20 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     estimated_var_arr = pd.Series(var_arr, index=trans_dates)
 
     Tdx = instance.n_exp_period - 1
-    print ("{} estimated_final_total_wealth: {:.2f}".format(
-        param, risk_df[Tdx].sum() + risk_free_arr[Tdx]))
+    exp_final_wealth = risk_df[Tdx].sum() + risk_free_arr[Tdx]
+    print ("{} expected_final_total_wealth: {:.2f}".format(
+        param, exp_final_wealth ))
 
     results = {
+        # shape: (n_exp_period, n_stock, n_scenario)
+        "proxy_buy_amounts_pnl": proxy_buy_amounts_pnl,
+        "proxy_sell_amounts_pnl": proxy_sell_amounts_pnl,
+        "proxy_risk_wealth_pnl": proxy_risk_wealth_pnl,
+
+        # shape: (n_exp_period, n_scenario)
+        "proxy_risk_free_wealth_df": proxy_risk_free_wealth_df,
+        "proxy_estimated_var_df": proxy_estimated_var_df,
+
         # shape: (n_exp_period, n_stock)
         "buy_amounts_df": buy_amounts_df,
         "sell_amounts_df": sell_amounts_df,
@@ -411,6 +433,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         "estimated_var_arr": estimated_var_arr,
         # float
         "estimated_cvar": instance.cvar_objective(),
+        "expected_final_wealth":exp_final_wealth,
     }
     return results
 
@@ -425,7 +448,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
                  bias=BIAS_ESTIMATOR,
                  alpha=0.9,
                  scenario_cnt=1,
-                 verbose=False):
+                 verbose=False, solver_io="python", keepfiles=False):
         """
         Multistage min cvar event scenario
         """
@@ -436,6 +459,8 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             verbose)
 
         self.alpha = float(alpha)
+        self.solver_io = solver_io
+        self.keepfiles = keepfiles
 
         # try to load generated scenario panel
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
@@ -461,7 +486,9 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             self.scenario_cnt = scenario_cnt
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MS_MinCVaREventSP_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+        return "MS_MinCVaREventSP_{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+            self.exp_start_date.strftime("%Y%m%d"),
+            self.exp_end_date.strftime("%Y%m%d"),
             self.n_stock, self.window_length, self.n_scenario,
             "biased" if self.bias_estimator else "unbiased",
             self.scenario_cnt, self.alpha)
@@ -505,6 +532,8 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
             kwargs['estimated_risk_rois'].as_matrix(),
             kwargs['estimated_risk_free_roi'],
             self.n_scenario,
+            solver_io=self.solver_io,
+            keepfiles=self.keepfiles,
         )
         return results
 
@@ -538,10 +567,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
 
         # shape: (n_exp_period, )
         risk_free_wealth = results['risk_free_wealth_arr']
-        estimated_var_arr = results["estimated_var_arr"]
 
-        # float
-        estimated_cvar = results["estimated_cvar"]
 
         # end of iterations, computing statistics
         Tdx = self.n_exp_period - 1
@@ -574,53 +600,23 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
         simulation_reports['scenario_cnt'] = self.scenario_cnt
         simulation_reports['buy_amounts_df'] = buy_amounts_df
         simulation_reports['sell_amounts_df'] =sell_amounts_df
+        simulation_reports['estimated_var_arr']= results['estimated_var_arr']
+        simulation_reports['estimated_cvar'] = results['estimated_cvar']
+
+        simulation_reports["proxy_buy_amounts_pnl"]=results["proxy_buy_amounts_pnl"]
+        simulation_reports["proxy_sell_amounts_pnl"]=results[
+            "proxy_sell_amounts_pnl"]
+        simulation_reports[
+            "proxy_risk_wealth_pnl"]=results["proxy_risk_wealth_pnl"]
+
+        # shape: (n_exp_period, n_scenario)
+        simulation_reports["proxy_risk_free_wealth_df"]= results[
+            "proxy_risk_free_wealth_df"]
+        simulation_reports[
+            "proxy_estimated_var_df"]=results["proxy_estimated_var_df"]
 
         # add simulation time
-        simulation_reports['simulation_time'] = time() - 0
-
-        # true reports
-        real_risk_wealth_df = pd.DataFrame(
-            np.zeros((self.n_exp_period, self.n_stock)),
-            index=risk_wealth_df.index,
-            columns=self.symbols)
-        real_risk_free_wealth = pd.Series(
-            np.zeros(self.n_exp_period), index=risk_wealth_df.index)
-
-
-        for tdx in xrange(self.n_exp_period):
-            if tdx == 0:
-                # shape: (n_stock,) and float
-                prev_risk_wealth = self.initial_risk_wealth
-                prev_risk_free_wealth = self.initial_risk_free_wealth
-            else:
-                prev_risk_wealth = real_risk_wealth_df.iloc[tdx-1]
-                prev_risk_free_wealth = real_risk_free_wealth.iloc[tdx-1]
-
-            real_risk_wealth_df.iloc[tdx] = (
-                (1+self.exp_risk_rois.iloc[tdx]) * prev_risk_wealth  +
-                buy_amounts_df.iloc[tdx] -
-                sell_amounts_df.iloc[tdx]
-            )
-            real_risk_free_wealth.iloc[tdx] = (
-                (1 + self.exp_risk_free_rois.iloc[tdx]) *
-                prev_risk_free_wealth -
-                (1+self.buy_trans_fee) * buy_amounts_df.iloc[tdx].sum() +
-                (1-self.sell_trans_fee) * sell_amounts_df.iloc[tdx].sum()
-            )
-
-        simulation_reports['real_risk_wealth_df'] = real_risk_wealth_df
-        simulation_reports['real_risk_free_wealth_df'] = real_risk_free_wealth
-        # print real_risk_wealth_df
-        # print real_risk_free_wealth
-        Tdx = self.n_exp_period - 1
-        real_estimated_final_wealth = (real_risk_wealth_df.iloc[Tdx].sum() +
-                        real_risk_free_wealth[Tdx])
-
-        real_feasible = np.all(real_risk_wealth_df>0)
-        print "real estimated risk_wealth: {}, feasible: {}".format(
-                real_estimated_final_wealth, real_feasible)
-        simulation_reports['real_estimated_final_wealth'] = real_estimated_final_wealth
-        simulation_reports['real_feasible'] = real_feasible
+        simulation_reports['simulation_time'] = time() - t0
 
         print ("{} {} OK [{}-{}], {:.4f}.secs".format(
             func_name, self.alpha, self.exp_risk_rois.index[0],
