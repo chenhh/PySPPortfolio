@@ -81,7 +81,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
     if prob_type in ("min_ms_cvar_eventsp"):
         # min_ms_cvar_eventsp_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
-        pkls = glob.glob(os.path.join(dir_path, "{}_*.pkl".format(prob_type)))
+        pkls = glob.glob(os.path.join(dir_path, "{}_20*.pkl".format(
+            prob_type)))
 
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep) + 1: pkl.rfind('.')]
