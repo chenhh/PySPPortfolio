@@ -76,8 +76,12 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     all_params = []
     for pair in get_month_pairs():
         for cnt in xrange(1, max_scenario_cnts + 1):
-            all_params.append((5, 120, 200, "unbiased", cnt, "0.50",
-                               pair[0], pair[1]))
+            # all_params.append((5, 120, 200, "unbiased", cnt, "0.50",
+            #                    pair[0], pair[1]))
+            all_params.append((5, 150, 200, "unbiased", cnt, "0.80",
+                       pair[0], pair[1]))
+            all_params.append((10, 90, 200, "unbiased", cnt, "0.50",
+                       pair[0], pair[1]))
     return set(all_params)
 
 
