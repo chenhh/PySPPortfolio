@@ -101,7 +101,6 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep) + 1: pkl.rfind('.')]
-        print name
         exp_params = name.split('_')
         if prob_type in ("min_ms_cvar_eventsp",):
             d1, d2 = exp_params[4], exp_params[5]
@@ -118,9 +117,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
         data_param = (n_stock, win_length, n_scenario, bias, scenario_cnt,
                       alpha, start_date, end_date)
-        print data_param
         # print all_params
-        print  data_param in all_params
         if data_param in all_params:
             all_params.remove(data_param)
 
