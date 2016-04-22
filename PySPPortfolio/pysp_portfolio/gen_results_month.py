@@ -194,9 +194,9 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
         print ("dispatch: {},  current #. of unfinished parameters: {}".format(
             prob_type, len(unfinished_params)))
 
-        if len(unfinished_params) <= 100:
-            for u_param in unfinished_params:
-                print ("unfinished: {}".format(u_param))
+        # if len(unfinished_params) <= 100:
+        #     for u_param in unfinished_params:
+        #         print ("unfinished: {}".format(u_param))
 
         param = unfinished_params.pop()
         n_stock, win_length, n_scenario, bias, cnt, alpha, start_date, \

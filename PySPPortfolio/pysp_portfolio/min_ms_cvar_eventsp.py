@@ -6,6 +6,7 @@ License: GPL v2
 
 from __future__ import division
 from time import time
+from datetime import datetime
 import os
 import numpy as np
 import pandas as pd
@@ -44,7 +45,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     t0 = time()
     n_exp_period = risk_rois.shape[0]
     n_stock = len(symbols)
-    print ("transaction dates: {}-{}".format(trans_dates[0], trans_dates[-1]))
+    print ("start time: {}".format(datetime.now()))
     # concrete model
     instance = ConcreteModel(name="ms_min_cvar_eventsp_portfolio")
     param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
