@@ -33,18 +33,38 @@ def get_results_dir(prob_type):
 
 
 def get_month_pairs():
-    month_pairs = []
-    for year in xrange(2005, 2014 + 1):
-        for month in xrange(1, 12 + 1):
-            if month in (1, 3, 5, 7, 8, 10, 12):
-                month_pairs.append((date(year, month, 1),
-                                    date(year, month, 31)))
-            elif month in (4, 6, 9, 11):
-                month_pairs.append((date(year, month, 1),
-                                    date(year, month, 30)))
-            else:
-                month_pairs.append((date(year, 2, 1),
-                                    date(year, 2, 28)))
+    """
+    month pairs from 2005 to 2014
+    """
+
+    # roi_path = os.path.join(SYMBOLS_PKL_DIR,
+    #                         'TAIEX_2005_largest50cap_panel.pkl')
+    # if not os.path.exists(roi_path):
+    #     raise ValueError("{} roi panel does not exist.".format(roi_path))
+    #
+    # # shape: (n_period, n_stock, {'simple_roi', 'close_price'})
+    # roi_panel = pd.read_pickle(roi_path)
+    #
+    # # shape: (n_period, n_stock)
+    # exp_rois = roi_panel.loc[START_DATE:END_DATE]
+    #
+    # month_pairs = []
+    # for year in xrange(2005, 2014 + 1):
+    #     for month in xrange(1, 12 + 1):
+    #         if month in (1, 3, 5, 7, 8, 10, 12):
+    #             start, end = date(year, month, 1), date(year, month, 31)
+    #         elif month in (4, 6, 9, 11):
+    #             start, end = date(year, month, 1), date(year, month, 30)
+    #         else:
+    #             start, end = date(year, 2, 1), date(year, 2, 28)
+    #         dates = exp_rois.loc[start:end].items
+    #         month_pairs.append((dates[0].to_datetime().date(),
+    #                                 dates[-1].to_datetime().date()))
+    #
+    # data =pd.read_pickle(os.path.join(TMP_DIR, 'exp_dates_monthly.pkl'))
+    month_pairs = pd.read_pickle(os.path.join(DATA_DIR,
+                                              'exp_dates_monthly.pkl'))
+
     return month_pairs
 
 
@@ -52,7 +72,6 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     """
     file_name of all experiment parameters
     (n_stock, win_length, n_scenario, bias, cnt, alpha, start_date, end_date)
-
     """
     all_params = []
     for pair in get_month_pairs():
@@ -65,14 +84,10 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
 def checking_finished_parameters(prob_type, max_scenario_cnts):
     """
     return unfinished experiment parameters.
-    example:
-    min_cvar_sip_20050103_20141231_all50_m5_w100_s200_unbiased_1_a0.95
-    ['min', 'cvar', 'sp', '20050103', '20141231', 'm5', 'w50', 's200',
-     'unbiased', '1', 'a0.95']
+    "min_ms_cvar_eventsp_20070702_20070731_m5_w120_s200_unbiased_1_a0.50.pkl"
+    ['min', 'ms', 'cvar', 'eventsp', '20070702', '20070731', 'm5', 'w120',
+    's200', 'unbiased', '1', 'a0.50.pkl']
 
-    min_cvar_sp_20050103_20141231_m5_w50_s200_unbiased_1_a0.95
-    ['min', 'cvar', 'sip', '20050103', '20141231', 'all50', 'm5', 'w100',
-     's200', 'unbiased', '1', 'a0.95']
     """
     dir_path = get_results_dir(prob_type)
 
@@ -86,6 +101,7 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep) + 1: pkl.rfind('.')]
+        print name
         exp_params = name.split('_')
         if prob_type in ("min_ms_cvar_eventsp",):
             d1, d2 = exp_params[4], exp_params[5]
@@ -102,13 +118,14 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
         data_param = (n_stock, win_length, n_scenario, bias, scenario_cnt,
                       alpha, start_date, end_date)
-
+        print data_param
+        # print all_params
+        print  data_param in all_params
         if data_param in all_params:
             all_params.remove(data_param)
 
     # return unfinished params
     return all_params
-
 
 def checking_working_parameters(prob_type, max_scenario_cnts, retry_cnt=5):
     """
@@ -142,7 +159,6 @@ def checking_working_parameters(prob_type, max_scenario_cnts, retry_cnt=5):
                  int(keys[4]), keys[5],
                  date(*map(lambda x:int(x), keys[6].split('-'))),
                  date(*map(lambda x: int(x), keys[7].split('-'))))
-
         if param in all_params:
             all_params.remove(param)
             print ("working {}: {} is running on {}.".format(
@@ -217,6 +233,10 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
 
 
 if __name__ == '__main__':
+    # print get_month_pairs()
+    # print len(all_experiment_parameters("min_ms_cvar_eventsp", 1))
+    # res = checking_finished_parameters("min_ms_cvar_eventsp", 1)
+    # checking_working_parameters("min_ms_cvar_eventsp", 1)
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--prob_type", required=True, type=str)
