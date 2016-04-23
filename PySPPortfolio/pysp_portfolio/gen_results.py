@@ -16,7 +16,8 @@ from exp_cvar import (run_min_cvar_sip_simulation, run_min_cvar_sp_simulation,
                   run_min_cvar_sp2_simulation, run_min_cvar_sip2_simulation,
                   run_min_cvar_eev_simulation, run_min_ms_cvar_sp_simulation,
                   run_min_cvar_eevip_simulation,
-                  run_min_ms_cvar_avgsp_simulation,)
+                  run_min_ms_cvar_avgsp_simulation,
+                  run_min_ms_cvar_eventsp_simulation,)
 
 def get_results_dir(prob_type):
     """
@@ -32,7 +33,7 @@ def get_results_dir(prob_type):
                      "min_cvar_sip", "min_cvar_sip2",
                      "min_cvar_eev", "min_cvar_eevip",
                      "min_ms_cvar_sp", "min_ms_cvar_sip",
-                     "min_ms_cvar_avgsp"):
+                     "min_ms_cvar_avgsp", "min_ms_cvar_eventsp"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -56,7 +57,8 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
             if prob_type in ( "min_cvar_sp", "min_cvar_sp2", 'min_cvar_eev',
-                              "min_ms_cvar_sp", "min_ms_cvar_avgsp"):
+                              "min_ms_cvar_sp", "min_ms_cvar_avgsp",
+                              "min_ms_cvar_eventsp"):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
@@ -126,7 +128,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
     # linear programming
     if prob_type in ("min_cvar_sp", "min_cvar_sp2",
-                     "min_cvar_eev", "min_ms_cvar_sp", "min_ms_cvar_avgsp"):
+                     "min_cvar_eev", "min_ms_cvar_sp", "min_ms_cvar_avgsp",
+                     "min_ms_cvar_eventsp"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_*.pkl".format(prob_type)))
     # mixed integer programming
@@ -134,10 +137,6 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
                        "min_ms_cvar_sip"):
         pkls = glob.glob(os.path.join(dir_path,
                     "{}_20050103_20141231_all50_*.pkl".format(prob_type)))
-    elif prob_type in ("min_ms_cvar_eventsp"):
-        # min_ms_cvar_eventsp_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
-        pkls = glob.glob(os.path.join(dir_path,
-                                      "{}_*.pkl".format(prob_type)))
 
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep)+1: pkl.rfind('.')]
@@ -146,9 +145,9 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
             params = exp_params[5:]
         elif prob_type in ("min_cvar_sip", "min_cvar_sip2",
                            "min_cvar_eevip", "min_ms_cvar_sp",
-                           "min_ms_cvar_sip", "min_ms_cvar_avgsp"):
+                           "min_ms_cvar_sip", "min_ms_cvar_avgsp",
+                           "min_ms_cvar_eventsp"):
             params = exp_params[6:]
-
 
         n_stock = int(params[0][params[0].rfind('m')+1:])
         win_length = int(params[1][params[1].rfind('w')+1:])
@@ -159,7 +158,6 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
 
         data_param = [n_stock, win_length, n_scenario, bias, scenario_cnt,
                       alpha]
-
 
         if data_param in all_params:
             all_params.remove(data_param)
@@ -187,7 +185,7 @@ def checking_working_parameters(prob_type, max_scenario_cnts):
     file_path = os.path.join(dir_path, log_file)
     if not os.path.exists(file_path):
         # no working parameters
-        print ("checking_working: {} no working parameters".format(prob_type))
+        print ("{} no working log file.".format(prob_type))
         return all_params
 
     data = retry_read_pickle(file_path)
@@ -200,9 +198,9 @@ def checking_working_parameters(prob_type, max_scenario_cnts):
 
         if param in all_params:
             all_params.remove(param)
-            print ("checking_working {}: {} under processing on {}.".format(
+            print ("working {}: {} is running on {}.".format(
                 prob_type, param, node))
-    print ("checking_working params: {}".format(len(data)))
+    print ("{} running parameters.".format(len(data)))
 
     # unfinished params
     return all_params
@@ -248,7 +246,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
     params2 = checking_working_parameters(prob_type, max_scenario_cnts)
     unfinished_params = params1.intersection(params2)
 
-    print ("dispatch: {} initial unfinished params: {}".format(
+    print ("dispatch: {}, #. unfinished parameters: {}".format(
         prob_type, len(unfinished_params)))
 
     while len(unfinished_params) > 0:
@@ -257,7 +255,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
         params2 = checking_working_parameters(prob_type, max_scenario_cnts)
         unfinished_params = params1.intersection(params2)
 
-        print ("dispatch: {} current unfinished params: {}".format(
+        print ("dispatch: {},  current #. of unfinished parameters: {}".format(
             prob_type, len(unfinished_params)))
 
         if len(unfinished_params) <= 100:
@@ -322,6 +320,10 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
             elif prob_type == "min_ms_cvar_avgsp":
                 run_min_ms_cvar_avgsp_simulation(n_stock, win_length,
                                 n_scenario, bias, cnt, alpha)
+            elif prob_type == "min_ms_cvar_eventsp":
+                run_min_ms_cvar_eventsp_simulation(n_stock, win_length,
+                                      n_scenario, bias, cnt, alpha,
+                                                   solver_io="lp")
         except Exception as e:
             print ("dispatch: run experiment:", param, e)
         finally:

@@ -27,12 +27,11 @@ def get_results_dir(prob_type):
     """
     if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2",):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
-
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
 
 
-def get_month_pairs():
+def get_year_pairs():
     """
     month pairs from 2005 to 2014
     """
@@ -48,24 +47,19 @@ def get_month_pairs():
     # # shape: (n_period, n_stock)
     # exp_rois = roi_panel.loc[START_DATE:END_DATE]
     #
-    # month_pairs = []
+    # year_pairs = []
     # for year in xrange(2005, 2014 + 1):
-    #     for month in xrange(1, 12 + 1):
-    #         if month in (1, 3, 5, 7, 8, 10, 12):
-    #             start, end = date(year, month, 1), date(year, month, 31)
-    #         elif month in (4, 6, 9, 11):
-    #             start, end = date(year, month, 1), date(year, month, 30)
-    #         else:
-    #             start, end = date(year, 2, 1), date(year, 2, 28)
-    #         dates = exp_rois.loc[start:end].items
-    #         month_pairs.append((dates[0].to_datetime().date(),
-    #                                 dates[-1].to_datetime().date()))
+    #     start, end = date(year, 1, 1), date(year, 12, 31)
+    #     dates = exp_rois.loc[start:end].items
+    #     year_pairs.append((dates[0].to_datetime().date(),
+    #                             dates[-1].to_datetime().date()))
     #
-    # data =pd.read_pickle(os.path.join(TMP_DIR, 'exp_dates_monthly.pkl'))
-    month_pairs = pd.read_pickle(os.path.join(DATA_DIR,
-                                              'exp_dates_monthly.pkl'))
+    # data =pd.to_pickle(year_pairs, os.path.join(TMP_DIR,
+    #                                             'exp_dates_yearly.pkl'))
+    year_pairs = pd.read_pickle(os.path.join(DATA_DIR,
+                                              'exp_dates_yearly.pkl'))
 
-    return month_pairs
+    return year_pairs
 
 
 def all_experiment_parameters(prob_type, max_scenario_cnts):
@@ -74,7 +68,7 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     (n_stock, win_length, n_scenario, bias, cnt, alpha, start_date, end_date)
     """
     all_params = []
-    for pair in get_month_pairs():
+    for pair in get_year_pairs():
         for cnt in xrange(1, max_scenario_cnts + 1):
             for day in (150,):
                 for alpha in ["0.50", "0.60", "0.70", "0.80", "0.90"]:
@@ -232,7 +226,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
 
 
 if __name__ == '__main__':
-    # print get_month_pairs()
+    # print get_year_pairs()
     # print len(all_experiment_parameters("min_ms_cvar_eventsp", 1))
     # res = checking_finished_parameters("min_ms_cvar_eventsp", 1)
     # checking_working_parameters("min_ms_cvar_eventsp", 1)

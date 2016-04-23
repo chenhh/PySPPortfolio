@@ -101,8 +101,6 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     # shape: (n_exp_period, )
     # decision from period 2 to T+1
     instance.Z = Var(instance.exp_periods, within=Reals)
-    instance.proxy_Z = Var(instance.exp_periods,
-                           instance.scenarios, within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
     # in each stage, there is only one scenario,
@@ -110,8 +108,6 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     # decision from period 2 to T+1
     instance.Ys = Var(instance.exp_periods, instance.scenarios,
                       within=NonNegativeReals)
-    instance.proxy_Ys = Var(instance.exp_periods, instance.scenarios,
-                            instance.scenarios, within=NonNegativeReals)
 
     print ("combinations (exp_period, stock, scenarios)=({}, {}, {})".format(
         n_exp_period, n_stock, n_scenario))
@@ -265,7 +261,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     t2 = time()
 
     # constraint
-    def cvar_constraint_rule(model, tdx, sdx, sdx2):
+    def cvar_constraint_rule(model, tdx, sdx):
         """
         auxiliary variable Y depends on scenario. CVaR <= VaR
         Parameters:
@@ -274,48 +270,18 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         sdx: integer, scenario index
         sdx2: integer, the descent scenario index of sdx
         """
-        risk_wealth = sum((1. + model.predict_risk_rois[tdx, mdx, sdx2]) *
-                          model.proxy_risk_wealth[tdx, mdx, sdx]
+        risk_wealth = sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
+                          model.risk_wealth[tdx, mdx]
                           for mdx in model.symbols)
-        return model.proxy_Ys[tdx, sdx, sdx2] >= (model.proxy_Z[tdx, sdx] -
-                                            risk_wealth)
+        return model.Ys[tdx, sdx] >= (model.Z[tdx] - risk_wealth)
 
     instance.cvar_constraint = Constraint(
-        instance.exp_periods, instance.scenarios, instance.scenarios,
+        instance.exp_periods, instance.scenarios,
         rule=cvar_constraint_rule)
 
-    def z_decision_rule(model, tdx):
-        """
-        Parameters
-        ------------
-        tdx: integer, time index of period
-        """
-        exp_Z = (sum(model.proxy_Z[tdx, sdx]
-                     for sdx in model.scenarios) / model.n_scenario)
-        return model.Z[tdx] == exp_Z
-
-    instance.z_decision_constraint = Constraint(
-        instance.exp_periods, rule=z_decision_rule
-    )
-
-    def y_decision_rule(model, tdx, sdx2):
-        """
-        average value of the same branch idx withs different ancestor.
-        Parameters
-        ------------
-        tdx: integer, time index of period
-        sdx: integer, index of scenario
-        """
-        exp_y = (sum(model.proxy_Ys[tdx, sdx, sdx2]
-                     for sdx in model.scenarios) / model.n_scenario)
-        return model.Ys[tdx, sdx2] == exp_y
-
-    instance.y_decision_constraint = Constraint(
-        instance.exp_periods, instance.scenarios, rule=y_decision_rule
-    )
     print ("min_ms_cvar_eventsp {} cvar constraints OK, "
            "{:.3f} secs".format(param, time() - t2))
-    print ("constructing objective rule")
+    print ("constructing objective rule.")
     t3 = time()
 
     # objective
@@ -354,7 +320,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     proxy_sell_pnl = np.zeros((n_exp_period, n_stock, n_scenario))
     proxy_risk_pnl= np.zeros((n_exp_period, n_stock, n_scenario))
     proxy_risk_free_df = np.zeros((n_exp_period, n_scenario))
-    proxy_var_df = np.zeros((n_exp_period, n_scenario))
+    # proxy_var_df = np.zeros((n_exp_period, n_scenario))
     buy_df = np.zeros((n_exp_period, n_stock))
     sell_df = np.zeros((n_exp_period, n_stock))
     risk_df = np.zeros((n_exp_period, n_stock))
@@ -383,7 +349,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         for sdx in xrange(n_scenario):
             proxy_risk_free_df[tdx, sdx] = \
                 instance.proxy_risk_free_wealth[tdx, sdx].value
-            proxy_var_df[tdx, sdx] = instance.proxy_Z[tdx, sdx].value
+            # proxy_var_df[tdx, sdx] = instance.proxy_Z[tdx, sdx].value
 
     # shape: (n_exp_period, n_stock, n_scenario)
     proxy_buy_amounts_pnl = pd.Panel(proxy_buy_pnl, items=trans_dates,
@@ -396,8 +362,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     # shape: (n_exp_period, n_scenario)
     proxy_risk_free_wealth_df = pd.DataFrame(proxy_risk_free_df,
                                            index=trans_dates)
-    proxy_estimated_var_df =   pd.DataFrame(proxy_var_df,
-                                           index=trans_dates)
+    # proxy_estimated_var_df =   pd.DataFrame(proxy_var_df,
+    #                                        index=trans_dates)
 
     # shape: (n_exp_period, n_stock)
     buy_amounts_df = pd.DataFrame(buy_df, index=trans_dates,
@@ -423,7 +389,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
 
         # shape: (n_exp_period, n_scenario)
         "proxy_risk_free_wealth_df": proxy_risk_free_wealth_df,
-        "proxy_estimated_var_df": proxy_estimated_var_df,
+        # "proxy_estimated_var_df": proxy_estimated_var_df,
 
         # shape: (n_exp_period, n_stock)
         "buy_amounts_df": buy_amounts_df,
@@ -613,8 +579,8 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
         # shape: (n_exp_period, n_scenario)
         simulation_reports["proxy_risk_free_wealth_df"]= results[
             "proxy_risk_free_wealth_df"]
-        simulation_reports[
-            "proxy_estimated_var_df"]=results["proxy_estimated_var_df"]
+        # simulation_reports[
+        #     "proxy_estimated_var_df"]=results["proxy_estimated_var_df"]
 
         # add simulation time
         simulation_reports['simulation_time'] = time() - t0
