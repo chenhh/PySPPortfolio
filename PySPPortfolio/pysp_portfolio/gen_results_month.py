@@ -78,12 +78,13 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
         for cnt in xrange(1, max_scenario_cnts + 1):
             # all_params.append((5, 120, 200, "unbiased", cnt, "0.50",
             #                    pair[0], pair[1]))
-            all_params.append((5, 150, 200, "unbiased", cnt, "0.80",
+            for alpha in ["0.50", "0.60", "0.70", "0.80", "0.90"]:
+                all_params.append((5, 150, 200, "unbiased", cnt, alpha,
                        pair[0], pair[1]))
-            all_params.append((10, 90, 200, "unbiased", cnt, "0.50",
-                       pair[0], pair[1]))
-            all_params.append((15, 100, 200, "unbiased", cnt, "0.65",
-                       pair[0], pair[1]))
+            # all_params.append((10, 90, 200, "unbiased", cnt, "0.50",
+            #            pair[0], pair[1]))
+            # all_params.append((15, 100, 200, "unbiased", cnt, "0.65",
+            #            pair[0], pair[1]))
             # all_params.append((20, 110, 200, "unbiased", cnt, "0.60",
             #            pair[0], pair[1]))
             # all_params.append((25, 120, 200, "unbiased", cnt, "0.55",
