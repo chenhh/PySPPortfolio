@@ -1000,7 +1000,7 @@ if __name__ == '__main__':
     # min_cvar_3stage_dependent_sp()
     # min_cvar_3stage_stage_sp()
     run_min_cvar_sp2_test(5, 70,
-                          bias=False, scenario_cnt=1, alpha=0.95,
+                          bias=False, scenario_cnt=1, alpha=0.5,
                           verbose=False,
-                          start_date=date(2005, 1, 3),
-                          end_date=date(2005, 1, 31))
+                          start_date=date(2005, 1, 1),
+                          end_date=date(2005,3, 30))

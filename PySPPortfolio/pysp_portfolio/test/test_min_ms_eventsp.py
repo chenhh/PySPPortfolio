@@ -69,4 +69,4 @@ def test_min_ms_cvar_eventsp(n_stock, win_length, alphas, scenario_cnt=1,
 
 if __name__ == '__main__':
     test_min_ms_cvar_eventsp(5, 70, 0.95 , 1, date(2005, 1, 3),
-                              date(2005, 1, 4))
+                              date(2005, 1, 31))

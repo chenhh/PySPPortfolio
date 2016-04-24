@@ -21,7 +21,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
                                 sell_trans_fee, alpha, predict_risk_rois,
                                 predict_risk_free_roi, n_scenario=200,
                                 solver = DEFAULT_SOLVER, verbose=False,
-                                solver_io="python", keepfiles=False):
+                                solver_io="lp", keepfiles=False):
     """
     in each period, when the decision variables have branch, using the
     expected decisions
@@ -101,6 +101,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     # shape: (n_exp_period, )
     # decision from period 2 to T+1
     instance.Z = Var(instance.exp_periods, within=Reals)
+    # instance.proxy_Z = Var(instance.exp_periods, instance.scenarios,
+    #                       within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
     # in each stage, there is only one scenario,
@@ -270,10 +272,11 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         sdx: integer, scenario index
         sdx2: integer, the descent scenario index of sdx
         """
-        risk_wealth = sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
+        wealth = (sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
                           model.risk_wealth[tdx, mdx]
-                          for mdx in model.symbols)
-        return model.Ys[tdx, sdx] >= (model.Z[tdx] - risk_wealth)
+                          for mdx in model.symbols) +
+                  model.risk_free_wealth[tdx])
+        return model.Ys[tdx, sdx] >= (model.Z[tdx] - wealth)
 
     instance.cvar_constraint = Constraint(
         instance.exp_periods, instance.scenarios,
@@ -291,7 +294,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
             scenario_expectation = sum(model.Ys[tdx, sdx] for sdx in
                                        model.scenarios)/model.n_scenario
             cvar_expr = (model.Z[tdx] - scenario_expectation /
-                         (1. - model.alpha))
+                         (1. - model.alpha) -  model.risk_free_wealth[tdx])
             cvar_expr_sum = cvar_expr_sum + cvar_expr
         return cvar_expr_sum/model.n_exp_period
 
