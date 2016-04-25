@@ -41,11 +41,11 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     solver: str, supported by Pyomo
     solve_io: {"lp", "nl", "os", "python"}
     """
-
+    print ("start time: {}".format(datetime.now()))
     t0 = time()
     n_exp_period = risk_rois.shape[0]
     n_stock = len(symbols)
-    print ("start time: {}".format(datetime.now()))
+
     # concrete model
     instance = ConcreteModel(name="ms_min_cvar_eventsp_portfolio")
     param = "{}_{}_m{}_p{}_s{}_a{:.2f}".format(
@@ -101,8 +101,6 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     # shape: (n_exp_period, )
     # decision from period 2 to T+1
     instance.Z = Var(instance.exp_periods, within=Reals)
-    # instance.proxy_Z = Var(instance.exp_periods, instance.scenarios,
-    #                       within=Reals)
 
     # aux variable, portfolio wealth less than than VaR (Z)
     # in each stage, there is only one scenario,
@@ -111,8 +109,9 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     instance.Ys = Var(instance.exp_periods, instance.scenarios,
                       within=NonNegativeReals)
 
-    print ("combinations (exp_period, stock, scenarios)=({}, {}, {})".format(
+    print ("dimensions (exp_period, stock, scenarios)=({}, {}, {})".format(
         n_exp_period, n_stock, n_scenario))
+    print ("*"*50)
     print ("constructing risk wealth constraints")
 
     # constraint
@@ -146,8 +145,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     def risk_wealth_root_rule(model, mdx, sdx):
         """
         because the risk_roi has the same value in all scenarios in the root
-        node, it should have the same decision value on the period.
-        The risk wealth is the final value of buy and sell amount,
+        node, it should have the same decision value at the period.
+        The risk wealth is the final value of buy and sell amounts,
         then we can give the constraint on risk_wealth which will imply to
         buy and sell amounts.
         """
@@ -213,6 +212,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     )
     print ("min_ms_cvar_eventsp {} risk wealth decisions constraints OK, "
            "{:.3f} secs".format(param, time() - t0))
+    print ("*" * 50)
     print ("constructing risk free wealth constraints")
     t1 = time()
 
@@ -259,7 +259,8 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     )
     print ("min_ms_cvar_eventsp {} risk free wealth decisions constraints OK, "
            "{:.3f} secs".format(param, time() - t1))
-    print ("constructing cvar constraints")
+    print ("*"*50)
+    print ("constructing CVaR constraints")
     t2 = time()
 
     # constraint
@@ -274,7 +275,7 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         """
         wealth = (sum((1. + model.predict_risk_rois[tdx, mdx, sdx]) *
                           model.risk_wealth[tdx, mdx]
-                          for mdx in model.symbols) +
+                      for mdx in model.symbols) +
                   model.risk_free_wealth[tdx])
         return model.Ys[tdx, sdx] >= (model.Z[tdx] - wealth)
 
@@ -282,8 +283,9 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
         instance.exp_periods, instance.scenarios,
         rule=cvar_constraint_rule)
 
-    print ("min_ms_cvar_eventsp {} cvar constraints OK, "
+    print ("min_ms_cvar_eventsp {} CVaR constraints OK, "
            "{:.3f} secs".format(param, time() - t2))
+    print ("*"*50)
     print ("constructing objective rule.")
     t3 = time()
 
@@ -323,7 +325,6 @@ def min_ms_cvar_eventsp_portfolio(symbols, trans_dates, risk_rois,
     proxy_sell_pnl = np.zeros((n_exp_period, n_stock, n_scenario))
     proxy_risk_pnl= np.zeros((n_exp_period, n_stock, n_scenario))
     proxy_risk_free_df = np.zeros((n_exp_period, n_scenario))
-    # proxy_var_df = np.zeros((n_exp_period, n_scenario))
     buy_df = np.zeros((n_exp_period, n_stock))
     sell_df = np.zeros((n_exp_period, n_stock))
     risk_df = np.zeros((n_exp_period, n_stock))
@@ -418,7 +419,7 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
                  bias=BIAS_ESTIMATOR,
                  alpha=0.9,
                  scenario_cnt=1,
-                 verbose=False, solver_io="python", keepfiles=False):
+                 verbose=False, solver_io="lp", keepfiles=False):
         """
         Multistage min cvar event scenario
         """
@@ -582,8 +583,6 @@ class MinMSCVaREventSPPortfolio(SPTradingPortfolio):
         # shape: (n_exp_period, n_scenario)
         simulation_reports["proxy_risk_free_wealth_df"]= results[
             "proxy_risk_free_wealth_df"]
-        # simulation_reports[
-        #     "proxy_estimated_var_df"]=results["proxy_estimated_var_df"]
 
         # add simulation time
         simulation_reports['simulation_time'] = time() - t0

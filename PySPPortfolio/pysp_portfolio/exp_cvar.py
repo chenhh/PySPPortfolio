@@ -382,11 +382,10 @@ def run_min_ms_cvar_sp_simulation(n_stock, win_length, n_scenario=200,
 def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
                                bias=False, scenario_cnt=1, alpha = 0.95,
                                verbose=False, start_date=date(2005,1,3),
-                               end_date=date(2014,12,31), solver_io="python",
+                               end_date=date(2014,12,31), solver_io="lp",
                                        keepfiles=False):
     """
     multi-stage event scenario SP simulation
-    the results are independent to the alphas
 
     Parameters:
     -------------------
@@ -406,7 +405,6 @@ def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
 
     # getting experiment symbols
     symbols = EXP_SYMBOLS[:n_stock]
-
 
     # read rois panel
     roi_path = os.path.join(SYMBOLS_PKL_DIR,
@@ -446,8 +444,6 @@ def run_min_ms_cvar_eventsp_simulation(n_stock, win_length, n_scenario=200,
                                          keepfiles=keepfiles
                                          )
     reports = instance.run()
-    # the reports is the scenario simulation results, it still need to compute
-    # truly wealth process by using the wealth process
     print reports
     prob_name = "min_ms_cvar_eventsp"
     file_name = '{}_{}.pkl'.format(prob_name, param)
