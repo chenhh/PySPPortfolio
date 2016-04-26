@@ -999,8 +999,8 @@ if __name__ == '__main__':
     # test_min_cvar_sp()
     # min_cvar_3stage_dependent_sp()
     # min_cvar_3stage_stage_sp()
-    run_min_cvar_sp2_test(5, 70,
-                          bias=False, scenario_cnt=1, alpha=0.5,
+    run_min_cvar_sp2_test(5, 180,
+                          bias=False, scenario_cnt=2, alpha=0.8,
                           verbose=False,
-                          start_date=date(2005, 1, 1),
-                          end_date=date(2005,3, 30))
+                          start_date=date(2013, 1, 1),
+                          end_date=date(2013,12, 31))
