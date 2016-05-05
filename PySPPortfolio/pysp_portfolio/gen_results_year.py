@@ -70,7 +70,8 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     all_params = []
     for pair in get_year_pairs():
         for day in xrange(50, 240+10, 10):
-            for alpha in ["0.50", "0.60", "0.70", "0.80", "0.90"]:
+            for alpha in ["0.50", "0.60", "0.70", "0.80", "0.90",
+                          "0.55", "0.65", "0.75", "0.85", "0.95"]:
                 for cnt in xrange(1, max_scenario_cnts + 1):
                     all_params.append((5, day, 200, "unbiased", cnt, alpha,
                                pair[0], pair[1]))
