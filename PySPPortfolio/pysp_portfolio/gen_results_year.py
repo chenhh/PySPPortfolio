@@ -11,7 +11,8 @@ import time
 import glob
 import os
 from PySPPortfolio.pysp_portfolio import *
-from exp_cvar import (run_min_ms_cvar_eventsp_simulation, )
+from exp_cvar import (run_min_ms_cvar_eventsp_simulation,
+                      run_min_cvar_sp2_yearly_simulation )
 from gen_results import (retry_read_pickle, retry_write_pickle)
 
 
@@ -25,7 +26,7 @@ def get_results_dir(prob_type):
     ----------------
     return the results directory of given problem type
     """
-    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2",):
+    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -75,14 +76,6 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
                 for cnt in xrange(1, max_scenario_cnts + 1):
                     all_params.append((5, day, 200, "unbiased", cnt, alpha,
                                pair[0], pair[1]))
-            # all_params.append((10, 90, 200, "unbiased", cnt, "0.50",
-            #                pair[0], pair[1]))
-            # all_params.append((15, 100, 200, "unbiased", cnt, "0.65",
-            #                pair[0], pair[1]))
-            # all_params.append((20, 110, 200, "unbiased", cnt, "0.60",
-            #                pair[0], pair[1]))
-            # all_params.append((50, 120, 200, "unbiased", cnt, "0.55",
-            #                pair[0], pair[1]))
     return set(all_params)
 
 
@@ -99,15 +92,16 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     # get all params
     all_params = all_experiment_parameters(prob_type, max_scenario_cnts)
 
-    if prob_type in ("min_ms_cvar_eventsp"):
+    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly"):
         # min_ms_cvar_eventsp_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
+        # min_cvar_sp2_yearly_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
         pkls = glob.glob(os.path.join(dir_path, "{}_20*.pkl".format(
             prob_type)))
 
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep) + 1: pkl.rfind('.')]
         exp_params = name.split('_')
-        if prob_type in ("min_ms_cvar_eventsp",):
+        if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly"):
             d1, d2 = exp_params[4], exp_params[5]
             params = exp_params[6:]
             start_date = date(int(d1[:4]), int(d1[4:6]), int(d1[6:8]))
@@ -222,6 +216,11 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                     n_stock, win_length, n_scenario, bias, cnt, alpha,
                     start_date=start_date, end_date=end_date,
                     solver_io='lp')
+            elif prob_type == "min_cvar_sp2_yearly":
+                run_min_cvar_sp2_yearly_simulation(
+                    n_stock, win_length, n_scenario, bias, cnt, alpha,
+                    start_date=start_date, end_date=end_date,
+                    )
         except Exception as e:
             print ("dispatch: run experiment:", param, e)
         finally:
