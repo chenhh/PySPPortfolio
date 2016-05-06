@@ -612,7 +612,7 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
 
         scenario_path = os.path.join(EXP_SP_PORTFOLIO_DIR, 'scenarios',
                                      scenario_name)
-
+        print ("scenario_path:", scenario_path)
         if not os.path.exists(scenario_path):
             raise ValueError("{} scenario not exists.".format(scenario_path))
             self.scenario_panel = None
