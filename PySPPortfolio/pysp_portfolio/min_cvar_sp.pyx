@@ -215,7 +215,7 @@ class MinCVaRSPPortfolio(SPTradingPortfolio):
 
         # try to load generated scenario panel
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
-        start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+        START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
             len(symbols), window_length, n_scenario,
             "biased" if bias else "unbiased", scenario_cnt)
 

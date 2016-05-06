@@ -425,7 +425,6 @@ def run_min_cvar_sip2_yearly_simulation(max_portfolio_size, window_length,
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
     initial_risk_free_wealth = 1e6
-    print ("ready to run MinCVaRSIPPortfolio2")
     instance = MinCVaRSIPPortfolio2(symbols, max_portfolio_size,
                             risk_rois, risk_free_rois,
                             initial_risk_wealth,

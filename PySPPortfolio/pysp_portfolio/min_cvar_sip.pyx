@@ -595,13 +595,11 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
         """
 
         self.max_portfolio_size = int(max_portfolio_size)
-        print ("before MinCVaRSIPPortfolio2 init")
         super(MinCVaRSIPPortfolio2, self).__init__(
             candidate_symbols, risk_rois, risk_free_rois, initial_risk_wealth,
             initial_risk_free_wealth, buy_trans_fee, sell_trans_fee,
             start_date, end_date, window_length, n_scenario, bias,
             alpha, scenario_cnt, verbose)
-        print ("after MinCVaRSIPPortfolio2 init")
         assert self.n_stock == 50
 
         # overwrite scenario panel, load 50 stocks
