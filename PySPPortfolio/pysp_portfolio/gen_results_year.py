@@ -109,10 +109,14 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep) + 1: pkl.rfind('.')]
         exp_params = name.split('_')
-        if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",
-                         "min_cvar_sip2_yearly",):
+        if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly"):
             d1, d2 = exp_params[4], exp_params[5]
             params = exp_params[6:]
+            start_date = date(int(d1[:4]), int(d1[4:6]), int(d1[6:8]))
+            end_date = date(int(d2[:4]), int(d2[4:6]), int(d2[6:8]))
+        elif prob_type in ("min_cvar_sip2_yearly",):
+            d1, d2 = exp_params[4], exp_params[5]
+            params = exp_params[7:]
             start_date = date(int(d1[:4]), int(d1[4:6]), int(d1[6:8]))
             end_date = date(int(d2[:4]), int(d2[4:6]), int(d2[6:8]))
 
