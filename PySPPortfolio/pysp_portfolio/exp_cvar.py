@@ -420,7 +420,7 @@ def run_min_cvar_sip2_yearly_simulation(max_portfolio_size, window_length,
 
     # shape: (n_period, n_stock)
     risk_rois =roi_panel.loc[:, symbols, 'simple_roi'].T
-    exp_risk_rois = roi_panel.loc[START_DATE:END_DATE, symbols, 'simple_roi'].T
+    exp_risk_rois = roi_panel.loc[start_date:end_date, symbols, 'simple_roi'].T
     n_period = exp_risk_rois.shape[0]
     risk_free_rois = pd.Series(np.zeros(n_period), index=exp_risk_rois.index)
     initial_risk_wealth = pd.Series(np.zeros(n_stock), index=symbols)
