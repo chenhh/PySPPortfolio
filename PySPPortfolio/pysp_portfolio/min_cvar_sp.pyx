@@ -651,7 +651,6 @@ class MinCVaRSPPortfolio2(SPTradingPortfolio):
         return "MinCVaRSP2_{}_{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
             self.exp_start_date.strftime("%Y%m%d"),
             self.exp_end_date.strftime("%Y%m%d"),
-            self.n_stock, self.window_length, self.n_scen
             self.n_stock, self.window_length, self.n_scenario,
              "biased" if self.bias_estimator else "unbiased",
              self.scenario_cnt, self.alpha)
