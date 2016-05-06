@@ -205,7 +205,7 @@ def checking_working_parameters(prob_type, max_scenario_cnts):
     # unfinished params
     return all_params
 
-def retry_read_pickle(file_path, retry_cnt=5):
+def retry_read_pickle(file_path, retry_cnt=10):
     for retry in xrange(retry_cnt):
         try:
             working_dict = pd.read_pickle(file_path)
@@ -217,10 +217,10 @@ def retry_read_pickle(file_path, retry_cnt=5):
             else:
                 print ("dispatch: reading retry: {}, {}".format(
                     retry+1, e))
-                time.sleep(np.random.rand() * 5)
+                time.sleep(np.random.rand() * 10)
 
 
-def retry_write_pickle(data, file_path, retry_cnt=5):
+def retry_write_pickle(data, file_path, retry_cnt=10):
     for retry in xrange(retry_cnt):
         try:
             pd.to_pickle(data, file_path)
@@ -230,7 +230,7 @@ def retry_write_pickle(data, file_path, retry_cnt=5):
             else:
                 print ("dispatch:writing retry: {}, {}".format(
                     retry+1, e))
-                time.sleep(np.random.rand() * 5)
+                time.sleep(np.random.rand() * 10)
 
 def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
 
