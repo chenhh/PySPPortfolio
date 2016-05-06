@@ -28,7 +28,7 @@ def get_results_dir(prob_type):
     return the results directory of given problem type
     """
     if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",
-                     "min_cvar_sip2_yearly"):
+                     "min_cvar_sip2_yearly",):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -70,9 +70,14 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     file_name of all experiment parameters
     (n_stock, win_length, n_scenario, bias, cnt, alpha, start_date, end_date)
     """
+    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly"):
+        days = range(50, 240+10, 10)
+    elif prob_type in ("min_cvar_sip2_yearly",):
+        days = range(60, 240+10, 10)
+
     all_params = []
     for pair in get_year_pairs():
-        for day in xrange(50, 240+10, 10):
+        for day in days:
             for alpha in ["0.50", "0.60", "0.70", "0.80", "0.90",
                           "0.55", "0.65", "0.75", "0.85", "0.95"]:
                 for cnt in xrange(1, max_scenario_cnts + 1):
