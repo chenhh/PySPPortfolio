@@ -211,7 +211,7 @@ def retry_read_pickle(file_path, retry_cnt=10):
             working_dict = pd.read_pickle(file_path)
             return working_dict
 
-        except IOError as e:
+        except (IOError, EOFError) as e:
             if retry == retry_cnt -1:
                 raise Exception(e)
             else:
@@ -224,7 +224,7 @@ def retry_write_pickle(data, file_path, retry_cnt=10):
     for retry in xrange(retry_cnt):
         try:
             pd.to_pickle(data, file_path)
-        except IOError as e:
+        except (IOError, EOFError) as e:
             if retry == retry_cnt -1:
                 raise Exception(e)
             else:
