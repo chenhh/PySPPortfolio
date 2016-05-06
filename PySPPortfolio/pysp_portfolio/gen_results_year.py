@@ -12,7 +12,8 @@ import glob
 import os
 from PySPPortfolio.pysp_portfolio import *
 from exp_cvar import (run_min_ms_cvar_eventsp_simulation,
-                      run_min_cvar_sp2_yearly_simulation )
+                      run_min_cvar_sp2_yearly_simulation,
+                      run_min_cvar_sip2_yearly_simulation)
 from gen_results import (retry_read_pickle, retry_write_pickle)
 
 
@@ -26,7 +27,8 @@ def get_results_dir(prob_type):
     ----------------
     return the results directory of given problem type
     """
-    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",):
+    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",
+                     "min_cvar_sip2_yearly"):
         return os.path.join(EXP_SP_PORTFOLIO_DIR, prob_type)
     else:
         raise ValueError("unknown prob_type: {}".format(prob_type))
@@ -92,7 +94,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     # get all params
     all_params = all_experiment_parameters(prob_type, max_scenario_cnts)
 
-    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly"):
+    if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",
+                     "min_cvar_sip2_yearly",):
         # min_ms_cvar_eventsp_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
         # min_cvar_sp2_yearly_20050103_20050105_m5_w70_s200_unbiased_1_a0.95
         pkls = glob.glob(os.path.join(dir_path, "{}_20*.pkl".format(
@@ -101,7 +104,8 @@ def checking_finished_parameters(prob_type, max_scenario_cnts):
     for pkl in pkls:
         name = pkl[pkl.rfind(os.sep) + 1: pkl.rfind('.')]
         exp_params = name.split('_')
-        if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly"):
+        if prob_type in ("min_ms_cvar_eventsp", "min_cvar_sp2_yearly",
+                         "min_cvar_sip2_yearly",):
             d1, d2 = exp_params[4], exp_params[5]
             params = exp_params[6:]
             start_date = date(int(d1[:4]), int(d1[4:6]), int(d1[6:8]))
@@ -221,6 +225,12 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                     n_stock, win_length, n_scenario, bias, cnt, alpha,
                     start_date=start_date, end_date=end_date,
                     )
+            elif prob_type == "min_cvar_sip2_yearly":
+                run_min_cvar_sip2_yearly_simulation(
+                    n_stock, win_length,
+                    n_scenario, bias, cnt, alpha,
+                    start_date=start_date, end_date=end_date,
+                )
         except Exception as e:
             print ("dispatch: run experiment:", param, e)
         finally:

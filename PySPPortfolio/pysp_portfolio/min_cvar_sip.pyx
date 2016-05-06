@@ -605,7 +605,7 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
 
         # overwrite scenario panel, load 50 stocks
         scenario_name = "{}_{}_m{}_w{}_s{}_{}_{}.pkl".format(
-            start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"),
+            START_DATE.strftime("%Y%m%d"), END_DATE.strftime("%Y%m%d"),
             self.n_stock, window_length,
             n_scenario, "biased" if bias else "unbiased", scenario_cnt)
 
@@ -618,6 +618,12 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
             self.scenario_cnt = 0
         else:
             self.scenario_panel = pd.read_pickle(scenario_path)
+            if start_date != START_DATE or end_date != END_DATE:
+                self.scenario_panel = self.scenario_panel.loc[
+                                      start_date:end_date]
+                print ("scenario panel dates:{}-{}".format(
+                    self.scenario_panel.items[0],
+                    self.scenario_panel.items[-1]))
             self.scenario_cnt = scenario_cnt
 
         self.chosen_symbols_df = pd.DataFrame(
@@ -642,7 +648,9 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
                 self.max_portfolio_size, self.n_stock))
 
     def get_trading_func_name(self, *args, **kwargs):
-        return "MinCVaRSIP2_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+        return "MinCVaRSIP2_{}_{}_all{}_m{}_w{}_s{}_{}_{}_a{:.2f}".format(
+            self.exp_start_date.strftime("%Y%m%d"),
+            self.exp_end_date.strftime("%Y%m%d"),
             self.n_stock, self.max_portfolio_size,
             self.window_length,
             self.n_scenario, "biased" if self.bias_estimator else "unbiased",
