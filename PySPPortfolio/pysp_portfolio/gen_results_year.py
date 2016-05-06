@@ -195,7 +195,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
         params2 = checking_working_parameters(prob_type, max_scenario_cnts)
         unfinished_params = params1.intersection(params2)
 
-        print ("dispatch: {},  current #. of unfinished parameters: {}".format(
+        print ("dispatch: {}, current #. of unfinished parameters: {}".format(
             prob_type, len(unfinished_params)))
 
         # if len(unfinished_params) <= 100:
@@ -232,8 +232,7 @@ def dispatch_experiment_parameters(prob_type, max_scenario_cnts):
                     )
             elif prob_type == "min_cvar_sip2_yearly":
                 run_min_cvar_sip2_yearly_simulation(
-                    n_stock, win_length,
-                    n_scenario, bias, cnt, alpha,
+                    n_stock, win_length, n_scenario, bias, cnt, alpha,
                     start_date=start_date, end_date=end_date,
                 )
         except Exception as e:

@@ -571,7 +571,8 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
                  risk_free_rois, initial_risk_wealth,
                  double initial_risk_free_wealth,
                  double buy_trans_fee=BUY_TRANS_FEE,
-                 double sell_trans_fee=SELL_TRANS_FEE, start_date=START_DATE,
+                 double sell_trans_fee=SELL_TRANS_FEE,
+                 start_date=START_DATE,
                  end_date=END_DATE,
                  int window_length=WINDOW_LENGTH,
                  int n_scenario=N_SCENARIO, bias=BIAS_ESTIMATOR,
@@ -613,7 +614,7 @@ class MinCVaRSIPPortfolio2(MinCVaRSPPortfolio):
                                      scenario_name)
 
         if not os.path.exists(scenario_path):
-            raise ValueError("{} not exists.".format(scenario_path))
+            raise ValueError("{} scenario not exists.".format(scenario_path))
             self.scenario_panel = None
             self.scenario_cnt = 0
         else:
