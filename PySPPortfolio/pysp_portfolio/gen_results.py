@@ -57,8 +57,7 @@ def all_experiment_parameters(prob_type, max_scenario_cnts):
     for n_stock in xrange(5, 50 + 5, 5):
         for win_length in xrange(50, 240 + 10, 10):
             if prob_type in ( "min_cvar_sp", "min_cvar_sp2", 'min_cvar_eev',
-                              "min_ms_cvar_sp", "min_ms_cvar_avgsp",
-                              "min_ms_cvar_eventsp"):
+                              "min_ms_cvar_sp", "min_ms_cvar_avgsp"):
                 if n_stock == 50 and win_length == 50:
                     # preclude m50_w50
                     continue
