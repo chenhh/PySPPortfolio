@@ -102,7 +102,7 @@ def all_results_to_multisheet_xlsx(prob_type="min_cvar_sip", sheet="alpha",
     the sheet can be {n_stock, win_length, alpha}
 
     """
-    if not sheet in ("n_stock", "win_length", "alpha"):
+    if sheet not in ("n_stock", "win_length", "alpha"):
         raise ValueError('{} cannot be sheet'.format(sheet))
 
     n_stocks = range(5, 50 + 5, 5)
@@ -199,7 +199,7 @@ def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
     """
 
     # verify prob_type
-    if not prob_type in ("min_cvar_sp2", 'min_cvar_sip2',
+    if prob_type not in ("min_cvar_sp2", 'min_cvar_sip2',
                          'min_cvar_sp2_yearly', 'min_cvar_sip2_yearly',
                          'min_ms_cvar_eventsp'):
         raise ValueError("unknown problem type: {}".format(prob_type))
@@ -235,7 +235,7 @@ def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
                  for alpha in alphas]
 
         result_df = pd.DataFrame(np.zeros((len(names), len(columns))),
-                                    index=names, columns=columns)
+                                 index=names, columns=columns)
 
         # all parameter combinations
         params = all_experiment_parameters(prob_type, max_scenario_cnts)
@@ -256,11 +256,12 @@ def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
                         result_df.loc[key, 'win_length'] = w
                         result_df.loc[key, 'scenario_cnt'] = c
 
-                print ("[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
+                print (
+                "[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
         print ("{} OK".format(prob_type))
 
-    elif prob_type in ('min_cvar_sp2_yearly', 'min_cvar_sip2_yearly',
-                         'min_ms_cvar_eventsp'):
+    elif prob_type in ['min_cvar_sp2_yearly', 'min_cvar_sip2_yearly',
+                       'min_ms_cvar_eventsp']:
 
         years = load_yearly_pairs()
         # we only do stock=5 experiments
@@ -272,6 +273,10 @@ def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
                  for win_length in win_lengths
                  for cnt in cnts
                  for alpha in alphas]
+
+        if prob_type in ('min_ms_cvar_eventsp'):
+            # update columns
+            columns = []
 
         result_df = pd.DataFrame(np.zeros((len(names), len(columns))),
                                  index=names, columns=columns)
@@ -298,7 +303,7 @@ def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
                         result_df.loc[key, 'scenario_cnt'] = c
 
                 print (
-                "[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
+                    "[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
         print ("{} OK".format(prob_type))
 
     # output to xlsx
@@ -359,7 +364,7 @@ def all_results_to_4dpanel(prob_type="min_cvar_sp",
 
         print ("[{}/{}] {} OK".format(rdx + 1, n_param, results['func_name']))
 
-    for cnt in xrange(max_scenario_cnts):
+    for cnt in range(max_scenario_cnts):
         file_name = "{}_exp_results_{}.pkl".format(prob_type, cnt + 1)
         file_path = os.path.join(TMP_DIR, file_name)
         results = {}
@@ -369,6 +374,7 @@ def all_results_to_4dpanel(prob_type="min_cvar_sp",
         results['minor_axis'] = panels[cnt].minor_axis
         results['data'] = panels[cnt].as_matrix()
         pd.to_pickle(results, file_path)
+
 
 def significant_star(val):
     if val <= 0.01:
@@ -380,6 +386,7 @@ def significant_star(val):
     else:
         star = ""
     return star
+
 
 def bah_results_to_xlsx():
     """ buy and hold """
@@ -401,6 +408,7 @@ def bah_results_to_xlsx():
             df.loc[n_stock, col] = results[col]
 
     df.to_excel(os.path.join(TMP_DIR, 'BAH.xlsx'))
+
 
 def bah_results_to_latex():
     """ buy and hold """
@@ -433,7 +441,7 @@ def bah_results_to_latex():
             adf_nc = tsa_tools.adfuller(rois, regression='nc')[1]
             adf = max(adf_c, adf_ct, adf_ctt, adf_nc)
             spa_value = 0
-            for _ in xrange(10):
+            for _ in range(10):
                 spa = SPA(rois, np.zeros(wealth_arr.size), reps=5000)
                 spa.seed(np.random.randint(0, 2 ** 31 - 1))
                 spa.compute()
@@ -549,7 +557,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     df = pd.read_pickle(data_path)
 
     # set alpha column to str
-    for rdx in xrange(df.index.size):
+    for rdx in range(df.index.size):
         df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
 
     # axes
@@ -631,8 +639,8 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
         Zs = np.zeros_like(Xs, dtype=np.float)
 
         n_row, n_col = Xs.shape
-        for rdx in xrange(n_row):
-            for cdx in xrange(n_col):
+        for rdx in range(n_row):
+            for cdx in range(n_col):
                 n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
                 if prob_type in ("min_cvar_sp", "min_cvar_eev"):
                     if z_dim in ('cum_roi', 'ann_roi'):
@@ -736,7 +744,7 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
         df = pd.read_pickle(data_path)
         print df.columns
         # set alpha column to str
-        for rdx in xrange(df.index.size):
+        for rdx in range(df.index.size):
             df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
     else:
         alpha_data = pd.read_pickle(pkl)
@@ -799,8 +807,8 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
             Xs, Ys = np.meshgrid(stocks, lengths)
             n_row, n_col = Xs.shape
             Zs = np.zeros_like(Xs, dtype=np.float)
-            for rdx in xrange(n_row):
-                for cdx in xrange(n_col):
+            for rdx in range(n_row):
+                for cdx in range(n_col):
                     n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
                     if prob_type in ("min_cvar_sp2", "min_cvar_eev"):
                         stock_key = 'n_stock'
@@ -896,7 +904,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
         df = pd.read_pickle(data_path)
 
         # set alpha column to str
-        for rdx in xrange(df.index.size):
+        for rdx in range(df.index.size):
             df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
     else:
         alpha_data = pd.read_pickle(pkl)
@@ -944,8 +952,8 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
         Xs, Ys = np.meshgrid(stocks, lengths)
         n_row, n_col = Xs.shape
         Zs = np.zeros_like(Xs, dtype=np.float)
-        for rdx in xrange(n_row):
-            for cdx in xrange(n_col):
+        for rdx in range(n_row):
+            for cdx in range(n_col):
                 n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
                 if prob_type in ("min_cvar_eev",):
                     stock_key = 'n_stock'
@@ -1056,8 +1064,8 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
             Xs, Ys = np.meshgrid(stocks, lengths)
             n_row, n_col = Xs.shape
             Zs = np.zeros_like(Xs, dtype=np.float)
-            for rdx in xrange(n_row):
-                for cdx in xrange(n_col):
+            for rdx in range(n_row):
+                for cdx in range(n_col):
                     n_stock, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
                     if (prob_type == "min_cvar_eev" and
                                 n_stock == 50 and win_length == 50):
@@ -1185,7 +1193,7 @@ def stock_statistics(latex=True):
             adf = max(adf_c, adf_ct, adf_ctt, adf_nc)
 
             spa_value = 0
-            for _ in xrange(10):
+            for _ in range(10):
                 spa = SPA(rois, np.zeros(rois.size), reps=5000)
                 spa.seed(np.random.randint(0, 2 ** 31 - 1))
                 spa.compute()
@@ -1265,7 +1273,7 @@ def plot_best_parameters(prob_type='min_cvar_sp'):
             if prob_type in ('min_cvar_sp', 'min_cvar_sip'):
                 wealths = None
                 JB, ADF = 1, 1
-                for s_cnt in xrange(1, 4):
+                for s_cnt in range(1, 4):
                     res = load_results(prob_type, p[0], p[1],
                                        scenario_cnt=s_cnt, alpha=p[2])
                     wealth_proc = (res['wealth_df'].sum(axis=1) + res[
@@ -1325,7 +1333,7 @@ def table_best_parameter(prob_type='min_cvar_sp'):
         df = pd.read_pickle(os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
                                          "min_cvar_sip_results_all.pkl"))
         # set alpha column to str
-    for rdx in xrange(df.index.size):
+    for rdx in range(df.index.size):
         df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
 
     n_stocks = range(5, 55, 5)
@@ -1400,7 +1408,7 @@ def best_mean_stock_latex(prob_type='min_cvar_sip'):
     with open(os.path.join(TMP_DIR, "best_mean_stock_{}.txt".format(prob_type)),
               'wb') as \
             texfile:
-        for rdx in xrange(df.index.size):
+        for rdx in range(df.index.size):
             param = "({:.0f}, {:.0f}, {:.0f}\%)".format(df.ix[rdx, 'n_stock'],
                                                         df.ix[
                                                             rdx, 'win_length'],
@@ -1430,7 +1438,6 @@ if __name__ == '__main__':
     # all_results_to_onesheet_xlsx('min_cvar_sp2_yearly', 5)
     # all_results_to_onesheet_xlsx('min_cvar_sip2_yearly', 1)
     all_results_to_onesheet_xlsx('min_ms_cvar_eventsp', 1)
-
 
     # plot_2d_contour_by_alpha("min_cvar_sp2", "VSS_daily_mean")
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
