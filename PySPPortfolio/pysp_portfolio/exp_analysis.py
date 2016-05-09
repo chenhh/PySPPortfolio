@@ -274,7 +274,7 @@ def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
                  for cnt in cnts
                  for alpha in alphas]
 
-        if prob_type in ('min_ms_cvar_eventsp'):
+        if prob_type in ('min_ms_cvar_eventsp',):
             # update columns
             columns = []
 
@@ -403,7 +403,7 @@ def bah_results_to_xlsx():
 
     for n_stock in n_stocks:
         results = load_results("bah", n_stock)
-        print results['func_name']
+        print (results['func_name'])
         for col in columns:
             df.loc[n_stock, col] = results[col]
 
@@ -463,7 +463,7 @@ def bah_results_to_latex():
                                            spa_value * 100),
                    ]
             texfile.write("{} \\\\ \hline \n".format(" & ".join(row)))
-            print "BAH: {} OK".format(n_stock)
+            print ("BAH: {} OK".format(n_stock))
 
 
 def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
@@ -490,7 +490,7 @@ def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     win = 'w230'
     alpha = "0.90"
     roi_df = panel.loc["m5", :, :, 'cum_roi']
-    print roi_df.columns, roi_df.index
+    print (roi_df.columns, roi_df.index)
     ax = roi_df.plot(kind='bar', title="{}-s{}".format(stock, scenario_cnt),
                      legend=True, ylim=(0.8, 2.8), yerr=np.random.randn(10))
 
@@ -523,7 +523,7 @@ def all_results_roi_stats(prob_type="min_cvar_sp"):
                             index=("cum_roi_mean", "cum_roi_std"))
     stats_df = stats_df.T
     stats_df.reset_index(inplace=True)
-    print stats_df
+    print (stats_df)
     stats_df.to_excel(os.path.join(
         TMP_DIR, '{}_results_roi_stats.xlsx'.format(prob_type)))
 
@@ -687,7 +687,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
         if z_dim == "SPA_c_pvalue":
             Zs[Zs > UPPER_BOUND] = UPPER_BOUND
 
-        print alpha, Zs, UPPER_BOUND
+        print (alpha, Zs, UPPER_BOUND)
 
         # contour, projected on z
         # cset = ax.contour(Xs, Ys, Zs, zdir='z', offset=LOWER_BOUND,
@@ -742,7 +742,7 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
         data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
                                  '{}_results_all.pkl'.format(prob_type))
         df = pd.read_pickle(data_path)
-        print df.columns
+        print (df.columns)
         # set alpha column to str
         for rdx in range(df.index.size):
             df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
@@ -842,7 +842,7 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
         if pkl_existed is False:
             pd.to_pickle(alpha_data, pkl)
 
-        print alpha, Zs
+        print (alpha, Zs)
 
         # contour, projected on z
         cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
@@ -853,8 +853,8 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
     # print fig.get_axes()
     cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax,
                         ticks=color_range)
-    print "Z_dim:", z_dim
-    print "z_range:", np.min(Zs), np.max(Zs)
+    print ("Z_dim:", z_dim)
+    print ("z_range:", np.min(Zs), np.max(Zs))
     cbar.ax.tick_params(labelsize=12)
     if z_dim == "cum_roi":
         cbar_label_name = "Average cumulative returns (%)"
@@ -978,7 +978,7 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
     if pkl_exist is False:
         pd.to_pickle(alpha_data, pkl)
 
-    print alpha, Zs
+    print (alpha, Zs)
 
     # contour, projected on z
     cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
@@ -997,9 +997,9 @@ def plot_2d_eev_contour(prob_type="min_cvar_eev",
                    fontname="Times New Roman")
 
     if prob_type in ("min_cvar_eev", "min_cvar_eevip"):
-        print "plot_2d_eev_contour: {}".format(prob_type)
+        print ("plot_2d_eev_contour: {}".format(prob_type))
         labels = range(-100, 300 + 20, 20)
-        print labels
+        print (labels)
         labels.append(">320")
         cbar.set_ticklabels(labels)
 
@@ -1103,7 +1103,7 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
         if pkl_exist is False:
             pd.to_pickle(alpha_data, pkl)
 
-        print alpha, Zs
+        print (alpha, Zs)
 
         # contour, projected on z
         cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
@@ -1111,7 +1111,7 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
 
     # share color bar,  rect [left, bottom, width, height]
     cbar_ax = fig.add_axes([0.92, 0.125, 0.015, 0.75])
-    print fig.get_axes()
+    print (fig.get_axes())
     cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax,
                         ticks=color_range)
     cbar.ax.tick_params(labelsize=12)
@@ -1233,7 +1233,7 @@ def stock_statistics(latex=True):
                                            spa_value * 100),
                    ]
             texfile.write("{} \\\\ \hline \n".format(" & ".join(row)))
-            print sdx + 1, symbol, R_c, jb
+            print (sdx + 1, symbol, R_c, jb)
 
 
 def plot_best_parameters(prob_type='min_cvar_sp'):
@@ -1269,7 +1269,7 @@ def plot_best_parameters(prob_type='min_cvar_sp'):
         heads.append('ADF')
         writer.writerow(heads)
         for p in params:
-            print p
+            print (p)
             if prob_type in ('min_cvar_sp', 'min_cvar_sip'):
                 wealths = None
                 JB, ADF = 1, 1
@@ -1383,7 +1383,7 @@ def table_best_parameter(prob_type='min_cvar_sp'):
                 if len(values['SPA_c_pvalue']) > 0:
                     res_df.ix[count, 'SPA'] = max(values['SPA_c_pvalue'])
 
-                print n_stock, win_length, alpha, "OK"
+                print (n_stock, win_length, alpha, "OK")
 
                 # update
                 count += 1
@@ -1404,7 +1404,7 @@ def table_best_parameter(prob_type='min_cvar_sp'):
 def best_mean_stock_latex(prob_type='min_cvar_sip'):
     pkl = os.path.join(TMP_DIR, "best_mean_stock_{}.pkl".format(prob_type))
     df = pd.read_pickle(pkl)
-    print df.columns
+    print (df.columns)
     with open(os.path.join(TMP_DIR, "best_mean_stock_{}.txt".format(prob_type)),
               'wb') as \
             texfile:
@@ -1429,7 +1429,7 @@ def best_mean_stock_latex(prob_type='min_cvar_sip'):
                                            df.ix[rdx, 'SPA'] * 100),
                    ]
             texfile.write("{} \\\\ \hline \n".format(" & ".join(row)))
-            print param
+            print (param)
 
 
 if __name__ == '__main__':
