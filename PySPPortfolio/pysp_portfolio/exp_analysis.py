@@ -51,7 +51,6 @@ def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
     bias: boolean
     scenario_cnt: integer
     alpha: float
-
     """
     # file name
     if prob_type in ("min_cvar_sp", "min_cvar_sp2", "min_ms_cvar_sp",
@@ -192,8 +191,8 @@ def all_results_to_multisheet_xlsx(prob_type="min_cvar_sip", sheet="alpha",
                                         '{}_{}.xlsx'.format(prob_type, sheet)))
 
 
-def all_results_to_onesheet_xlsx(prob_type="min_cvar_sp2",
-                                 max_scenario_cnts=MAX_SCENARIO_FILE_CNT):
+def all_results_to_one_sheet_xlsx(prob_type="min_cvar_sp2",
+                                  max_scenario_cnts=MAX_SCENARIO_FILE_CNT):
     """
     output results to a single sheet
     """
@@ -1436,8 +1435,8 @@ if __name__ == '__main__':
     # all_results_to_onesheet_xlsx('min_cvar_sp2', 5)
     # all_results_to_onesheet_xlsx('min_cvar_sip2', 2)
     # all_results_to_onesheet_xlsx('min_cvar_sp2_yearly', 5)
-    # all_results_to_onesheet_xlsx('min_cvar_sip2_yearly', 1)
-    all_results_to_onesheet_xlsx('min_ms_cvar_eventsp', 1)
+    all_results_to_one_sheet_xlsx('min_cvar_sip2_yearly', 5)
+    # all_results_to_onesheet_xlsx('min_ms_cvar_eventsp', 1)
 
     # plot_2d_contour_by_alpha("min_cvar_sp2", "VSS_daily_mean")
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
