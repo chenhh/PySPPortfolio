@@ -87,8 +87,8 @@ def load_results(prob_type, n_stock, win_length=0, n_scenario=200,
     return results
 
 
-def all_results_to_multisheet_xlsx(prob_type="min_cvar_sip", sheet="alpha",
-                                   max_scenario_cnts=MAX_SCENARIO_FILE_CNT):
+def all_results_to_multi_sheet_xlsx(prob_type="min_cvar_sip", sheet="alpha",
+                                    max_scenario_cnts=MAX_SCENARIO_FILE_CNT):
     """
     n_stock: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}: length 10
     win_length: {50, 60, ..., 240}, length: 20
@@ -259,6 +259,7 @@ def all_results_to_one_sheet_xlsx(prob_type="min_cvar_sp2",
                 "[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
         print ("{} OK".format(prob_type))
 
+    # yearly experiment interval
     elif prob_type in ['min_cvar_sp2_yearly', 'min_cvar_sip2_yearly',
                        'min_ms_cvar_eventsp']:
 
@@ -272,11 +273,6 @@ def all_results_to_one_sheet_xlsx(prob_type="min_cvar_sp2",
                  for win_length in win_lengths
                  for cnt in cnts
                  for alpha in alphas]
-
-        if prob_type in ('min_ms_cvar_eventsp',):
-            # update columns
-            columns = []
-
         result_df = pd.DataFrame(np.zeros((len(names), len(columns))),
                                  index=names, columns=columns)
 
@@ -291,10 +287,12 @@ def all_results_to_one_sheet_xlsx(prob_type="min_cvar_sp2",
             if results:
                 key = "{}_{}_m{}_w{}_s200_unbiased_{}_a{}".format(
                     start, end, m, w, c, a)
-
+                print (key)
                 for col_key in columns:
                     if col_key == "VSS_daily_mean":
                         result_df.loc[key, col_key] = results['vss_arr'].mean()
+                    elif col_key == 'trans_fee_loss':
+                        result_df.loc[key, col_key] = results[col_key].sum()
                     elif col_key not in ('win_length', 'scenario_cnt'):
                         result_df.loc[key, col_key] = results[col_key]
                     else:
@@ -1432,11 +1430,11 @@ def best_mean_stock_latex(prob_type='min_cvar_sip'):
 
 
 if __name__ == '__main__':
-    # all_results_to_onesheet_xlsx('min_cvar_sp2', 5)
-    # all_results_to_onesheet_xlsx('min_cvar_sip2', 2)
-    # all_results_to_onesheet_xlsx('min_cvar_sp2_yearly', 5)
-    all_results_to_one_sheet_xlsx('min_cvar_sip2_yearly', 5)
-    # all_results_to_onesheet_xlsx('min_ms_cvar_eventsp', 1)
+    # all_results_to_one_sheet_xlsx('min_cvar_sp2', 5)
+    # all_results_to_one_sheet_xlsx('min_cvar_sip2', 2)
+    # all_results_to_one_sheet_xlsx('min_cvar_sp2_yearly', 5)
+    # all_results_to_one_sheet_xlsx('min_cvar_sip2_yearly', 5)
+    all_results_to_one_sheet_xlsx('min_ms_cvar_eventsp', 1)
 
     # plot_2d_contour_by_alpha("min_cvar_sp2", "VSS_daily_mean")
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
