@@ -470,7 +470,7 @@ def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     """
     import matplotlib.pyplot as plt
 
-    if not prob_type in ('min_cvar_sp', 'min_cvar_sip'):
+    if prob_type not in ('min_cvar_sp', 'min_cvar_sip'):
         raise ValueError('unknown problem type:{}'.format(prob_type))
 
     file_path = os.path.join(EXP_SP_PORTFOLIO_DIR, "reports",
@@ -545,7 +545,7 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
     z_dim: {"cum_roi", "ann_roi", "std_roi"}
 
     """
-    if not prob_type in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev"):
+    if prob_type not in ("min_cvar_sp", "min_cvar_sip", "min_cvar_eev"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
     data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
@@ -717,12 +717,12 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
     """
 
     # verify prob_type
-    if not prob_type in ("min_cvar_sp2", 'min_cvar_sip2',
+    if prob_type not in ("min_cvar_sp2", 'min_cvar_sip2',
                          "min_cvar_eev", "min_cvar_eevip"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
     # verify z_dim
-    if not z_dim in ('cum_roi', "SPA_c_pvalue", "VSS_daily_mean"):
+    if  z_dim not in ('cum_roi', "SPA_c_pvalue", "VSS_daily_mean"):
         raise ValueError("unknown z_dim: {}".format(z_dim))
 
     # read cache file
@@ -884,7 +884,7 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
 
 def plot_2d_eev_contour(prob_type="min_cvar_eev",
                         z_dim="cum_roi", alpha="0.50"):
-    if not prob_type in ("min_cvar_eev", "min_cvar_eevip"):
+    if prob_type not in ("min_cvar_eev", "min_cvar_eevip"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
     # figure size in inches
@@ -1148,7 +1148,7 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
     # verify z_dim
-    if not z_dim in ('cum_roi', "SPA_c_pvalue", "VSS_daily_mean"):
+    if z_dim not in ('cum_roi', "SPA_c_pvalue", "VSS_daily_mean"):
         raise ValueError("unknown z_dim: {}".format(z_dim))
 
     # read cache file
@@ -1258,7 +1258,7 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
                                     (df.loc[:, 'win_length'] == win_length) &
                                     (df.loc[:, 'alpha'] == alpha) &
                                     (df.loc[:, 'start_date'] ==
-                                        pd.Timestamp(year_pairs[cdx][0])) &
+                                     pd.Timestamp(year_pairs[cdx][0])) &
                                     (df.loc[:, 'end_date'] ==
                                      pd.Timestamp(year_pairs[cdx][1])),
                                     z_dim]
@@ -1308,6 +1308,7 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     if z_dim == "SPA_c_pvalue":
         cbar.set_ticklabels([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ">10"])
     plt.show()
+
 
 def stock_statistics(latex=True):
     """
@@ -1397,6 +1398,7 @@ def plot_best_parameters(prob_type='min_cvar_sp'):
                     date(2008, 1, 2), date(2009, 1, 5), date(2010, 1, 4),
                     date(2011, 1, 3), date(2012, 1, 2), date(2013, 1, 2),
                     date(2014, 1, 2), date(2014, 12, 31)]
+    params = []
     if prob_type == "min_cvar_sp":
         params = [(5, 150, 0.8), (10, 90, 0.5), (15, 100, 0.65),
                   (20, 110, 0.6), (25, 120, 0.55), (30, 190, 0.7),
