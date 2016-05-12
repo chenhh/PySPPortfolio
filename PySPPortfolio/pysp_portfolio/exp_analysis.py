@@ -193,9 +193,7 @@ def all_results_to_multi_sheet_xlsx(prob_type="min_cvar_sip", sheet="alpha",
 
 def all_results_to_one_sheet_xlsx(prob_type="min_cvar_sp2",
                                   max_scenario_cnts=MAX_SCENARIO_FILE_CNT):
-    """
-    output results to a single sheet
-    """
+    """ output results to a single sheet """
 
     # verify prob_type
     if prob_type not in ("min_cvar_sp2", 'min_cvar_sip2',
@@ -256,7 +254,7 @@ def all_results_to_one_sheet_xlsx(prob_type="min_cvar_sp2",
                         result_df.loc[key, 'scenario_cnt'] = c
 
                 print (
-                "[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
+                    "[{}/{}] {} {} OK".format(rdx + 1, n_param, prob_type, key))
         print ("{} OK".format(prob_type))
 
     # yearly experiment interval
@@ -743,6 +741,7 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
         # set alpha column to str
         for rdx in range(df.index.size):
             df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+
     else:
         alpha_data = pd.read_pickle(pkl)
         pkl_existed = True
@@ -797,6 +796,8 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
         if pkl_existed is True:
             # cache file existed
             Xs, Ys, Zs = alpha_data[alpha]
+
+            # only show the contour map <= 10%
             if z_dim == "SPA_c_pvalue":
                 Zs[Zs > 10] = 11
         else:
@@ -836,7 +837,7 @@ def plot_2d_contour_by_alpha(prob_type="min_cvar_sp2", z_dim="cum_roi"):
 
             alpha_data[alpha] = (Xs, Ys, Zs)
 
-        if pkl_existed is False:
+        if pkl_existed:
             pd.to_pickle(alpha_data, pkl)
 
         print (alpha, Zs)
@@ -1136,24 +1137,162 @@ def plot_2d_VSS(prob_type="min_cvar_sp2"):
     plt.show()
 
 
-def yearly_results_to_panel(prob_type):
+def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     """
-    preprocessing results and generating cache
+    x-axis: years, [2005, 2006, ..., 2014]
+    y-axis: days, [50, 60,..., 240]
     """
+    # verify problem type
     if prob_type not in ('min_ms_cvar_eventsp', 'min_cvar_sp2_yearly',
                          'min_cvar_sip2_yearly'):
         raise ValueError("unknown problem type: {}".format(prob_type))
 
-    q
+    # verify z_dim
+    if not z_dim in ('cum_roi', "SPA_c_pvalue", "VSS_daily_mean"):
+        raise ValueError("unknown z_dim: {}".format(z_dim))
 
+    # read cache file
+    pkl = os.path.join(TMP_DIR, "{}_alpha_data_{}.pkl".format(
+        prob_type, z_dim))
 
-def plot_yearly_contour_by_alpha(prob_type):
-    """
-    """
-    if prob_type not in ('min_ms_cvar_eventsp', 'min_cvar_sp2_yearly',
-                         'min_cvar_sip2_yearly'):
-        raise ValueError("unknown problem type: {}".format(prob_type))
+    pkl_existed = False
+    if not os.path.exists(pkl):
+        alpha_data = {}
+        # read pre-processed results data, the pkl file is generated from
+        # function all_results_to_one_sheet_xlsx
+        data_path = os.path.join(EXP_SP_PORTFOLIO_REPORT_DIR,
+                                 '{}_results_all.pkl'.format(prob_type))
+        df = pd.read_pickle(data_path)
 
+        # set alpha column to str
+        for rdx in range(df.index.size):
+            df.ix[rdx, 'alpha'] = "{:.2f}".format(df.ix[rdx, 'alpha'])
+
+    else:
+        alpha_data = pd.read_pickle(pkl)
+        pkl_existed = True
+
+    # set parameters range
+    stocks = (5,)
+    years = np.arange(2005, 2015)
+    alphas = ('0.50', '0.60', '0.70', '0.80', '0.90')
+    if prob_type in ("min_cvar_sip2_yearly",):
+        lengths = np.arange(60, 240 + 10, 10)
+    else:
+        lengths = np.arange(50, 240 + 10, 10)
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+
+    # figure size in inches
+    fig = plt.figure(figsize=(64, 48), facecolor='white')
+
+    # set color range, it requires to be adjusted by data
+    if z_dim == 'cum_roi':
+        cm_norm = mpl.colors.Normalize(vmin=-100, vmax=300, clip=False)
+        color_range = np.arange(-100, 300 + 10, 20)
+
+    elif z_dim == "SPA_c_pvalue":
+        cm_norm = mpl.colors.Normalize(vmin=0, vmax=11, clip=False)
+        color_range = np.arange(0, 10 + 2)
+
+    elif z_dim == "VSS_daily_mean":
+        cm_norm = mpl.colors.Normalize(vmin=0, vmax=4, clip=False)
+        color_range = np.arange(0, 4 + 0.2, 0.3)
+
+    for adx, alpha in enumerate(alphas):
+        if prob_type in ("min_cvar_sip2_yearly",):
+            ylim = (60, 240)
+        else:
+            ylim = (50, 240)
+
+        ax = fig.add_subplot(1, 5, adx + 1, xlim=(years[0], years[-1]),
+                             ylim=ylim)
+        ax.set_title(r'$\alpha = {}\%$'.format(int(float(alpha) * 100.)),
+                     y=1.02, fontsize=18)
+
+        # labelpad - number of points between the axis and its label
+        ax.set_xlabel(r'$Year$', fontsize=14, labelpad=-2)
+        ax.set_ylabel(r'$h$', fontsize=14, labelpad=-2)
+        ax.tick_params(labelsize=10, pad=1, )
+        ax.set_xticklabels(years, fontsize=12, fontname="Times New Roman")
+        ax.set_yticks(lengths)
+        ax.set_yticklabels(lengths, fontsize=12, fontname="Times New Roman")
+
+        # cache file existed
+        if pkl_existed:
+            Xs, Ys, Zs = alpha_data[alpha]
+
+            # only show the contour map <= 10%
+            if z_dim == "SPA_c_pvalue":
+                Zs[Zs > 10] = 11
+        else:
+            # cache file does not exist
+            Xs, Ys = np.meshgrid(years, lengths)
+            n_row, n_col = Xs.shape
+            Zs = np.zeros_like(Xs, dtype=np.float)
+            for rdx in range(n_row):
+                for cdx in range(n_col):
+                    year, win_length = Xs[rdx, cdx], Ys[rdx, cdx]
+                    if prob_type in ("min_cvar_sp2_yearly",
+                                     "min_ms_cvar_eventsp"):
+                        stock_key = 'n_stock'
+                    elif prob_type in ("min_cvar_sip2_yearly",):
+                        stock_key = 'max_portfolio_size'
+
+                    # the values will contains the repeated results (scenario
+                    #  counts) of the same parameters
+                    values = df.loc[(df.loc[:, stock_key] == 5) &
+                                    (df.loc[:, 'win_length'] == win_length) &
+                                    (df.loc[:, 'alpha'] == alpha),
+                                    z_dim]
+
+                    if z_dim == "SPA_c_pvalue":
+                        mean = max(values) if len(values) > 0 else 0
+                        mean = 0.11 if mean > 0.1 else mean
+
+                    elif z_dim == "VSS_daily_mean":
+                        # normalization the daily VSS value
+                        mean = values.mean() / 1e6
+                    else:
+                        mean = values.mean()
+
+                    # all the Z values are shown in percentage,
+                    # the variable "mean" is the mean value of the repeated
+                    # results of the same parameters
+                    Zs[rdx, cdx] = 0 if np.isnan(mean) else mean * 100
+
+            alpha_data[alpha] = (Xs, Ys, Zs)
+
+        if not pkl_existed:
+            pd.to_pickle(alpha_data, pkl)
+
+        print (alpha, Zs)
+        # contour, projected on z
+        cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
+                           levels=color_range)
+
+    # share color bar,  rect [left, bottom, width, height]
+    cbar_ax = fig.add_axes([0.92, 0.125, 0.015, 0.75])
+    # print fig.get_axes()
+    cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax,
+                        ticks=color_range)
+    print ("Z_dim:", z_dim)
+    print ("z_range:", np.min(Zs), np.max(Zs))
+    cbar.ax.tick_params(labelsize=12)
+    if z_dim == "cum_roi":
+        cbar_label_name = "Average cumulative returns (%)"
+    elif z_dim == "SPA_c_pvalue":
+        cbar_label_name = "P values (%)"
+    elif z_dim == "VSS_daily_mean":
+        cbar_label_name = "Average daily VSS (%)"
+
+    cbar.set_label(cbar_label_name, labelpad=1, size=20,
+                   fontname="Times New Roman")
+
+    if z_dim == "SPA_c_pvalue":
+        cbar.set_ticklabels([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ">10"])
+    plt.show()
 
 def stock_statistics(latex=True):
     """
@@ -1434,9 +1573,11 @@ if __name__ == '__main__':
     # all_results_to_one_sheet_xlsx('min_cvar_sip2', 2)
     # all_results_to_one_sheet_xlsx('min_cvar_sp2_yearly', 5)
     # all_results_to_one_sheet_xlsx('min_cvar_sip2_yearly', 5)
-    all_results_to_one_sheet_xlsx('min_ms_cvar_eventsp', 1)
+    # all_results_to_one_sheet_xlsx('min_ms_cvar_eventsp', 1)
 
     # plot_2d_contour_by_alpha("min_cvar_sp2", "VSS_daily_mean")
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
-
+    plot_yearly_contour_by_alpha("min_cvar_sp2_yearly", z_dim="cum_roi")
+    # plot_yearly_contour_by_alpha("min_cvar_sip2_yearly", z_dim="cum_roi")
+    # plot_yearly_contour_by_alpha("min_ms_cvar_eventsp", z_dim="cum_roi")
     pass
