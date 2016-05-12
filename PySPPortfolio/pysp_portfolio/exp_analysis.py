@@ -1595,7 +1595,7 @@ if __name__ == '__main__':
     # plot_2d_contour_by_alpha("min_cvar_sp2", "VSS_daily_mean")
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
     # plot_yearly_contour_by_alpha("min_cvar_sp2_yearly", z_dim="cum_roi")
-    # plot_yearly_contour_by_alpha("min_cvar_sip2_yearly", z_dim="cum_roi")
+    plot_yearly_contour_by_alpha("min_cvar_sip2_yearly", z_dim="cum_roi")
     # plot_yearly_contour_by_alpha("min_ms_cvar_eventsp", z_dim="cum_roi")
     # print (load_yearly_pairs())
     pass
