@@ -4,16 +4,18 @@ Authors: Hung-Hsin Chen <chenhh@par.cse.nsysu.edu.tw>
 License: GPL v2
 """
 import os
-from time import time
 from datetime import date
-import pandas as pd
+from time import time
+
 import numpy as np
+import pandas as pd
 import scipy.stats as spstats
 import statsmodels.stats.stattools as stat_tools
 import statsmodels.tsa.stattools as tsa_tools
-from PySPPortfolio.pysp_portfolio import *
-import utils
 from arch.bootstrap.multiple_comparrison import (SPA, )
+
+import utils
+from PySPPortfolio.pysp_portfolio import *
 from gen_results import (all_experiment_parameters, )
 from gen_results_year import (all_experiment_parameters as
                               all_experiment_parameters_yearly, )
@@ -467,7 +469,6 @@ def plot_results(prob_type="min_cvar_sp", scenario_cnt=1):
     :return:
     """
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
 
     if not prob_type in ('min_cvar_sp', 'min_cvar_sip'):
         raise ValueError('unknown problem type:{}'.format(prob_type))
@@ -566,7 +567,6 @@ def plot_3d_results(prob_type="min_cvar_sp", z_dim='cum_roi'):
 
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import axes3d
 
     # figure size in inches
     fig = plt.figure(figsize=(64, 48), facecolor='white')
@@ -1175,6 +1175,9 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     # set parameters range
     stocks = (5,)
     years = np.arange(2005, 2015)
+    year_pairs = load_yearly_pairs()
+    assert len(years) == len(year_pairs)
+
     alphas = ('0.50', '0.60', '0.70', '0.80', '0.90')
     if prob_type in ("min_cvar_sip2_yearly",):
         lengths = np.arange(60, 240 + 10, 10)
@@ -1188,9 +1191,18 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     fig = plt.figure(figsize=(64, 48), facecolor='white')
 
     # set color range, it requires to be adjusted by data
+
     if z_dim == 'cum_roi':
-        cm_norm = mpl.colors.Normalize(vmin=-100, vmax=300, clip=False)
-        color_range = np.arange(-100, 300 + 10, 20)
+        # min_cvar_sp2_yearly roi range (-21.45%, 33.22%)
+        # min_cvar_sip2_yearly roi range (-40.93%, 45.30%)
+        # min_ms_cvar_eventsp roi range (0.00%, 205.23%)
+        if prob_type in ('min_cvar_sp2_yearly', 'min_cvar_sip2_yearly'):
+            lower, upper, step = -50, 50, 2
+        elif prob_type in ('min_ms_cvar_eventsp',):
+            lower, upper, step = -20, 220, 20
+
+        cm_norm = mpl.colors.Normalize(vmin=lower, vmax=upper, clip=False)
+        color_range = np.arange(lower, upper, step)
 
     elif z_dim == "SPA_c_pvalue":
         cm_norm = mpl.colors.Normalize(vmin=0, vmax=11, clip=False)
@@ -1244,7 +1256,11 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
                     #  counts) of the same parameters
                     values = df.loc[(df.loc[:, stock_key] == 5) &
                                     (df.loc[:, 'win_length'] == win_length) &
-                                    (df.loc[:, 'alpha'] == alpha),
+                                    (df.loc[:, 'alpha'] == alpha) &
+                                    (df.loc[:, 'start_date'] ==
+                                        pd.Timestamp(year_pairs[cdx][0])) &
+                                    (df.loc[:, 'end_date'] ==
+                                     pd.Timestamp(year_pairs[cdx][1])),
                                     z_dim]
 
                     if z_dim == "SPA_c_pvalue":
@@ -1267,19 +1283,18 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
         if not pkl_existed:
             pd.to_pickle(alpha_data, pkl)
 
-        print (alpha, Zs)
+        # print (alpha, Zs)
         # contour, projected on z
         cset = ax.contourf(Xs, Ys, Zs, cmap=plt.cm.coolwarm, norm=cm_norm,
                            levels=color_range)
 
-    # share color bar,  rect [left, bottom, width, height]
+    # share color bar, rect [left, bottom, width, height]
     cbar_ax = fig.add_axes([0.92, 0.125, 0.015, 0.75])
-    # print fig.get_axes()
-    cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax,
-                        ticks=color_range)
+    cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax, ticks=color_range)
     print ("Z_dim:", z_dim)
     print ("z_range:", np.min(Zs), np.max(Zs))
     cbar.ax.tick_params(labelsize=12)
+
     if z_dim == "cum_roi":
         cbar_label_name = "Average cumulative returns (%)"
     elif z_dim == "SPA_c_pvalue":
@@ -1577,7 +1592,8 @@ if __name__ == '__main__':
 
     # plot_2d_contour_by_alpha("min_cvar_sp2", "VSS_daily_mean")
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
-    plot_yearly_contour_by_alpha("min_cvar_sp2_yearly", z_dim="cum_roi")
+    # plot_yearly_contour_by_alpha("min_cvar_sp2_yearly", z_dim="cum_roi")
     # plot_yearly_contour_by_alpha("min_cvar_sip2_yearly", z_dim="cum_roi")
     # plot_yearly_contour_by_alpha("min_ms_cvar_eventsp", z_dim="cum_roi")
+    # print (load_yearly_pairs())
     pass
