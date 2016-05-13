@@ -1193,13 +1193,13 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     # set color range, it requires to be adjusted by data
 
     if z_dim == 'cum_roi':
-        # min_cvar_sp2_yearly roi range (-21.45%, 33.22%)
-        # min_cvar_sip2_yearly roi range (-40.93%, 45.30%)
+        # min_cvar_sp2_yearly roi range (-11.01%, 30.84%)
+        # min_cvar_sip2_yearly roi range (-26.56%, 27.55%)
         # min_ms_cvar_eventsp roi range (0.00%, 205.23%)
         if prob_type in ('min_cvar_sp2_yearly', 'min_cvar_sip2_yearly'):
-            lower, upper, step = -50, 50, 2
+            lower, upper, step = -35, 40+5, 5
         elif prob_type in ('min_ms_cvar_eventsp',):
-            lower, upper, step = -20, 220, 20
+            lower, upper, step = -10, 100+6, 5
 
         cm_norm = mpl.colors.Normalize(vmin=lower, vmax=upper, clip=False)
         color_range = np.arange(lower, upper, step)
@@ -1224,10 +1224,11 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
                      y=1.02, fontsize=18)
 
         # labelpad - number of points between the axis and its label
-        ax.set_xlabel(r'$Year$', fontsize=14, labelpad=-2)
-        ax.set_ylabel(r'$h$', fontsize=14, labelpad=-2)
+        ax.set_xlabel(r'$Year$', fontsize=14, labelpad=4)
+        ax.set_ylabel(r'$h$', fontsize=14, labelpad=-3)
         ax.tick_params(labelsize=10, pad=1, )
-        ax.set_xticklabels(years, fontsize=12, fontname="Times New Roman")
+        ax.set_xticklabels(years, fontsize=12, rotation=90,
+                           fontname="Times New Roman")
         ax.set_yticks(lengths)
         ax.set_yticklabels(lengths, fontsize=12, fontname="Times New Roman")
 
@@ -1235,8 +1236,11 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
         if pkl_existed:
             Xs, Ys, Zs = alpha_data[alpha]
 
+            if z_dim == "cum_roi" and prob_type == "min_ms_cvar_eventsp":
+                Zs[Zs > 100] = 101
+
             # only show the contour map <= 10%
-            if z_dim == "SPA_c_pvalue":
+            elif z_dim == "SPA_c_pvalue":
                 Zs[Zs > 10] = 11
         else:
             # cache file does not exist
@@ -1291,8 +1295,9 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     # share color bar, rect [left, bottom, width, height]
     cbar_ax = fig.add_axes([0.92, 0.125, 0.015, 0.75])
     cbar = fig.colorbar(cset, ax=fig.get_axes(), cax=cbar_ax, ticks=color_range)
-    print ("Z_dim:", z_dim)
-    print ("z_range:", np.min(Zs), np.max(Zs))
+
+    print ("Z_dim: {}".format(z_dim))
+    print ("Z_range:({} {})".format(np.min(Zs), np.max(Zs)))
     cbar.ax.tick_params(labelsize=12)
 
     if z_dim == "cum_roi":
@@ -1305,7 +1310,13 @@ def plot_yearly_contour_by_alpha(prob_type, z_dim="cum_roi"):
     cbar.set_label(cbar_label_name, labelpad=1, size=20,
                    fontname="Times New Roman")
 
-    if z_dim == "SPA_c_pvalue":
+    if z_dim == "cum_roi" and prob_type == "min_ms_cvar_eventsp":
+        # -10, 110 + 5, 5
+        cbar.set_ticklabels([-10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40,
+                             45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95,
+                             100, ">100"])
+
+    elif z_dim == "SPA_c_pvalue":
         cbar.set_ticklabels([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ">10"])
     plt.show()
 
@@ -1596,6 +1607,6 @@ if __name__ == '__main__':
     # plot_2d_contour_by_alpha("min_cvar_sip2", "VSS_daily_mean")
     # plot_yearly_contour_by_alpha("min_cvar_sp2_yearly", z_dim="cum_roi")
     # plot_yearly_contour_by_alpha("min_cvar_sip2_yearly", z_dim="cum_roi")
-    # plot_yearly_contour_by_alpha("min_ms_cvar_eventsp", z_dim="cum_roi")
+    plot_yearly_contour_by_alpha("min_ms_cvar_eventsp", z_dim="cum_roi")
     # print (load_yearly_pairs())
     pass
