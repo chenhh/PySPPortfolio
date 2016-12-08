@@ -436,7 +436,8 @@ def min_cvar_sip_portfolio2(symbols,
     # constraint
     def chosen_constraint_rule(model, int mdx):
         total_wealth = (sum(model.allocated_risk_wealth) +
-                        model.allocated_risk_free_wealth)
+                        model.allocated_risk_free_wealth *
+                        (1. + model.risk_rois[mdx]))
         return model.risk_wealth[mdx] <= model.chosen[mdx] * total_wealth
 
     instance.chosen_constraint = Constraint(instance.symbols,
