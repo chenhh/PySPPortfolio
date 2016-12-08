@@ -44,7 +44,7 @@ def product_line(n_consumer,  n_product, n_point, price, solver='gurobi') :
                for jdx in model.products
                for ndx in model.points)
 
-    model.RObjective = Objective(rule=objective_function, sense=maximize)
+    model.Objective = Objective(rule=objective_function, sense=maximize)
 
     # solve
     opt = SolverFactory(solver)
